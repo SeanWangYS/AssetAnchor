@@ -23,6 +23,8 @@ docs/              # 規劃文件、ADR
 
 ## 開發
 
+> ⚠️ Sprint 0 進行中 — 以下指令會在所有 Sprint 0 task 完成後（packages 與 lockfile 落地）才完全可用。
+
 ```bash
 corepack enable
 corepack prepare pnpm@9.12.0 --activate
