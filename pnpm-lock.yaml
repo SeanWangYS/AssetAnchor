@@ -33,6 +33,16 @@ importers:
         specifier: ^8.13.0
         version: 8.59.4(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
 
+  apps/mobile:
+    dependencies:
+      '@assetanchor/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   packages/shared:
     dependencies:
       decimal.js:
