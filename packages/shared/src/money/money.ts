@@ -1,18 +1,35 @@
 import Decimal from 'decimal.js';
 import type { Currency } from '../enums/currencies.js';
-import { CurrencyMismatchError, DivisionByZeroError } from './errors.js';
+import { CurrencyMismatchError, DivisionByZeroError, InvalidMoneyValueError } from './errors.js';
 
 const STORAGE_DECIMALS = 10;
 const DEFAULT_DISPLAY_DECIMALS = 2;
 
 Decimal.set({ precision: 30, rounding: Decimal.ROUND_HALF_UP });
 
+/**
+ * Money — immutable monetary value with a currency tag.
+ *
+ * Always use Money for amounts, costs, fees, rates, and cash balances.
+ * Never use plain `number` for monetary math — float drift will produce
+ * reconciliation errors that the bank statement does not forgive.
+ *
+ * Storage form: `toDecimalString()` always returns 10 decimal places (Firestore canonical).
+ * Display form: `toDisplayString(n)` returns `n` decimal places (default 2), ROUND_HALF_UP.
+ * Construct from Firestore: `Money.fromDecimalString(s, currency)`.
+ *
+ * Operations on different currencies throw `CurrencyMismatchError`.
+ * Construction or operations with NaN / ±Infinity throw `InvalidMoneyValueError`.
+ * Division by zero throws `DivisionByZeroError`.
+ */
 export class Money {
   readonly currency: Currency;
   private readonly value: Decimal;
 
   constructor(value: string | number, currency: Currency) {
-    this.value = new Decimal(value);
+    const d = new Decimal(value);
+    Money.assertFinite(d, value);
+    this.value = d;
     this.currency = currency;
   }
 
@@ -24,6 +41,11 @@ export class Money {
     return this.value.toFixed(decimals);
   }
 
+  /**
+   * Escape hatch — converts to JS number. Loses precision above ~15
+   * significant digits and re-introduces float drift. Use only for
+   * UI / charting layers that genuinely cannot accept strings.
+   */
   toNumber(): number {
     return this.value.toNumber();
   }
@@ -39,11 +61,14 @@ export class Money {
   }
 
   multiply(factor: string | number): Money {
-    return new Money(this.value.times(new Decimal(factor)).toString(), this.currency);
+    const f = new Decimal(factor);
+    Money.assertFinite(f, factor);
+    return new Money(this.value.times(f).toString(), this.currency);
   }
 
   divide(divisor: string | number): Money {
     const d = new Decimal(divisor);
+    Money.assertFinite(d, divisor);
     if (d.isZero()) throw new DivisionByZeroError();
     return new Money(this.value.div(d).toString(), this.currency);
   }
@@ -84,6 +109,12 @@ export class Money {
   private assertSameCurrency(other: Money): void {
     if (this.currency !== other.currency) {
       throw new CurrencyMismatchError(this.currency, other.currency);
+    }
+  }
+
+  private static assertFinite(d: Decimal, raw: string | number): void {
+    if (!d.isFinite()) {
+      throw new InvalidMoneyValueError(raw);
     }
   }
 }

@@ -1,5 +1,10 @@
 import { Money } from './money.js';
-import { CurrencyMismatchError, DivisionByZeroError } from './errors.js';
+import {
+  CurrencyMismatchError,
+  DivisionByZeroError,
+  InvalidMoneyValueError,
+  MoneyError,
+} from './errors.js';
 
 describe('Money constructor', () => {
   it('accepts string value', () => {
@@ -236,6 +241,77 @@ describe('DivisionByZeroError', () => {
       const err = e as DivisionByZeroError;
       expect(err.name).toBe('DivisionByZeroError');
       expect(err.message).toBe('Cannot divide Money by zero');
+    }
+  });
+});
+
+describe('Money rejects non-finite values', () => {
+  it('constructor throws InvalidMoneyValueError on NaN', () => {
+    expect(() => new Money(NaN, 'USD')).toThrow(InvalidMoneyValueError);
+  });
+
+  it('constructor throws InvalidMoneyValueError on Infinity', () => {
+    expect(() => new Money(Infinity, 'USD')).toThrow(InvalidMoneyValueError);
+    expect(() => new Money(-Infinity, 'USD')).toThrow(InvalidMoneyValueError);
+  });
+
+  it('multiply throws InvalidMoneyValueError on NaN factor', () => {
+    expect(() => new Money('10', 'USD').multiply(NaN)).toThrow(InvalidMoneyValueError);
+  });
+
+  it('multiply throws InvalidMoneyValueError on Infinity factor', () => {
+    expect(() => new Money('10', 'USD').multiply(Infinity)).toThrow(InvalidMoneyValueError);
+  });
+
+  it('divide throws InvalidMoneyValueError on NaN divisor (before zero check)', () => {
+    expect(() => new Money('10', 'USD').divide(NaN)).toThrow(InvalidMoneyValueError);
+  });
+
+  it('divide throws InvalidMoneyValueError on Infinity divisor', () => {
+    expect(() => new Money('10', 'USD').divide(Infinity)).toThrow(InvalidMoneyValueError);
+  });
+
+  it('error carries the offending raw value', () => {
+    try {
+      new Money(NaN, 'USD');
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidMoneyValueError);
+      const err = e as InvalidMoneyValueError;
+      expect(err.name).toBe('InvalidMoneyValueError');
+      expect(Number.isNaN(err.raw as number)).toBe(true);
+    }
+  });
+});
+
+describe('MoneyError base class', () => {
+  it('CurrencyMismatchError is a MoneyError', () => {
+    try {
+      new Money('1', 'USD').add(new Money('1', 'TWD'));
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MoneyError);
+      expect(e).toBeInstanceOf(CurrencyMismatchError);
+    }
+  });
+
+  it('DivisionByZeroError is a MoneyError', () => {
+    try {
+      new Money('1', 'USD').divide(0);
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MoneyError);
+      expect(e).toBeInstanceOf(DivisionByZeroError);
+    }
+  });
+
+  it('InvalidMoneyValueError is a MoneyError', () => {
+    try {
+      new Money(NaN, 'USD');
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MoneyError);
+      expect(e).toBeInstanceOf(InvalidMoneyValueError);
     }
   });
 });
