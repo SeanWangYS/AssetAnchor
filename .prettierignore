@@ -11,3 +11,4 @@ pnpm-lock.yaml
 docs/portfolio_tracker_planning.md
 docs/superpowers/**/*.md
 docs/adr/**/*.md
+design_inspiration/**/*.md

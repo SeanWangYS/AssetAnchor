@@ -13,6 +13,12 @@ build/
 # Test coverage
 coverage/
 
+# Secrets (Firebase plist, OAuth keys, etc.)
+.secrets/
+GoogleService-Info.plist
+google-services.json
+*.env.sprint1-reference
+
 # Env
 .env
 .env.*
