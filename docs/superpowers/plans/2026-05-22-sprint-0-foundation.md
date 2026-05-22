@@ -1813,11 +1813,13 @@ git commit -m "feat(shared): add Money class with decimal.js (TDD, >90% coverage
     "outDir": "./dist",
     "jsx": "react-native",
     "moduleResolution": "Bundler",
-    "types": ["node"]
+    "types": []
   },
   "include": ["src/**/*"]
 }
 ```
+
+> `types: []` 不是漏寫 —— mobile 是 RN runtime（JavaScriptCore/Hermes），不應引入 Node 全域型別；正式 RN / Expo 型別在 Sprint 1 init Expo 時補上。
 
 - [ ] **Step 3：`apps/mobile/src/index.ts` 佔位**
 
