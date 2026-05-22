@@ -1,0 +1,28 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: 解決什麼問題、目前痛點是什麼？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Target phase
+      options:
+        - MVP
+        - Phase 2
+        - Phase 3
+        - Backlog
+    validations:
+      required: true
