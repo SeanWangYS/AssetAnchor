@@ -1,6 +1,7 @@
 import type { AssetType } from '../enums/asset-types.js';
 import type { TransactionType } from '../enums/transaction-types.js';
 import type { Currency } from '../enums/currencies.js';
+import type { Market } from '../enums/markets.js';
 import type { FirestoreTimestamp } from './user.js';
 
 export type RateSource = 'BOT' | 'EXCHANGERATE_HOST' | 'YAHOO' | null;
@@ -25,7 +26,7 @@ export interface TransactionDocument {
   account_id: string;
   asset_type: AssetType;
   symbol: string;
-  market: 'TW' | 'US' | 'CRYPTO' | 'OTHER';
+  market: Market;
   transaction_type: TransactionType;
   transaction_date: string;
   ex_date: string | null;
