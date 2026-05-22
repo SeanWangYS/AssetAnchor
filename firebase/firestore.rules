@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 使用者只能讀寫自己的所有資料
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+
+    // 匯率：登入使用者皆可讀，只有後端 (Admin SDK) 可寫
+    match /exchange_rates/{date} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // 股票代號：登入使用者皆可讀，可建立（MVP 動態新增），不可改不可刪
+    match /symbols/{symbolId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // 報價快取：登入使用者皆可讀，只有後端 (Cloud Function) 可寫
+    match /quotes/{symbolId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}
