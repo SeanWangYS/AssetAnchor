@@ -3,6 +3,7 @@ import { ACCOUNT_TYPES, type AccountType } from './account-types.js';
 import { ASSET_TYPES, type AssetType } from './asset-types.js';
 import { TRANSACTION_TYPES, type TransactionType } from './transaction-types.js';
 import { CURRENCIES, type Currency } from './currencies.js';
+import { MARKETS, type Market } from './markets.js';
 
 describe('BROKERS enum', () => {
   it('contains all US brokers from planning doc §6', () => {
@@ -151,6 +152,17 @@ describe('CURRENCIES enum', () => {
   });
 });
 
+describe('MARKETS enum', () => {
+  it('matches planning doc §6 list (strict whitelist)', () => {
+    expect(MARKETS).toEqual(['TW', 'US', 'CRYPTO', 'OTHER']);
+  });
+
+  it('Market type works', () => {
+    const m: Market = 'TW';
+    expect(MARKETS.includes(m)).toBe(true);
+  });
+});
+
 describe('all enums are runtime-frozen', () => {
   it.each([
     ['BROKERS', BROKERS],
@@ -158,6 +170,7 @@ describe('all enums are runtime-frozen', () => {
     ['ASSET_TYPES', ASSET_TYPES],
     ['TRANSACTION_TYPES', TRANSACTION_TYPES],
     ['CURRENCIES', CURRENCIES],
+    ['MARKETS', MARKETS],
   ])('%s is Object.frozen', (_name, enumArray) => {
     expect(Object.isFrozen(enumArray)).toBe(true);
   });

@@ -1,10 +1,11 @@
 import type { Currency } from '../enums/currencies.js';
+import type { Market } from '../enums/markets.js';
 import type { FirestoreTimestamp } from './user.js';
 
 export interface QuoteDocument {
   symbol_id: string;
   symbol: string;
-  market: 'TW' | 'US' | 'CRYPTO' | 'OTHER';
+  market: Market;
   currency: Currency;
   price: string;
   fetched_at: FirestoreTimestamp;

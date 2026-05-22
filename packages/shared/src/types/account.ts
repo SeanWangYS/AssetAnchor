@@ -1,6 +1,7 @@
 import type { Broker } from '../enums/brokers.js';
 import type { AccountType } from '../enums/account-types.js';
 import type { Currency } from '../enums/currencies.js';
+import type { Market } from '../enums/markets.js';
 import type { FirestoreTimestamp } from './user.js';
 
 /**
@@ -15,7 +16,7 @@ export interface AccountDocument {
   broker: Broker;
   account_type: AccountType;
   base_currency: Currency;
-  market: 'TW' | 'US' | 'CRYPTO' | 'OTHER';
+  market: Market;
   cash_balances: CashBalances;
   cash_balances_updated_at: FirestoreTimestamp;
   is_active: boolean;
