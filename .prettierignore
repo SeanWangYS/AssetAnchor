@@ -6,3 +6,8 @@ coverage
 apps/mobile/ios
 apps/mobile/android
 pnpm-lock.yaml
+
+# Human-authored planning / spec docs — preserve handcrafted tables, ASCII diagrams, CJK spacing
+docs/portfolio_tracker_planning.md
+docs/superpowers/**/*.md
+docs/adr/**/*.md
