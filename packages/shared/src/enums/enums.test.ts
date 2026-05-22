@@ -113,6 +113,23 @@ describe('TRANSACTION_TYPES enum', () => {
     const t: TransactionType = 'BUY';
     expect(TRANSACTION_TYPES.includes(t)).toBe(true);
   });
+
+  it('matches the full whitelist exactly (no accidental additions)', () => {
+    expect(TRANSACTION_TYPES).toEqual([
+      'BUY',
+      'SELL',
+      'DIVIDEND_CASH',
+      'DIVIDEND_STOCK',
+      'SPLIT',
+      'REVERSE_SPLIT',
+      'SPINOFF',
+      'MERGER',
+      'STAKING_REWARD',
+      'AIRDROP',
+      'TRANSFER_IN',
+      'TRANSFER_OUT',
+    ]);
+  });
 });
 
 describe('CURRENCIES enum', () => {
@@ -127,5 +144,21 @@ describe('CURRENCIES enum', () => {
   it('Currency type works', () => {
     const c: Currency = 'TWD';
     expect(CURRENCIES.includes(c)).toBe(true);
+  });
+
+  it('matches the full whitelist exactly (no accidental additions)', () => {
+    expect(CURRENCIES).toEqual(['TWD', 'USD', 'JPY', 'EUR', 'HKD', 'CNY']);
+  });
+});
+
+describe('all enums are runtime-frozen', () => {
+  it.each([
+    ['BROKERS', BROKERS],
+    ['ACCOUNT_TYPES', ACCOUNT_TYPES],
+    ['ASSET_TYPES', ASSET_TYPES],
+    ['TRANSACTION_TYPES', TRANSACTION_TYPES],
+    ['CURRENCIES', CURRENCIES],
+  ])('%s is Object.frozen', (_name, enumArray) => {
+    expect(Object.isFrozen(enumArray)).toBe(true);
   });
 });
