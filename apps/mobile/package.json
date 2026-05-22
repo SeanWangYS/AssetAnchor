@@ -1,0 +1,16 @@
+{
+  "name": "@assetanchor/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "test": "echo 'no tests yet (Sprint 0 placeholder)' && exit 0"
+  },
+  "dependencies": {
+    "@assetanchor/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
