@@ -1,1 +1,2 @@
+export PATH="$HOME/.npm-global/bin:$HOME/.local/share/pnpm:$PATH"
 pnpm exec lint-staged
