@@ -10,7 +10,7 @@
     "build": "tsc"
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "dependencies": {
     "@assetanchor/shared": "workspace:*"
