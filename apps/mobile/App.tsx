@@ -1,24 +1,24 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import { sanityCheck } from './src/sanity';
+import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { onAuthStateChanged } from '@react-native-firebase/auth';
+import { auth, wireEmulatorsOnce } from './src/services/firebase';
+import { useAuthStore } from './src/features/auth/authStore';
+import RootNavigator from './src/core/navigation/RootNavigator';
 
 export default function App() {
+  const setUser = useAuthStore((s) => s.setUser);
+
+  useEffect(() => {
+    wireEmulatorsOnce();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+    return unsubscribe;
+  }, [setUser]);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>AssetAnchor</Text>
-      <Text>shared wiring OK → Money.zero(&apos;TWD&apos;) = {sanityCheck()}</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <RootNavigator />
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  title: { fontSize: 24, fontWeight: '600' },
-});
