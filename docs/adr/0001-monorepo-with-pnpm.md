@@ -25,7 +25,7 @@ AssetAnchor 包含三個明確獨立但**共用 Firestore schema 與 Money class
 - ✅ Types / enums / Money 改動一次、三邊立即同步
 - ✅ Single `pnpm install`、single lockfile
 - ✅ CI 只需一條 install pipeline
-- ⚠️ Expo `metro` 對 monorepo 需要額外設定（Sprint 1 處理）
+- ⚠️ Expo + pnpm 整合：SDK 52+ 的 Metro 已自動支援 monorepo（免手寫 `metro.config.js`），但 pnpm 需設 `node-linker=hoisted`（本專案 pnpm 9.12 寫在 `.npmrc`；pnpm 10+ 改用 `pnpm-workspace.yaml` 的 `nodeLinker: hoisted`）才能讓 Metro 解析到跨 workspace 的 `@assetanchor/shared`（Sprint 1 處理，原理見 `docs/tech_note/expo-pnpm-monorepo-integration.md`）
 - ⚠️ Firebase Functions deploy 時要打包 `packages/shared` 為相對相依（Sprint 4 處理，見 apps/functions/src/index.ts 內 Sprint 4 NOTE）
 
 ## Alternatives Considered
