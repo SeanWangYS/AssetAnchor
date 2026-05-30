@@ -86,7 +86,7 @@ planning doc §2：Expo Dev Build + EAS Build、`@react-native-firebase`（nativ
 
 | # | Task | 重點 |
 |---|---|---|
-| 0 | **Pre-flight｜Node 版本 reconcile** | 決定 dev canonical Node（建議 `.nvmrc`）；確認 Expo SDK 54 支援的 Node + Firebase Functions runtime（node 20）+ root `engines`（現 `>=22`，環境 node 24）一致；消除 `apps/functions` engines 警告。並裝 Xcode、註冊 Expo 帳號。 |
+| 0 | **Pre-flight｜Node 版本統一為 22** | dev=CI=prod 全部 Node 22（Expo 最穩 LTS、Functions 2nd-gen `nodejs22`）：`.nvmrc`=22、`apps/functions` engines 20→22、本機 `nvm use 22`（CI 的 `NODE_VERSION` 與 root `engines` 已是 22）。並裝 Xcode、註冊 Expo 帳號。 |
 | 1 | **Expo scaffold（簡化版）** | 清 placeholder → `pnpm create expo-app --template default@sdk-54 apps/mobile` → 補回 `@assetanchor/shared: workspace:*` + tsconfig `extends` base（`node-linker=hoisted` 已就緒） |
 | 2 | **Wiring sanity** | 用既有 `sanityCheck()`（import `Money`）渲染到畫面，證明 shared 在 RN bundler 解得到 |
 | 2b | **🆕 Expo Go first-light** | Expo Go 在實體 iPhone 跑一眼（加 Firebase 前） |
