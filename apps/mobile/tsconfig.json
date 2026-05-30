@@ -1,11 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "jsx": "react-native",
-    "moduleResolution": "Bundler",
-    "types": []
-  },
-  "include": ["src/**/*"]
+  "extends": ["../../tsconfig.base.json", "expo/tsconfig.base"],
+  "compilerOptions": { "jsx": "react-native", "moduleResolution": "Bundler" },
+  "include": ["App.tsx", "src/**/*", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }
