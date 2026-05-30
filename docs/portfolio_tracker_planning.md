@@ -931,7 +931,7 @@ services/* ─→ packages/shared
 feat(mobile): add holdings overview screen
 fix(functions): handle BOT CSV missing rows on Sunday
 refactor(shared): extract Money class fee calculation
-docs(adr): add ADR-002 navigation structure decision
+docs(adr): add ADR-003 navigation structure decision
 ```
 
 **強制工具**：commitlint + husky `commit-msg` hook，違規 commit 直接 reject。
@@ -999,10 +999,10 @@ jobs:
 |---|---|---|---|---|
 | **0** | Foundation | • pnpm monorepo 骨架（`apps/mobile`、`apps/functions`、`packages/shared`、`firebase/`）<br>• ESLint + Prettier + Husky + commitlint + lint-staged<br>• GitHub Actions CI skeleton（lint + typecheck + test）<br>• `packages/shared`：types / enums / Money class（含單元測試）<br>• Firebase 沿用 `assetanchor-832df` + 清空 Firestore + 部署新 rules / indexes（見 §14）<br>• ADR-000（planning doc 即為 ADR-000）+ ADR-001 monorepo decision | `pnpm install` 完成、CI 綠燈、Money class 100% 單元測試通過 | 1–1.5 |
 | **1** | Auth + Hello Firebase Rail | • `apps/mobile` Expo TS init<br>• EAS Dev Build 設定（**最大風險點**）<br>• `@react-native-firebase` 整合 + native config（複用舊 `GoogleService-Info.plist`）<br>• Firebase Auth（Email/Password + Google）<br>• Conditional render auth navigator<br>• 空 MainTabs scaffold（4 個 tab 都是空殼）<br>• Root Stack ParamList 型別<br>• Firestore rules 單元測試（emulator） | 真機 build → 註冊 / 登入 / 登出 work、切到 MainTabs | 2–3 |
-| **2** | 帳戶管理（Accounts） | • `core/ui` 基礎元件（Button / Input / Sheet / List）<br>• theme（colors / spacing / typography tokens）<br>• AccountsStack（List / Detail）+ AddAccount modal<br>• Zustand `accountsStore`<br>• Firestore CRUD for `accounts`<br>• cash_balances 手動編輯 UI<br>• ADR-002 navigation structure | 能新增 / 編輯 / 停用券商帳戶、顯示帳戶顏色、cash_balance 可改 | 2 |
-| **3** | 交易（BUY）+ 持倉動態計算 | • AddTransaction modal（先做 BUY、先做單幣別）<br>• react-hook-form + zod schema for transaction<br>• Money 整合進 form（精度處理）<br>• Firestore CRUD for `transactions`<br>• HoldingsOverview：從 transactions 動態算出持倉<br>• AssetDetail（無報價、無多幣別）<br>• 對帳 timeline（個股交易順序）<br>• ADR-003 event sourcing schema + 動態 holdings | 能輸入買入 → 看到加權平均成本正確的持倉清單 | 2–3 |
-| **4** | 多幣別 + 匯率 | • `apps/functions`：台銀 BOT CSV 抓取 Cloud Function<br>• Lazy + Permanent Date Cache（`exchange_rates`）<br>• Edge case：今日 16:00 前 placeholder<br>• 交易輸入時觸發匯率取得、寫入 amounts map<br>• AssetDetail 切換顯示幣別<br>• ADR-004 lazy exchange rate cache | USD 交易自動換算 TWD、edge case 處理乾淨 | 1.5–2 |
-| **5** | 賣出 + 報價 | • SELL transaction + 已實現損益<br>• `apps/functions`：Yahoo Finance quote proxy（QuoteProvider 介面）<br>• MMKV + Firestore 雙層 cache（15min TTL）<br>• `services/quotes` client<br>• 持倉現價 + 未實現損益<br>• Pull-to-refresh on overview + detail<br>• ADR-005 quote cache strategy | 完整買賣 + 即時報酬率顯示、刷新行為對 | 2–3 |
+| **2** | 帳戶管理（Accounts） | • `core/ui` 基礎元件（Button / Input / Sheet / List）<br>• theme（colors / spacing / typography tokens）<br>• AccountsStack（List / Detail）+ AddAccount modal<br>• Zustand `accountsStore`<br>• Firestore CRUD for `accounts`<br>• cash_balances 手動編輯 UI<br>• ADR-003 navigation structure | 能新增 / 編輯 / 停用券商帳戶、顯示帳戶顏色、cash_balance 可改 | 2 |
+| **3** | 交易（BUY）+ 持倉動態計算 | • AddTransaction modal（先做 BUY、先做單幣別）<br>• react-hook-form + zod schema for transaction<br>• Money 整合進 form（精度處理）<br>• Firestore CRUD for `transactions`<br>• HoldingsOverview：從 transactions 動態算出持倉<br>• AssetDetail（無報價、無多幣別）<br>• 對帳 timeline（個股交易順序）<br>• ADR-004 event sourcing schema + 動態 holdings | 能輸入買入 → 看到加權平均成本正確的持倉清單 | 2–3 |
+| **4** | 多幣別 + 匯率 | • `apps/functions`：台銀 BOT CSV 抓取 Cloud Function<br>• Lazy + Permanent Date Cache（`exchange_rates`）<br>• Edge case：今日 16:00 前 placeholder<br>• 交易輸入時觸發匯率取得、寫入 amounts map<br>• AssetDetail 切換顯示幣別<br>• ADR-005 lazy exchange rate cache | USD 交易自動換算 TWD、edge case 處理乾淨 | 1.5–2 |
+| **5** | 賣出 + 報價 | • SELL transaction + 已實現損益<br>• `apps/functions`：Yahoo Finance quote proxy（QuoteProvider 介面）<br>• MMKV + Firestore 雙層 cache（15min TTL）<br>• `services/quotes` client<br>• 持倉現價 + 未實現損益<br>• Pull-to-refresh on overview + detail<br>• ADR-006 quote cache strategy | 完整買賣 + 即時報酬率顯示、刷新行為對 | 2–3 |
 | **6** | MVP Polish | • Symbol 動態建立 + Yahoo `quoteSummary` 補 metadata<br>• Empty / Loading / Error states<br>• Settings：preferred_display_currency / theme<br>• 損益顏色策略 implement<br>• 對帳功能完善（個股 timeline + 帳戶 cash 對比）<br>• Crash reporting 接 Sentry<br>• 真機 dogfood 一輪、列 punch list | MVP 驗收標準達成（每隻股票/ETF 的現貨價值、成本、報酬率正確） | 2 |
 
 ### 13.3 關鍵里程碑
@@ -1038,10 +1038,11 @@ jobs:
 |---|---|---|
 | ADR-000 | Planning doc 本身（本檔即為 ADR-000） | Sprint 0 |
 | ADR-001 | Monorepo + pnpm workspaces | Sprint 0 |
-| ADR-002 | Navigation structure（Bottom Tabs × 4 + Modal） | Sprint 2 結尾 |
-| ADR-003 | Event sourcing schema + 動態 holdings 計算 | Sprint 3 |
-| ADR-004 | Lazy + Permanent Date Cache for exchange rates | Sprint 4 |
-| ADR-005 | Yahoo Finance + 雙層 cache + 15min TTL | Sprint 5 |
+| ADR-002 | Firebase SDK：@react-native-firebase over Firebase JS SDK | Sprint 1 |
+| ADR-003 | Navigation structure（Bottom Tabs × 4 + Modal） | Sprint 2 結尾 |
+| ADR-004 | Event sourcing schema + 動態 holdings 計算 | Sprint 3 |
+| ADR-005 | Lazy + Permanent Date Cache for exchange rates | Sprint 4 |
+| ADR-006 | Yahoo Finance + 雙層 cache + 15min TTL | Sprint 5 |
 
 ### 13.6 業餘節奏管理
 

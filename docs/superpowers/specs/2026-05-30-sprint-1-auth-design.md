@@ -125,7 +125,7 @@ planning doc §2：Expo Dev Build + EAS Build、`@react-native-firebase`（nativ
 
 ## Open items / ADR
 
-- ADR 僅在 **go/no-go 觸發 Plan B** 時補寫（RN-Firebase → JS SDK fallback）。導航 ADR-002 排在 Sprint 2（§13.5）。
+- **ADR-002（Firebase SDK：@react-native-firebase over JS SDK）已於本 sprint 補寫**（`docs/adr/0002-firebase-sdk-react-native-firebase.md`）。導航 ADR-003 排在 Sprint 2。若 go/no-go 觸發 Plan B（退 JS SDK），再以新 ADR 記錄該逆轉。
 - 確切版本（Expo SDK、`@react-native-firebase`、React Navigation、Node）於 writing-plans 階段以當前官方文件釘死。
 
 ## References
