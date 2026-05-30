@@ -59,6 +59,8 @@ pnpm create expo-app --template default@sdk-54 apps/mobile
 
 **現在（SDK 52+）已大幅簡化**：Expo 對 monorepo 是 first-class support，自動偵測並配置；pnpm 的 symlink 痛點用 `node-linker=hoisted` 解掉。
 
+> ⚠️ **一個實戰例外（Sprint 1 踩到）**：monorepo *解析*雖自動，但若共用套件用 **`.js` ESM 副檔名** import（如 `packages/shared/src/index.ts` 的 `export * from './enums/index.js'`），Metro 不會把 `.js` 找成 `.ts` → bundle 直接報 `Unable to resolve module ./enums/index.js`（`tsc`/`ts-jest` 都懂這對應，唯獨 Metro 不懂）。**修法**：在 `apps/mobile/metro.config.js` 加 `resolver.resolveRequest`，relative import 以 `.js` 結尾時去掉 `.js` 再解析（讓 Metro 找 `.ts` 源碼）。所以「SDK 52+ 免 metro.config」**只對 monorepo 解析成立**；shared 套件的 `.js` ESM 副檔名仍需這個小 metro.config。
+
 ---
 
 ## 2. Before / After
@@ -158,7 +160,7 @@ pnpm create expo-app --template default@sdk-54 apps/mobile
 ## 6. 複習要點（Cheat Sheet）
 
 - 「複雜」的根因是 **pnpm symlink × Metro**，不是 Expo 或 iOS 本質難。
-- **SDK 52+**：Expo 自動處理 monorepo，**免手寫 `metro.config.js`**。
+- **SDK 52+**：Expo 自動處理 monorepo _解析_；**但** shared 套件用 `.js` ESM 副檔名時，仍需一個小 `metro.config.js`（`resolveRequest` 去 `.js` → 找 `.ts`）。
 - **pnpm 必加** `node-linker=hoisted`（本專案 pnpm 9.12 → `.npmrc`；pnpm 10+ → `pnpm-workspace.yaml` 的 `nodeLinker: hoisted`；repo 範圍、可逆）。
 - 產生器吐獨立版設定 → **永遠記得補回**：`@assetanchor/shared: workspace:*` + tsconfig `extends` base。
 - `workspace:*` = 從 monorepo 內部解析依賴。
