@@ -59,20 +59,15 @@ match /users/{userId}/{document=**} {
 
 對照兩種架構，就能看懂為什麼這份檔案是唯一的閘門：
 
-```
- 傳統後端：
-   App ──▶ 你的 API server ──▶ DB
-                │
-          (在這裡做 auth check：誰能讀寫什麼)
-
-
- Firebase：
-   App ───────────────────▶ Firestore
-                │
-        ┌───────┴────────┐
-        │ Security Rules │   ◀── 唯一的閘門（the only gate）
-        └────────────────┘
-            (沒有別的 server 可以補救)
+```mermaid
+flowchart LR
+  subgraph T["傳統架構（有 server 把關）"]
+    A["App"] --> S["API server<br/>權限檢查"] --> D[("DB")]
+  end
+  subgraph F["Firebase（rules 把關）"]
+    A2["App"] --> FS[("Firestore")]
+    R{{"Security Rules<br/>唯一安全邊界"}} -. 強制每次讀寫 .-> FS
+  end
 ```
 
 ---
