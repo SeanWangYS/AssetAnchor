@@ -70,6 +70,18 @@ planning doc §2：Expo Dev Build + EAS Build、`@react-native-firebase`（nativ
 
 > 註：`@react-native-firebase` 是 native module → Expo Go 裝不下 → 加它之後一律 dev build。Expo Go 只用於 step 2 的 first-light。
 
+## Dev loop & DX（開發迴圈）
+
+> 釐清常見疑慮：用 `@react-native-firebase`（需 dev build、不能用 Expo Go）後，**開發體驗仍然流暢**。
+
+- **dev build = 一次性原生編譯，之後改 JS 即時熱更新**：首次 `expo run:ios` 編譯 + 安裝 dev client（幾分鐘）；之後跑 Metro dev server（`expo start --dev-client`），改 JS/TS → **Fast Refresh 立即更新**，跟 Expo Go 體驗相同。**只有新增/改動 native 套件時**才需重編 dev client。
+- **本地後端用 Firebase Emulator Suite**（≈ AWS 的 LocalStack）：本地跑 Auth + Firestore 模擬器，app 指向它測「前端觸發資料存取」→ 不碰正式資料、快、可離線、可一鍵 reset。同一套 emulator 也供 Task 8 的 rules 測試。
+- **環境切換**：以 env（`EXPO_PUBLIC_*`）切「連 emulator vs 連正式 Firebase」，dev 預設連 emulator。
+- **Expo Go 僅用於 Task 2b first-light**（加 RNFB 前的純 JS 階段），之後一律 dev build。
+- 細節原理見 `docs/tech_note/expo-pnpm-monorepo-integration.md`。
+
+---
+
 ## Task 序列（設計層；bite-sized 步驟由 writing-plans 產出）
 
 | # | Task | 重點 |
