@@ -1,10 +1,16 @@
 // Sprint 0 placeholder. Expo app entry will be initialized in Sprint 1.
 //
-// ⚠️ Sprint 1 NOTE: `npx create-expo-app` will overwrite this file plus
-// package.json / tsconfig.json. Do NOT accept Expo's overwrites blindly —
-// preserve: `@assetanchor/shared: workspace:*` dep, monorepo scripts,
-// `extends: ../../tsconfig.base.json`. Scaffold Expo in a temp dir and
-// hand-merge the relevant pieces into apps/mobile/.
+// ⚠️ Sprint 1 NOTE: this placeholder is replaced by a real Expo app via the
+// official monorepo flow (Expo SDK 52+ auto-configures Metro — NO manual
+// metro.config.js needed; the old "temp dir + hand-merge" dance is obsolete):
+//   1. clear this placeholder, then run:
+//      pnpm create expo-app --template default@sdk-54 apps/mobile
+//      (confirm the exact SDK version at init time)
+//   2. add `node-linker=hoisted` to .npmrc (pnpm 9; pnpm 10+ uses
+//      pnpm-workspace.yaml `nodeLinker: hoisted`) — pnpm × Metro symlink fix
+//   3. re-add the two wires the generator drops:
+//      `@assetanchor/shared: workspace:*` dep + tsconfig `extends ../../tsconfig.base.json`
+// Rationale & full walkthrough: docs/tech_note/expo-pnpm-monorepo-integration.md
 import { Money } from '@assetanchor/shared';
 
 export function sanityCheck(): string {
