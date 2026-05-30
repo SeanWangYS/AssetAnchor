@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { AuthStackScreenProps } from '../../../core/navigation/types';
-import { signInWithEmail } from '../authService';
+import { signInWithEmail, signInWithGoogle } from '../authService';
 
 export default function SignInScreen({ navigation }: AuthStackScreenProps<'SignIn'>) {
   const [email, setEmail] = useState('');
@@ -39,6 +39,17 @@ export default function SignInScreen({ navigation }: AuthStackScreenProps<'SignI
       <Button title={busy ? '登入中…' : '登入'} onPress={onSignIn} disabled={busy} />
       <Button title="還沒有帳號？註冊" onPress={() => navigation.navigate('SignUp')} />
       <Button title="忘記密碼" onPress={() => navigation.navigate('ForgotPassword')} />
+      <Button
+        title="用 Google 登入"
+        onPress={async () => {
+          setBusy(true);
+          setError(null);
+          const res = await signInWithGoogle();
+          setBusy(false);
+          if (!res.ok) setError(res.errorMessage ?? 'Google 登入失敗');
+        }}
+        disabled={busy}
+      />
     </View>
   );
 }

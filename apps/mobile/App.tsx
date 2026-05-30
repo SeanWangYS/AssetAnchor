@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { onAuthStateChanged } from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth, wireEmulatorsOnce } from './src/services/firebase';
 import { useAuthStore } from './src/features/auth/authStore';
 import RootNavigator from './src/core/navigation/RootNavigator';
+
+GoogleSignin.configure({ webClientId: 'autoDetect' });
 
 export default function App() {
   const setUser = useAuthStore((s) => s.setUser);

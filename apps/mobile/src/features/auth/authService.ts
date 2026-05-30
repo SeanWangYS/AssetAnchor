@@ -3,7 +3,10 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut as firebaseSignOut,
+  GoogleAuthProvider,
+  signInWithCredential,
 } from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../../services/firebase';
 import { authErrorMessage } from './authErrors';
 import { createUserDocIfMissing } from './userDoc';
@@ -52,4 +55,25 @@ export async function sendPasswordReset(email: string): Promise<AuthResult> {
 
 export async function signOut(): Promise<void> {
   await firebaseSignOut(auth);
+}
+
+export async function signInWithGoogle(): Promise<AuthResult> {
+  try {
+    await GoogleSignin.hasPlayServices();
+    const result = await GoogleSignin.signIn();
+    const idToken = result.data?.idToken;
+    if (!idToken) {
+      return { ok: false, errorMessage: '未取得 Google idToken。' };
+    }
+    const credential = GoogleAuthProvider.credential(idToken);
+    await signInWithCredential(auth, credential);
+    try {
+      await createUserDocIfMissing();
+    } catch {
+      // 非致命
+    }
+    return { ok: true };
+  } catch (e) {
+    return toResult(e);
+  }
 }
