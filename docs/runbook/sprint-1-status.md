@@ -1,6 +1,6 @@
 # Sprint 1（Auth + Hello Firebase Rail）— 進度 Runbook
 
-**狀態：暫停中（2026-05-31）** — 卡在 Apple Developer Program 審核，使用者預計約 2 天後續作。
+**狀態：續作中（2026-06-03）** — T10 已修復；T8/T9 仍卡 Apple Developer Program 審核（尚未確認通過）。
 
 - **Plan**：`docs/superpowers/plans/2026-05-30-sprint-1-auth.md`
 - **Spec**：`docs/superpowers/specs/2026-05-30-sprint-1-auth-design.md`
@@ -12,7 +12,8 @@
 - **T3 go/no-go = PASS**：RNFB native rail 在 iOS Simulator（iPhone 16）跑通。
 - **T5–T7 已驗證**（畫面 + 後端 emulator API 雙重）。
 - **T8 Google / T9 真機 = BLOCKED**：卡 Apple Developer Program 審核（已付 $99、enroll 審核中）。
-- 收尾未做：**T10 rules 測試修復**、**TDD/測試策略討論**、**Sprint 1 retro**。
+- **T10 = FIXED（2026-06-03）**：7/7 pass，根因見下。
+- 收尾未做：**TDD/測試策略討論**、**Sprint 1 retro**。
 
 ## 任務狀態（T0–T10）
 
@@ -28,7 +29,7 @@
 | T7   | firestore rail `users/{uid}`                   | ✅ DONE + 驗證                                         |
 | T8   | Google Sign-In（code）                         | ⏳ code DONE；runtime 驗證待 T9 真機（Simulator 受限） |
 | T9   | 真機 EAS demo                                  | ⏳ **BLOCKED — Apple Developer Program 審核中**        |
-| T10  | firestore rules 測試（code）                   | ❌ code DONE 但實跑 7/7 fail（待修，見下）             |
+| T10  | firestore rules 測試（code）                   | ✅ **DONE（2026-06-03 修復，7/7 pass）**               |
 
 ## 本 session 做了什麼
 
@@ -64,7 +65,7 @@
 
 **Sprint 1 收尾（與 T9 平行可做）**
 
-- **T10 rules 測試**：實跑 7/7 fail，根因 = `firebase@12` 與 `@firebase/rules-unit-testing@5.0.1` 的 `@firebase/firestore` 實例 brand 不符（規則本身正確、已部署）。修法：查相容版本搭配（多半 pin firebase 版本）或改 test 取得 firestore handle 的方式，再跑 `pnpm --filter @assetanchor/firebase test:rules` 拿 7/7（Java + firebase CLI 已備）。
+- ~~**T10 rules 測試**~~ ✅ **已修（2026-06-03）**：真根因**不是**版本不相容，是 `@react-native-firebase@24` 內建精確 pin `firebase@12.10.0`、與 firebase ws 的 `^12.14.0` 形成雙版本 → hoisted 模式實體複製出多份 `@firebase/firestore` → brand check 炸。修法 = firebase ws pin `"firebase": "12.10.0"` 對齊 RNFB + 重裝。⚠️ 地雷：未來 RNFB 升級若 bump 內建 firebase pin，firebase ws 的 pin 要跟著對齊，否則同樣錯誤復發。
 - **TDD/測試策略討論**：使用者要比現行 §13.4 更積極的 unit test；討論後改 planning doc §13.4 或補 testing ADR。
 - **Sprint 1 retro**：寫 `docs/retros/sprint-1.md`（記錄 modular API、deferred 排序、metro.config、metro cache 清除、forceStaticLinking、rules-test workspace 等偏差）。
 
