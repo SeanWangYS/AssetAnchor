@@ -1,0 +1,35 @@
+/** MVP 純繁中、字串集中於此（planning doc §2：i18n 暫不做）。 */
+export const zhTW = {
+  accounts: {
+    empty: '尚無帳戶，點右上角 ＋ 新增',
+    showInactive: '顯示已停用',
+    hideInactive: '隱藏已停用',
+    inactiveBadge: '已停用',
+    notFound: '找不到帳戶',
+    fields: {
+      account_name: '帳戶名稱',
+      broker: '券商',
+      account_type: '帳戶類型',
+      base_currency: '基礎幣別',
+      market: '主要市場',
+      color: '識別色',
+      notes: '備註',
+    },
+    cash: {
+      title: '現金餘額（手動）',
+      usd: 'USD 現金',
+      twd: 'TWD 現金',
+      save: '儲存現金餘額',
+      saved: '現金餘額已更新',
+      invalid: '請輸入有效數字',
+    },
+    actions: {
+      create: '建立帳戶',
+      save: '儲存',
+      deactivate: '停用帳戶',
+      reactivate: '重新啟用',
+      select: '請選擇',
+      saved: '已儲存',
+    },
+  },
+} as const;

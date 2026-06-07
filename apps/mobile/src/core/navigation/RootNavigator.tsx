@@ -2,7 +2,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthStore } from '../../features/auth/authStore';
 import AuthStack from './AuthStack';
-import MainTabs from './MainTabs';
+import RootStack from './RootStack';
 
 export default function RootNavigator() {
   const status = useAuthStore((s) => s.status);
@@ -16,5 +16,5 @@ export default function RootNavigator() {
     );
   }
 
-  return <NavigationContainer>{user ? <MainTabs /> : <AuthStack />}</NavigationContainer>;
+  return <NavigationContainer>{user ? <RootStack /> : <AuthStack />}</NavigationContainer>;
 }
