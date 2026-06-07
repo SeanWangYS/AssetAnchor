@@ -37,4 +37,20 @@ export default tseslint.config(
       '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },
+  {
+    // Tooling config files (Metro / Babel) are loaded as CommonJS, not ESM.
+    files: ['**/metro.config.js', '**/babel.config.js', '**/*.config.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        require: 'readonly',
+        module: 'writable',
+        __dirname: 'readonly',
+        process: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 );

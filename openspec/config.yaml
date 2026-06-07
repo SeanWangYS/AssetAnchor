@@ -1,0 +1,54 @@
+schema: spec-driven
+
+context: |
+  AssetAnchor — 個人投資組合追蹤 App（iOS + Android，solo 業餘開發，自用優先、未來可能開源）。
+
+  ## 權威參考文件
+  - 完整規劃：docs/portfolio_tracker_planning.md（= ADR-000；願景、核心決策、
+    Firestore schema、Sprint 0–6 路線圖）。§2–§8 決策已拍板，勿重啟討論。
+  - **Firestore schema 是聖牛**（planning doc §6）：修改前必須評估對 mobile /
+    functions / shared types 的全面影響。
+  - 跨 change 的重大決策寫 ADR 到 docs/adr/（Context → Decision → Consequences
+    → Alternatives）。
+
+  ## Tech stack
+  - React Native + Expo SDK 54（CNG/prebuild、EAS Build）、React Navigation v7
+    （Root Stack + Bottom Tabs ×4：持倉/交易/帳戶/設定 + Modal group）
+  - Firebase：@react-native-firebase v24（一律 modular API：getAuth/getFirestore/...）、
+    Firestore + Auth + Cloud Functions；專案 assetanchor-832df
+  - pnpm monorepo：apps/mobile（feature-based：features/* core/* services/* i18n/）、
+    apps/functions、packages/shared、firebase/
+  - 狀態管理 Zustand；表單 react-hook-form + zod；TypeScript strict +
+    noUncheckedIndexedAccess
+  - 金額/數量/匯率一律 decimal.js + Money wrapper，Firestore 存 string（小數第 10 位）；
+    禁用 native float 運算
+  - UI 字串純繁體中文、集中於 i18n/zh-TW.ts（MVP 不做 i18n）
+
+  ## 開發慣例
+  - Conventional Commits（commitlint 強制）；scopes：mobile / functions / shared /
+    infra / docs / firebase
+  - Trunk-based：main 受保護、一律 feature/* 等分支開 PR；merge 按鈕由使用者本人按，
+    AI 絕不 push main
+  - 依賴方向：features/* → core/* | services/* | packages/shared；
+    features 之間不互相 import
+  - 開發環境：Simulator 連本地 Firebase Emulator（EXPO_PUBLIC_USE_FIREBASE_EMULATOR=true）；
+    真機 / EAS build 連正式 Firebase。Node 用 asdf 管理（.tool-versions = 22）
+
+  ## 測試紀律（planning doc §13.4）
+  - packages/shared 純函式（Money、成本計算、報酬率、匯率換算）：Jest，>90% coverage
+  - Firestore rules：@firebase/rules-unit-testing + emulator，必測 user 隔離
+  - apps/functions：Jest + emulator（匯率抓取、quote proxy、cache 邏輯）
+  - mobile 元件：RNTL，只測複雜邏輯與關鍵 user flow，不追求 coverage
+  - 新增/修改 enum（transaction_type / asset_type / broker）時必須補對應測試
+
+rules:
+  proposal:
+    - 引用 docs/portfolio_tracker_planning.md 對應章節作為依據（§3 功能 scope、§6 schema、§11 導航、§13 sprint 驗收標準）
+    - 必須包含 Non-goals 段落，明確排除第二/三階段功能（對齊 MVP 邊界）
+  specs:
+    - 行為描述用繁體中文；Firestore 欄位名、enum 值、screen 名稱保持英文
+  design:
+    - 涉及 Firestore schema 變更時，必須逐欄對照 planning doc §6 說明差異與理由
+  tasks:
+    - 任務切成可獨立 commit 的小步（業餘節奏，每步約 ≤2 小時）
+    - 純函式邏輯（shared/functions）的任務先寫測試再實作（TDD）
