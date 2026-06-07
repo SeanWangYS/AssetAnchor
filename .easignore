@@ -1,0 +1,62 @@
+# EAS Build 上傳用的忽略清單 —— 一旦存在，EAS 會「改用這份、不看 .gitignore」。
+# 內容鏡像 root .gitignore，唯一差別：不忽略 Firebase iOS plist，
+# 讓 apps/mobile/.secrets/GoogleService-Info.plist 能上傳到雲端 build
+# （RNFB 啟動需要它；否則 gitignored 檔案不會進 build → 閃退）。
+# 注意：.secrets/ 目前只有這個 plist，放行它不會洩漏其他機密。
+
+# Node
+node_modules/
+.pnpm-store/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# TypeScript build output
+dist/
+build/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Secrets —— 其餘機密照舊忽略；唯獨「不」列 .secrets/ 與 GoogleService-Info.plist，放行 iOS plist
+google-services.json
+*.env.sprint1-reference
+
+# Env（EXPO_PUBLIC_USE_FIREBASE_EMULATOR=false 改由 eas.json 的 env 提供）
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# Expo / RN —— 原生專案由 EAS 雲端 prebuild (CNG) 重生，不上傳
+.expo/
+.expo-shared/
+apps/mobile/ios/
+apps/mobile/android/
+**/ios/Pods/
+**/android/.gradle/
+**/android/app/build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Claude
+.claude/
