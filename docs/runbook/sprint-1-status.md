@@ -79,20 +79,17 @@
 - **Metro 雷**：若對「明明已安裝」的套件報 `Unable to resolve module` → 多半 stale cache，`expo start -c`。
 - **GoogleService-Info.plist**：`apps/mobile/.secrets/`（gitignored、已備好）；EAS 靠 `.easignore` 放行上傳。
 
-## 未 commit 檔案（待處理）
+## Commit / Push 狀態（2026-06-07 更新）
 
-- `docs/tech_note/ios-code-signing-and-eas.md`
-- `apps/mobile/eas.json`
-- `.easignore`
-- `docs/runbook/sprint-1-status.md`（本檔）
+上一輪列為「待 commit」的檔案（tech note、eas.json、.easignore、本 runbook）**皆已 commit**。本日另把本地領先的 3 個 commit push 到 origin：
 
-建議 commit（不 merge、只 push 分支）：
+- `c27cd2f` chore(docs): migrate planning workflow to OpenSpec
+- `ab6ac2e` fix(firebase): pin firebase JS SDK to 12.10.0
+- `6277e2b` docs(mobile): mark T10 rules tests fixed
 
-- `docs(mobile): add iOS code signing & EAS tech note`
-- `chore(mobile): add EAS build config (eas.json + .easignore)`
-- runbook 可併入上述或單獨 `docs: add sprint 1 status runbook`
+分支 `chore/align-simplified-expo-setup` 已與 origin **完全同步**（0/0）。**PR #2**（base `main`）= OPEN / MERGEABLE，已反映最新 commit，**仍未 merge**（待使用者自行按 merge）。
 
-（`design_inspiration/` 為使用者既有未追蹤目錄，非本次產出。）
+工作區僅剩 untracked 的 `design_inspiration/`（使用者既有目錄，非本次產出，不動它）。
 
 ## Dev 環境狀態
 
