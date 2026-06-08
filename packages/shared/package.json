@@ -15,7 +15,8 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "decimal.js": "^10.4.3"
+    "decimal.js": "^10.4.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/jest": "^29.5.13",
