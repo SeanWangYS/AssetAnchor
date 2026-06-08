@@ -47,5 +47,5 @@
 ## 9. 驗收（Simulator + Emulator）
 
 - [x] 9.1 typecheck / lint / test 全綠：shared（89 test、schema 100% cov）、mobile（typecheck+lint 乾淨、6 test）、firebase rules（11/11，含 accounts 隔離）
-- [ ] 9.2 Simulator + emulator dogfood：新增→編輯→停用→重新啟用帳戶、改 cash_balances、第一個帳戶自動成 default、停用 default 後清空；列表色與排序正確 ← **待使用者驗收**
-- [ ] 9.3 更新 change 狀態，準備 `/opsx:archive`（sprint 收尾時）
+- [x] 9.2 Simulator + emulator dogfood **通過**：新增→編輯→停用→重新啟用帳戶、改 cash_balances、第一個帳戶自動成 default、停用 default 後清空、列表色與排序皆正確。dogfood 修正：現金顯示改 2 位小數（`cashDisplay`，儲存仍 10 位）
+- [x] 9.3 change 收尾、`/opsx:archive`
