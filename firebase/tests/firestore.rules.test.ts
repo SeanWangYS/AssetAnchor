@@ -71,3 +71,27 @@ describe('全域 collection（§7）', () => {
     await assertFails(setDoc(doc(alice, 'quotes/AAPL'), { price: '1' }));
   });
 });
+
+describe('accounts subcollection 隔離（Sprint 2）', () => {
+  it('使用者可建立並讀取自己的 account', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertSucceeds(setDoc(doc(alice, 'users/alice/accounts/a1'), { account_id: 'a1' }));
+    await assertSucceeds(getDoc(doc(alice, 'users/alice/accounts/a1')));
+  });
+
+  it('使用者不能讀別人的 account', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(getDoc(doc(alice, 'users/bob/accounts/b1')));
+  });
+
+  it('使用者不能寫別人的 account', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(setDoc(doc(alice, 'users/bob/accounts/b1'), { account_id: 'b1' }));
+  });
+
+  it('未登入不能讀寫 account', async () => {
+    const anon = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(anon, 'users/alice/accounts/a1')));
+    await assertFails(setDoc(doc(anon, 'users/alice/accounts/a1'), { account_id: 'a1' }));
+  });
+});
