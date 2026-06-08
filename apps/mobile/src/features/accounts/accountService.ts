@@ -85,6 +85,12 @@ export function toCashBalances(input: { USD: string; TWD: string }): CashBalance
   return balances;
 }
 
+/** 把儲存的 10 位小數字串轉成畫面用的 2 位小數（空值回空字串）。儲存仍維持 10 位。 */
+export function cashDisplay(stored: string | undefined, currency: 'USD' | 'TWD'): string {
+  if (stored === undefined || stored === '') return '';
+  return Money.fromDecimalString(stored, currency).toDisplayString();
+}
+
 /** 手動更新 cash_balances（非交易衍生）。 */
 export async function updateCashBalances(
   uid: string,

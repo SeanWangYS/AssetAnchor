@@ -5,6 +5,7 @@ import type { AccountsStackScreenProps } from '../../../core/navigation/types';
 import { useAuthStore } from '../../auth/authStore';
 import { useAccountsStore } from '../accountsStore';
 import {
+  cashDisplay,
   setAccountActive,
   toCashBalances,
   updateAccount,
@@ -23,8 +24,8 @@ export default function AccountDetailScreen({
   const uid = useAuthStore((s) => s.user?.uid);
   const account = useAccountsStore((s) => s.accounts.find((a) => a.account_id === accountId));
 
-  const [usd, setUsd] = useState(account?.cash_balances.USD ?? '');
-  const [twd, setTwd] = useState(account?.cash_balances.TWD ?? '');
+  const [usd, setUsd] = useState(cashDisplay(account?.cash_balances.USD, 'USD'));
+  const [twd, setTwd] = useState(cashDisplay(account?.cash_balances.TWD, 'TWD'));
   const [cashError, setCashError] = useState<string | null>(null);
 
   if (!account || !uid) {
