@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
 import type { TransactionInput } from '@assetanchor/shared';
 import type { RootStackScreenProps } from '../../../core/navigation/types';
 import { useAuthStore } from '../../auth/authStore';
@@ -15,10 +15,14 @@ export default function AddTransactionScreen({
   const accounts = useAccountsStore((s) => s.accounts);
   const activeAccounts = accounts.filter((a) => a.is_active);
 
-  async function onSubmit(input: TransactionInput) {
+  // offline-first：本地寫入當下即持久化、listener 會即時更新清單，因此立刻關閉 modal，
+  // 不把畫面卡在「等 Firestore 伺服器確認」上（該 await 在 emulator 可能延遲/卡住）。
+  function onSubmit(input: TransactionInput) {
     if (!uid) return;
-    await writeTransaction(uid, input);
     navigation.goBack();
+    void writeTransaction(uid, input).catch(() => {
+      Alert.alert('交易記錄失敗', '請稍後再試。');
+    });
   }
 
   return (
