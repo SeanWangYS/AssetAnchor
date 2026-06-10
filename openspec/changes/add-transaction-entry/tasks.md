@@ -53,6 +53,6 @@
 
 ## 10. 驗收與 demo
 
-- [ ] 10.1 iOS Simulator 連本地 Emulator：新增一筆 BUY → Firestore（Emulator UI）出現文件、欄位對齊 §6、交易清單顯示該筆（🚦 第一筆 transaction 里程碑）
+- [x] 10.1 iOS Simulator 連本地 Emulator：新增一筆 BUY → 寫入成功、交易清單顯示該筆（🚦 第一筆 transaction 里程碑）。使用者本機驗收通過；過程修掉 modal 不自動關閉的 bug（offline-first dismiss，commit 64adffd）
 - [x] 10.2 全工作區綠燈：`prettier --check .`、`pnpm -r typecheck`、`pnpm -r lint`、shared coverage、mobile coverage、rules（15/15）皆 PASS
 - [ ] 10.3 錄 30 秒 demo（§13.6 業餘節奏）、列手動 dogfood punch list（如有）
