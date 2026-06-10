@@ -32,4 +32,26 @@ export const zhTW = {
       saved: '已儲存',
     },
   },
+  transactions: {
+    empty: '尚無交易，點右上角 ＋ 新增買入',
+    noAccount: '請先到「帳戶」分頁建立一個帳戶，才能記錄交易',
+    addTitle: '新增買入',
+    fields: {
+      account_id: '帳戶',
+      symbol: '代號',
+      market: '市場',
+      asset_type: '資產類型',
+      transaction_date: '交易日（YYYY-MM-DD）',
+      original_currency: '幣別',
+      quantity: '股數',
+      price: '單價',
+      fee: '手續費',
+      tax: '交易稅',
+      notes: '備註',
+    },
+    actions: {
+      create: '記錄買入',
+      select: '請選擇',
+    },
+  },
 } as const;

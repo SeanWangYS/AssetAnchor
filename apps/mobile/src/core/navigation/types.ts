@@ -15,6 +15,7 @@ export type AuthStackParamList = {
 export type RootStackParamList = {
   MainTabs: undefined;
   AddAccount: undefined;
+  AddTransaction: undefined;
 };
 
 export type MainTabsParamList = {
@@ -43,6 +44,13 @@ export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeSta
 export type MainTabsScreenProps<T extends keyof MainTabsParamList> = BottomTabScreenProps<
   MainTabsParamList,
   T
+>;
+
+// A tab screen that also needs to reach the Root stack's Modal group
+// (e.g. the Transactions tab opening the AddTransaction modal).
+export type MainTabsModalScreenProps<T extends keyof MainTabsParamList> = CompositeScreenProps<
+  BottomTabScreenProps<MainTabsParamList, T>,
+  RootStackScreenProps<keyof RootStackParamList>
 >;
 
 // Accounts screens live in a native-stack nested inside the Accounts tab.

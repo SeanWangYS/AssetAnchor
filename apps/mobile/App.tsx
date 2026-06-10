@@ -5,6 +5,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth, wireEmulatorsOnce } from './src/services/firebase';
 import { useAuthStore } from './src/features/auth/authStore';
 import { useAccountsStore } from './src/features/accounts/accountsStore';
+import { useTransactionsStore } from './src/features/transactions/transactionsStore';
 import RootNavigator from './src/core/navigation/RootNavigator';
 
 GoogleSignin.configure({ webClientId: 'autoDetect' });
@@ -17,8 +18,14 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       const accounts = useAccountsStore.getState();
-      if (user) accounts.subscribe(user.uid);
-      else accounts.stop();
+      const transactions = useTransactionsStore.getState();
+      if (user) {
+        accounts.subscribe(user.uid);
+        transactions.subscribe(user.uid);
+      } else {
+        accounts.stop();
+        transactions.stop();
+      }
     });
     return unsubscribe;
   }, [setUser]);
