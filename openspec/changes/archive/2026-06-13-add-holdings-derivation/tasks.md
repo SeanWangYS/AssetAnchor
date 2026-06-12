@@ -27,5 +27,5 @@
 ## 6. 驗收與 demo
 
 - [x] 6.1 全工作區綠燈：`pnpm -r typecheck`、`pnpm -r lint`、shared coverage（deriveHoldings 100%、129 tests）、mobile coverage 皆 PASS；prettier 乾淨（僅剩使用者未追蹤的 docs/design/ 不在範圍）；rules 不受影響（零 I/O 變更）
-- [ ] 6.2 iOS Simulator 手動驗收（🎯 §13.2 Sprint 3 驗收標準）：輸入 §4 三筆台積電買入 → 持倉清單顯示 2,500 股、均價 550.76 → AssetDetail 摘要與 timeline 正確、新增一筆 BUY 即時反映
+- [x] 6.2 iOS Simulator 手動驗收（🎯 §13.2 Sprint 3 驗收標準）：輸入 §4 三筆台積電買入 → 持倉清單顯示 2,500 股、均價 550.76 → AssetDetail 摘要與 timeline 正確、新增一筆 BUY 即時反映。使用者本機驗收通過（2026-06-13）；CI rules job 首跑踩 firebase-tools JDK>=21 已修（18d7979）
 - [ ] 6.3 錄 30 秒 demo（§13.6）；更新 PR #4 標題與描述涵蓋 Change 2（Sprint 3 統一 merge）
