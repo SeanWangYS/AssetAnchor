@@ -1016,6 +1016,8 @@ jobs:
 
 ### 13.4 測試策略
 
+> **權威來源見 ADR-0007（`docs/adr/0007-testing-strategy.md`）**——風險導向「獎盃」模型 + 分層 CI 強制（純邏輯 TDD≥90%、資料層 transform 契約測試、rules 進 CI、關鍵 flow 1–2 條、UI 外觀手動 dogfood）。下表為早期摘要，與 ADR-0007 衝突時以 ADR 為準。
+
 | 層級 | 工具 | 範圍 / 紀律 | 開始時機 |
 |---|---|---|---|
 | `packages/shared` 純函式 | Jest | **>90% coverage** — Money 運算、成本計算、報酬率公式、匯率換算 | Sprint 0 |
@@ -1043,6 +1045,7 @@ jobs:
 | ADR-004 | Event sourcing schema + 動態 holdings 計算 | Sprint 3 |
 | ADR-005 | Lazy + Permanent Date Cache for exchange rates | Sprint 4 |
 | ADR-006 | Yahoo Finance + 雙層 cache + 15min TTL | Sprint 5 |
+| ADR-007 | 測試策略（風險導向分層 / 獎盃模型 + CI 強制） | Sprint 3 前 |
 
 ### 13.6 業餘節奏管理
 
