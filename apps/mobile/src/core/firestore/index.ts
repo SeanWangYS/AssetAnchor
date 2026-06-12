@@ -7,4 +7,8 @@ export const accountsCol = (uid: string) => collection(db, 'users', uid, 'accoun
 export const accountDocRef = (uid: string, accountId: string) =>
   doc(db, 'users', uid, 'accounts', accountId);
 
+export const transactionsCol = (uid: string) => collection(db, 'users', uid, 'transactions');
+export const transactionDocRef = (uid: string, transactionId: string) =>
+  doc(db, 'users', uid, 'transactions', transactionId);
+
 export { serverTimestamp };

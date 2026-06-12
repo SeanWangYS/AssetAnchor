@@ -9,10 +9,12 @@
     "android": "expo run:android",
     "typecheck": "tsc --noEmit",
     "lint": "eslint 'src/**/*.{ts,tsx}' App.tsx",
-    "test": "TS_NODE_SKIP_PROJECT=true jest"
+    "test": "TS_NODE_SKIP_PROJECT=true jest",
+    "test:coverage": "TS_NODE_SKIP_PROJECT=true jest --coverage"
   },
   "dependencies": {
     "@assetanchor/shared": "workspace:*",
+    "@hookform/resolvers": "^5.4.0",
     "@react-native-firebase/app": "^24.0.0",
     "@react-native-firebase/auth": "^24.0.0",
     "@react-native-firebase/firestore": "^24.0.0",
@@ -24,6 +26,7 @@
     "expo-build-properties": "~1.0.10",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
+    "react-hook-form": "^7.78.0",
     "react-native": "0.81.5",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",

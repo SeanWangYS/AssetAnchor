@@ -95,3 +95,29 @@ describe('accounts subcollection 隔離（Sprint 2）', () => {
     await assertFails(setDoc(doc(anon, 'users/alice/accounts/a1'), { account_id: 'a1' }));
   });
 });
+
+describe('transactions subcollection 隔離（Sprint 3）', () => {
+  it('使用者可建立並讀取自己的 transaction', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertSucceeds(
+      setDoc(doc(alice, 'users/alice/transactions/t1'), { transaction_id: 't1' }),
+    );
+    await assertSucceeds(getDoc(doc(alice, 'users/alice/transactions/t1')));
+  });
+
+  it('使用者不能讀別人的 transaction', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(getDoc(doc(alice, 'users/bob/transactions/t1')));
+  });
+
+  it('使用者不能寫別人的 transaction', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(setDoc(doc(alice, 'users/bob/transactions/t1'), { transaction_id: 't1' }));
+  });
+
+  it('未登入不能讀寫 transaction', async () => {
+    const anon = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(anon, 'users/alice/transactions/t1')));
+    await assertFails(setDoc(doc(anon, 'users/alice/transactions/t1'), { transaction_id: 't1' }));
+  });
+});
