@@ -32,6 +32,25 @@ export const zhTW = {
       saved: '已儲存',
     },
   },
+  holdings: {
+    title: '持倉',
+    detailTitle: '持倉詳情',
+    empty: '尚無持倉，先到「交易」分頁記錄一筆買入',
+    notFound: '找不到持倉',
+    costSubtotal: '成本小計',
+    shares: '股',
+    avgCost: '均價',
+    fields: {
+      quantity: '總股數',
+      averageCost: '加權均價',
+      totalCost: '總成本',
+      currency: '幣別',
+    },
+    timeline: {
+      title: '交易明細',
+      fee: '手續費',
+    },
+  },
   transactions: {
     empty: '尚無交易，點右上角 ＋ 新增買入',
     noAccount: '請先到「帳戶」分頁建立一個帳戶，才能記錄交易',

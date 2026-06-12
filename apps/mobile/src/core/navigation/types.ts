@@ -1,6 +1,7 @@
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { Market } from '@assetanchor/shared';
 
 // React Navigation requires param lists to carry an implicit string index
 // signature (ParamListBase). `interface` does not provide one, so these must
@@ -28,6 +29,11 @@ export type MainTabsParamList = {
 export type AccountsStackParamList = {
   AccountList: undefined;
   AccountDetail: { accountId: string };
+};
+
+export type HoldingsStackParamList = {
+  HoldingsOverview: undefined;
+  AssetDetail: { market: Market; symbol: string };
 };
 /* eslint-enable @typescript-eslint/consistent-type-definitions */
 
@@ -58,5 +64,12 @@ export type MainTabsModalScreenProps<T extends keyof MainTabsParamList> = Compos
 // the Root stack (e.g. the AddAccount modal).
 export type AccountsStackScreenProps<T extends keyof AccountsStackParamList> = CompositeScreenProps<
   NativeStackScreenProps<AccountsStackParamList, T>,
+  RootStackScreenProps<keyof RootStackParamList>
+>;
+
+// Holdings screens mirror the Accounts pattern (list → detail in-tab stack,
+// can also reach the Root modal group, e.g. AddTransaction).
+export type HoldingsStackScreenProps<T extends keyof HoldingsStackParamList> = CompositeScreenProps<
+  NativeStackScreenProps<HoldingsStackParamList, T>,
   RootStackScreenProps<keyof RootStackParamList>
 >;
