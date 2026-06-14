@@ -24,7 +24,7 @@ export default function TransactionsStack() {
       <Stack.Screen
         name="TransactionList"
         component={TransactionsScreen}
-        options={{ title: '交易' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="TransactionDetail"

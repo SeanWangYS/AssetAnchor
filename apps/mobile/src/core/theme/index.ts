@@ -9,6 +9,8 @@
  * 既有畫面尚未 retrofit（那是 Phase 4），故不可刪鍵、不可改鍵型別。
  */
 
+import type { TextStyle } from 'react-native';
+
 /**
  * 顏色 token。
  * - 既有鍵（bg/surface/border/text/textMuted/primary/danger/onPrimary）保留，值改 dark：
@@ -202,9 +204,9 @@ export const fontSize = {
  * tabular-nums 慣例（`.num`）：所有數字（金額 / 數量 / 報酬率 / 百分比）套用，
  * 確保等寬對齊。搭配 `fonts.num` 使用，e.g. `style={[numericStyle, { fontFamily: fonts.num }]}`。
  */
-export const numericStyle = {
-  fontVariant: ['tabular-nums'] as const,
-} as const;
+export const numericStyle: TextStyle = {
+  fontVariant: ['tabular-nums'],
+};
 
 /** 帳戶識別色預設色票（保留 8 色；皆符合 #RRGGBB）。對齊 §4「色票 ×6」+ 既有預設不縮。 */
 export const ACCOUNT_COLORS = [
