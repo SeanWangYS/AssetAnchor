@@ -38,11 +38,11 @@ pnpm --filter @assetanchor/mobile ios
 ### 3. 驗收流程（Sprint 3 Change 1：第一筆 BUY 交易）
 
 1. 在 App 用 **Email / Password 註冊或登入**（Google 登入 runtime 驗證暫緩到 Apple Developer 通過後）。
-2. 先到「**帳戶**」分頁建立一個啟用帳戶——交易必須掛在帳戶下，沒有帳戶時 AddTransaction 會提示先建帳戶。
+2. 先到「**設定 → 帳戶管理**」建立一個啟用帳戶——交易必須掛在帳戶下，沒有帳戶時 AddTransaction 會提示先建帳戶。
 3. 「**交易**」分頁右上 **＋** → 填一筆 BUY（帳戶 / 代號 / 市場 / 資產類型 / 幣別 / 股數 / 單價 / 手續費 / 交易日）→ 送出。
-4. 開 **Emulator UI（http://localhost:4000）** → Firestore → `users/{uid}/transactions/{id}`，確認欄位：
-   - 單幣別 `amounts` 只有原幣別一筆：`rate="1.0000000000"`、`rate_source/rate_type/rate_date = null`
-   - `amounts_status = "COMPLETE"`
+4. 開 **Emulator UI（http://localhost:4000）** → Firestore → `users/{uid}/transactions/{id}`，確認欄位（單幣別 Model B / ADR-0005：只記市場原幣別，不存對稱 amounts map / 匯率）：
+   - `currency` = 市場原幣別（台股 `"TWD"`、美股 `"USD"`）
+   - `price` / `fee` / `tax` 為 10 位小數 string（canonical）
    - `total = price × quantity`（10 位小數 string，例：500 × 1000 → `"500000.0000000000"`）
    - `transaction_type = "BUY"`、`transaction_id` = doc id
 5. 回 App「交易」分頁，清單即時顯示該筆（依交易日由新到舊）。
@@ -74,6 +74,6 @@ pnpm -r typecheck && pnpm -r lint && pnpm exec prettier --check .
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | App 連不上 Emulator             | 確認 Emulator **先**啟動；`apps/mobile/.env` 的 `EXPO_PUBLIC_USE_FIREBASE_EMULATOR=true`；Simulator 用 `localhost`（不是真機 IP）。 |
 | `firebase emulators:start` 失敗 | 確認已裝 Java（Firestore emulator 需要 JVM）、`firebase-tools` 已全域安裝。                                                         |
-| 交易分頁沒有 ＋ / 交易寫不進去  | 先到「帳戶」分頁建立一個啟用帳戶。                                                                                                  |
+| 交易分頁沒有 ＋ / 交易寫不進去  | 先到「設定 → 帳戶管理」建立一個啟用帳戶。                                                                                           |
 | 改了 native 相關設定後行為怪異  | 重跑 `pnpm --filter @assetanchor/mobile ios` 重新 build。                                                                           |
 | 真機測試連到哪？                | emulator flag 僅 dev；真機 / EAS build 連**正式** Firebase（`assetanchor-832df`），不連 emulator。                                  |

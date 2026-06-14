@@ -36,5 +36,5 @@ AssetAnchor mobile 需要 Firebase Auth + Firestore。React Native + Expo 上整
 ## References
 
 - planning doc §2（核心決策表）、§13.3（go/no-go + Plan B 里程碑）、§14.3（舊資產不複用）
-- Sprint 1 spec：`docs/superpowers/specs/2026-05-30-sprint-1-auth-design.md`
+- Sprint 1 auth 規格：`openspec/specs/auth/spec.md`（原 `docs/superpowers/specs/2026-05-30-sprint-1-auth-design.md` 已隨 align-to-design-package 移除）
 - dev build DX / Expo Go 限制：`docs/tech_note/expo-pnpm-monorepo-integration.md`
