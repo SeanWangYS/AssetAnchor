@@ -38,6 +38,9 @@ export const zhTW = {
     empty: '尚無持倉，先到「交易」分頁記錄一筆買入',
     notFound: '找不到持倉',
     costSubtotal: '成本小計',
+    grandTotalTwd: '總成本（TWD）',
+    rateNotReady: '匯率未就緒',
+    fxAsOfNote: '依最新匯率換算',
     shares: '股',
     avgCost: '均價',
     fields: {

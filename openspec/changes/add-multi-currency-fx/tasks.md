@@ -39,12 +39,12 @@
 
 ## 7. apps/mobile — 顯示層 FX
 
-- [ ] 7.1 `core/firestore` 加 `exchange_rates` ref helper
-- [ ] 7.2 `services/exchange-rates` client：讀最新一筆（`orderBy(date desc) limit 1`）、無匯率回「未就緒」降級
-- [ ] 7.3 HoldingsOverview：底部「總成本（TWD）」grand total（換算 `preferred_display_currency` 預設 TWD；原幣別小計並存；無匯率降級）
-- [ ] 7.4 AssetDetail：TWD/USD segmented 切換（即時換算均價/總成本、預設原幣別、無匯率降級）
-- [ ] 7.5 `i18n/zh-TW` 字串（`總成本（TWD）`、`匯率未就緒`、幣別切換 label、as-of-today 換算提示）
-- [ ] 7.6 mobile 關鍵 flow RNTL（grand total 換算、AssetDetail 切換、無匯率降級）
+- [x] 7.1 `core/firestore` 加 `exchange_rates` ref helper
+- [x] 7.2 `services/exchange-rates` store：讀最新一筆（`orderBy(date desc) limit 1`）、無匯率回「未就緒」降級；App.tsx 隨 auth 訂閱/停止
+- [x] 7.3 HoldingsOverview：底部「總成本（TWD）」grand total（`totalCostIn` 換算 TWD；原幣別小計並存；無匯率顯示「匯率未就緒」）
+- [x] 7.4 AssetDetail：TWD/USD 切換（即時換算均價/總成本、預設原幣別、無匯率時停用非原幣別鈕）
+- [x] 7.5 `i18n/zh-TW` 字串（`總成本（TWD）`、`匯率未就緒`、`依最新匯率換算`、幣別切換 label）
+- [~] 7.6 關鍵 FX 邏輯單元測試（shared `convertMoney` + `totalCostIn`，100% gate）涵蓋換算/降級；**RNTL 螢幕測試 infra 本 sprint 未建（專案無既有 RNTL setup）**，螢幕 wiring 由 typecheck + Simulator 9.4 驗收守
 
 ## 8. 文件（去除 model A、保留決策軌跡）
 
