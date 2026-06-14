@@ -87,7 +87,7 @@
 | **TypeScript** | strict + noUncheckedIndexedAccess |
 | **decimal.js 整合** | Money wrapper class（型別安全、不同幣別不能直接相加） |
 | **i18n** | MVP 不做、純繁中 hard-code（字串集中於 i18n/zh-TW.ts，未來易轉） |
-| **導航** | React Navigation v7：Root Stack（Auth ↔ MainTabs ↔ Modals）+ Bottom Tabs × 4（持倉/交易/帳戶/設定）+ 每 tab 內 native-stack |
+| **導航** | React Navigation v7：Root Stack（Auth ↔ MainTabs ↔ Modals）+ Bottom Tabs × 4（持倉/交易/分析/設定）+ 每 tab 內 native-stack；帳戶管理為「設定」子頁 |
 | **Repo 結構** | Monorepo（pnpm workspaces）：`apps/mobile`、`apps/functions`、`packages/shared`、`firebase/`、`docs/` |
 | **模組劃分** | apps/mobile 採 feature-based：`features/*` + `core/*` + `services/*` + `i18n/` |
 | **License** | MIT |
@@ -670,47 +670,64 @@ Collection: `users/{userId}/accounts`
 ```
 RootNavigator (native-stack)
 │
+├── SplashGate                       ← 擋 auth 狀態閃現，決定走 AuthStack 或 MainTabs
+│
 ├── AuthStack（未登入時，conditional render）
-│   ├── SignIn
-│   ├── SignUp
-│   └── ForgotPassword
+│   ├── SignIn                       ← Email + 密碼 + Google 登入鈕；inline 驗證 + auth 錯誤橫幅
+│   ├── SignUp                       ← 同欄位（Email + 密碼）；成功時建立 users/{uid}
+│   └── ForgotPassword               ← 寄送重設信 →「寄信成功」態
 │
 ├── MainTabs（已登入時）= Bottom Tabs × 4
 │   │
 │   ├── 📊 持倉 (HoldingsStack)
-│   │     ├── HoldingsOverview        ← App 預設落地頁
-│   │     ├── AssetDetail             ← 個別資產詳情（可切換幣別）
+│   │     ├── HoldingsOverview        ← App 預設落地頁；新增交易入口＝header ＋（唯一保留 header ＋ 的 tab）
+│   │     ├── AssetDetail             ← 個別資產詳情（TWD/USD 可切換顯示幣別）
 │   │     └── AssetTransactionHistory ← 該 symbol 的完整交易歷史
 │   │
 │   ├── 📝 交易 (TransactionsStack)
-│   │     ├── TransactionList         ← 全交易流水，可篩選
+│   │     ├── TransactionList         ← 全交易流水，可篩選；新增交易入口＝FAB only（無 header ＋）
 │   │     └── TransactionDetail       ← 檢視/編輯/刪除單筆
 │   │
-│   ├── 🏦 帳戶 (AccountsStack)
-│   │     ├── AccountList
-│   │     ├── AccountDetail           ← 含 cash_balances 編輯
-│   │     └── AccountTransactions     ← 該帳戶之交易
+│   ├── 📈 分析 (AnalysisStack)
+│   │     └── AnalysisOverview        ← hero + 圖表卡，TWD/USD 全頁可切換；靜態無 drill-down
 │   │
 │   └── ⚙️ 設定 (SettingsStack)
 │         ├── Settings
+│         ├── 帳戶管理 (AccountsStack) ← 帳戶管理為設定子頁（非獨立 tab）
+│         │     ├── AccountList        ← 新增帳戶入口＝FAB
+│         │     ├── AccountDetail      ← 含 cash_balances 編輯、帳戶識別色光暈
+│         │     └── AccountTransactions← 該帳戶之交易
 │         ├── ProfileEdit
 │         ├── DisplayPreferences      ← preferred_display_currency / theme
 │         └── About
 │
 └── Modal Group (presentation: 'modal')
     ├── AddTransaction                ← 跨多 tab 共用，route params 預填
-    ├── EditTransaction
-    └── AddAccount
+    ├── EditTransaction               ← 同 sheet 帶值，標題改「編輯交易」
+    └── AddAccount / EditAccount      ← 共用表單 sheet
 ```
 
-### 11.2 為什麼選 Bottom Tabs × 4
+落地 tab 為 **持倉 / 交易 / 分析 / 設定**（恰好 4 個）。**帳戶管理**不再是獨立 tab，而是掛在「設定」底下的 AccountsStack 子頁。
 
-| 替代方案 | 為什麼不採 |
+**AuthStack 設計（已定稿，對照 `docs/design/auth-flow/auth-flow-spec.md`）**：
+
+- **流程**：`SplashGate → SignIn ⇄ SignUp ⇄ ForgotPassword(→寄信成功)`；登入 / 註冊成功 → `MainTabs`（落地持倉）；設定登出 → confirm → 回 `SignIn`。
+- **欄位**：Email + 密碼（最精簡）；註冊與登入同欄位。SignIn / SignUp 皆有 Google 登入按鈕。
+- **狀態**：inline 驗證（email regex `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`、密碼 ≥ 6 字）、auth 錯誤橫幅、按鈕 loading、忘記密碼寄信成功、SplashGate 擋 auth 閃現、登出 confirm。錯誤碼對照沿用 §14.3。
+- **視覺**：方向「錨定置中」＋「圓環錨點」標誌（accent 跟隨主題色，全 app 共用品牌組件）。
+- 註冊成功時建立 `users/{uid}`。
+
+### 11.2 為什麼選 Bottom Tabs × 4（持倉 / 交易 / 分析 / 設定）
+
+> 設計包對齊（ADR-0008）後，落地 4 tab 改為 **持倉 / 交易 / 分析 / 設定**：以「分析」取代原本的「帳戶」tab；**帳戶管理降為設定子頁**；新增交易在交易頁改採 **FAB**（持倉頁保留 header ＋ 作為例外）。下表為當前決策與替代方案比較。
+
+| 方案 | 採用與否 |
 |---|---|
-| 3 tabs（持倉/交易/設定，帳戶併入設定） | 帳戶 CRUD 是 MVP 高頻動作，藏進設定不合理 |
-| 5 tabs（多一個「報表」） | MVP 沒有報表分析功能（屬第二/三階段） |
-| Central FAB Tab（iOS Mail / IG 風格） | React Navigation 實作偏 hacky，且 header `+` + FAB 已足夠 |
-| Drawer（漢堡選單） | 偏 Android 風格，iOS 偏好 tab bar |
+| 帳戶併入設定（帳戶管理＝設定子頁） | **已採用**——帳戶 CRUD 非每日高頻，騰出 tab 槽給「分析」這個 MVP 落地能力；帳戶管理改走「設定 → 帳戶管理」AccountsStack 子頁 |
+| 把「分析」放上 tab（取代帳戶 tab 位置） | **已採用**——分析總覽是 MVP 落地畫面，需常駐 tab |
+| FAB 作為交易頁新增入口 | **已採用**——交易頁新增交易改為 FAB only（移除 header ＋）；持倉頁仍保留 header ＋ 作為唯一例外 |
+| 5 tabs（多一個「報表」） | 不採——MVP 已有「分析」總覽；年化報酬率 / TWR / IRR 報表屬第二/三階段 |
+| Drawer（漢堡選單） | 不採——偏 Android 風格，iOS 偏好 tab bar |
 
 ### 11.3 「新增交易」的多入口策略
 
@@ -718,12 +735,14 @@ RootNavigator (native-stack)
 
 | 觸發位置 | 觸發方式 | 預填欄位 |
 |---|---|---|
-| 持倉 tab | Header 右上 `+` | （無） |
-| 交易 tab | Header 右上 `+` ＋ 列表底部 FAB | （無） |
-| 帳戶詳情頁 | Header 右上 `+` | account_id |
-| 個別資產詳情頁 | Header 右上 `+` | account_id, symbol, market |
+| 持倉 tab | Header 右上 `+`（唯一保留 header ＋ 的位置） | （無） |
+| 交易 tab | 列表 **FAB only**（移除 header ＋） | （無） |
+| 帳戶詳情頁 | FAB | account_id |
+| 個別資產詳情頁 | 「為此標的新增交易」 | account_id, symbol, market（帶入均價） |
 
-→ 全部 push 同一個 `AddTransaction` modal，透過 route params 傳遞預填資料。modal 設計確保 UX 焦點集中、可隨時下滑/取消返回原本 context。
+→ 全部 push 同一個 `AddTransaction` sheet/modal，透過 route params 傳遞預填資料。sheet 設計確保 UX 焦點集中、可隨時下滑/取消返回原本 context。
+
+> 設計包對齊（ADR-0008）後，交易頁新增入口統一為 **FAB only**（移除原 header ＋ 與 FAB 的雙入口）；**持倉頁是唯一仍以 header ＋ 為新增入口的畫面**。帳戶頁新增「帳戶」亦走 FAB。
 
 ### 11.4 預設落地頁
 
@@ -743,10 +762,12 @@ RootNavigator (native-stack)
 
 ### 11.6 第二/三階段擴充預留
 
+> **分析 tab 已是 MVP 落地 tab**（AnalysisOverview：hero + 圖表卡，TWD/USD 全頁可切換、靜態無 drill-down），不再列為未來擴充；下表僅留尚未落地的功能。「報表」（年化報酬率 / TWR / IRR）仍屬未來。
+
 | 未來功能 | 導航位置 |
 |---|---|
-| 報表 / 年化報酬率 / TWR / IRR | 新增「📈 報表」tab → 變 5 tab，或併「設定」入 profile icon |
-| 跟大盤比較、資產配置圓餅圖 | 進「報表」tab 的 stack |
+| 報表 / 年化報酬率 / TWR / IRR | 進「分析」tab 的 stack（drill-down 子頁），暫不另開 tab |
+| 跟大盤比較 | 進「分析」tab 的 stack |
 | CSV 匯入 | 設定 tab → ImportData screen |
 | 配息紀錄 | 沿用 `AddTransaction` modal，新增 transaction_type 選項即可（schema 已預留） |
 
@@ -962,7 +983,7 @@ jobs:
 |---|---|---|---|---|
 | **0** | Foundation | • pnpm monorepo 骨架（`apps/mobile`、`apps/functions`、`packages/shared`、`firebase/`）<br>• ESLint + Prettier + Husky + commitlint + lint-staged<br>• GitHub Actions CI skeleton（lint + typecheck + test）<br>• `packages/shared`：types / enums / Money class（含單元測試）<br>• Firebase 沿用 `assetanchor-832df` + 清空 Firestore + 部署新 rules / indexes（見 §14）<br>• ADR-000（planning doc 即為 ADR-000）+ ADR-001 monorepo decision | `pnpm install` 完成、CI 綠燈、Money class 100% 單元測試通過 | 1–1.5 |
 | **1** | Auth + Hello Firebase Rail | • `apps/mobile` Expo TS init<br>• EAS Dev Build 設定（**最大風險點**）<br>• `@react-native-firebase` 整合 + native config（複用舊 `GoogleService-Info.plist`）<br>• Firebase Auth（Email/Password + Google）<br>• Conditional render auth navigator<br>• 空 MainTabs scaffold（4 個 tab 都是空殼）<br>• Root Stack ParamList 型別<br>• Firestore rules 單元測試（emulator） | 真機 build → 註冊 / 登入 / 登出 work、切到 MainTabs | 2–3 |
-| **2** | 帳戶管理（Accounts） | • `core/ui` 基礎元件（Button / Input / Sheet / List）<br>• theme（colors / spacing / typography tokens）<br>• AccountsStack（List / Detail）+ AddAccount modal<br>• Zustand `accountsStore`<br>• Firestore CRUD for `accounts`<br>• cash_balances 手動編輯 UI<br>• ADR-003 navigation structure | 能新增 / 編輯 / 停用券商帳戶、顯示帳戶顏色、cash_balance 可改 | 2 |
+| **2** | 帳戶管理（Accounts） | • `core/ui` 基礎元件（Button / Input / Sheet / List）<br>• theme（colors / spacing / typography tokens）<br>• AccountsStack（List / Detail）+ AddAccount modal<br>• Zustand `accountsStore`<br>• Firestore CRUD for `accounts`<br>• cash_balances 手動編輯 UI<br>• ADR-003 navigation structure（後由 ADR-0008 修訂為 持倉/交易/分析/設定，帳戶管理改設定子頁） | 能新增 / 編輯 / 停用券商帳戶、顯示帳戶顏色、cash_balance 可改 | 2 |
 | **3** | 交易（BUY）+ 持倉動態計算 | • AddTransaction modal（先做 BUY、先做單幣別）<br>• react-hook-form + zod schema for transaction<br>• Money 整合進 form（精度處理）<br>• Firestore CRUD for `transactions`<br>• HoldingsOverview：從 transactions 動態算出持倉<br>• AssetDetail（無報價、無多幣別）<br>• 對帳 timeline（個股交易順序）<br>• ADR-004 event sourcing schema + 動態 holdings | 能輸入買入 → 看到加權平均成本正確的持倉清單 | 2–3 |
 | **4** | 多幣別 + 匯率 | • `apps/functions`：台銀 BOT CSV 抓取 Cloud Function<br>• Lazy + Permanent Date Cache（`exchange_rates`）<br>• Edge case：今日 16:00 前 placeholder<br>• 交易輸入時觸發匯率取得、寫入 amounts map<br>• AssetDetail 切換顯示幣別<br>• ADR-005 lazy exchange rate cache | USD 交易自動換算 TWD、edge case 處理乾淨 | 1.5–2 |
 | **5** | 賣出 + 報價 | • SELL transaction + 已實現損益<br>• `apps/functions`：Yahoo Finance quote proxy（QuoteProvider 介面）<br>• MMKV + Firestore 雙層 cache（15min TTL）<br>• `services/quotes` client<br>• 持倉現價 + 未實現損益<br>• Pull-to-refresh on overview + detail<br>• ADR-006 quote cache strategy | 完整買賣 + 即時報酬率顯示、刷新行為對 | 2–3 |
@@ -1004,7 +1025,7 @@ jobs:
 | ADR-000 | Planning doc 本身（本檔即為 ADR-000） | Sprint 0 |
 | ADR-001 | Monorepo + pnpm workspaces | Sprint 0 |
 | ADR-002 | Firebase SDK：@react-native-firebase over Firebase JS SDK | Sprint 1 |
-| ADR-003 | Navigation structure（Bottom Tabs × 4 + Modal） | Sprint 2 結尾 |
+| ADR-003 | Navigation structure（Bottom Tabs × 4 + Modal）—— 後由 **ADR-0008** 修訂（持倉/交易/分析/設定、帳戶管理降設定子頁、交易頁 FAB-only） | Sprint 2 結尾 |
 | ADR-004 | Event sourcing schema + 動態 holdings 計算 | Sprint 3 |
 | ADR-005 | Lazy + Permanent Date Cache for exchange rates | Sprint 4 |
 | ADR-006 | Yahoo Finance + 雙層 cache + 15min TTL | Sprint 5 |
@@ -1097,3 +1118,4 @@ Sprint 0 完成後進入 Sprint 1：Auth + Hello Firebase Rail（最大風險點
 - **v2.2**（2026-05-16）：收斂議題 6 專案骨架（monorepo + pnpm workspaces、feature-based 模組劃分、MIT、Conventional Commits、trunk-based、GitHub Actions CI），新增 §12，更新 §2 / §10 / 下一步建議。
 - **v2.3**（2026-05-17）：收斂議題 7（Sprint 拆分 7 個 sprint / 測試策略 / ADR 寫入時機 / 業餘節奏管理），新增 §13 Sprint 路線圖；確認舊專案 AssetAnchor_old 的 Firebase 資產複用策略，新增 §14；新增 Q11–Q13（cash flow events / 公司行動成本算法 / 配息稅務欄位）；清理 §9 已決議項目、§10 改為「規劃完成度」摘要。
 - **v2.3.1**（2026-05-23）：專案正式定名 `AssetAnchor`（取代開發代號 `finance_app`），原 `AssetAnchor` 舊專案資料夾改名為 `AssetAnchor_old`。npm scope 採 `@assetanchor`、GitHub repo 名 `AssetAnchor`、Bundle ID `com.seanwangys.assetanchor` 直接沿用。文件內 `finance_app` 路徑與 package name 全面替換；無架構決策變更。
+- **v2.4**（2026-06-14）：對齊設計包（`align-to-design-package` change / **ADR-0008**：設計包為產品最高權威）重整 §11 主導航——落地 tab 由 持倉/交易/帳戶/設定 改為 **持倉/交易/分析/設定**；**帳戶管理由獨立 tab 降為「設定」子頁**；新增「分析」tab（TWD/USD 全頁可切換）；交易頁新增交易改 **FAB-only**（持倉頁保留 header ＋ 為唯一例外）；回填 AuthStack 定稿設計（SplashGate / SignIn ⇄ SignUp ⇄ ForgotPassword、Google 登入、inline 驗證 + auth 錯誤橫幅、註冊建立 `users/{uid}`）與帳戶識別色回歸；更新 §2 / §11.1–11.3 / §11.6 / §13.2 / §13.5（ADR-003 標註被 ADR-0008 修訂）。`docs/design/_planning-sync-notes.md` 決策已回填本章並退役。Money 紀律（§4）與 schema 資料結構（§6）不變。
