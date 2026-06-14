@@ -8,9 +8,12 @@ import TransactionForm from '../components/TransactionForm';
 import { colors, spacing } from '../../../core/theme';
 import { zhTW } from '../../../i18n/zh-TW';
 
+// design.md §1：EditTransaction = reuse AddTransaction 同一個 sheet（標題改「編輯交易」）。
+// 兩條路由共用此元件，故 props 型別涵蓋兩者；目前僅用共通的 navigation.goBack()，
+// Phase 4 接「編輯帶值」時再依 route.name / route.params 分流。
 export default function AddTransactionScreen({
   navigation,
-}: RootStackScreenProps<'AddTransaction'>) {
+}: RootStackScreenProps<'AddTransaction'> | RootStackScreenProps<'EditTransaction'>) {
   const uid = useAuthStore((s) => s.user?.uid);
   const accounts = useAccountsStore((s) => s.accounts);
   const activeAccounts = accounts.filter((a) => a.is_active);

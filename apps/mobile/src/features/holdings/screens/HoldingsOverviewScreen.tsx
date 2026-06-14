@@ -1,9 +1,10 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLayoutEffect } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Money, totalCostIn, type Market, type Position } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
 import { useHoldings } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
-import { ListItem } from '../../../core/ui';
+import { Icon, ListItem } from '../../../core/ui';
 import { colors, fontSize, spacing } from '../../../core/theme';
 import { zhTW } from '../../../i18n/zh-TW';
 
@@ -49,6 +50,21 @@ export default function HoldingsOverviewScreen({
   const positions = useHoldings();
   const rates = useExchangeRatesStore((s) => s.rates);
   const groups = groupByMarket(positions);
+
+  // 持倉是唯一保留 header ＋ 的 tab（design.md §1）：新增交易入口 → Root modal group 的 AddTransaction。
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={zhTW.transactions.addTitle}
+          onPress={() => navigation.navigate('AddTransaction')}
+        >
+          <Icon name="plus" color={colors.accent} size={26} />
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
 
   // 跨幣別總成本（TWD 快照）；rates 未就緒時為 null → 顯示降級提示。
   const grandTotal = totalCostIn(positions, rates, DISPLAY_CURRENCY);

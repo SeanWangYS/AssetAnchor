@@ -6,7 +6,8 @@ const config: ExpoConfig = {
   scheme: 'assetanchor',
   version: '0.0.1',
   orientation: 'portrait',
-  userInterfaceStyle: 'automatic',
+  // 設計包是 dark-first（design.md §3 / D4）；MVP 不做 light theme。
+  userInterfaceStyle: 'dark',
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'com.seanwangys.assetanchor',
@@ -36,6 +37,9 @@ const config: ExpoConfig = {
         iosUrlScheme: 'com.googleusercontent.apps.269986802776-78inqssl5jfl12d1qvnth7oruj0hm6mi',
       },
     ],
+    // expo-font config plugin：讓字型在 prebuild 時被打包進 native bundle（@expo-google-fonts
+    // 在 dev 走 runtime asset、prod build 由此 plugin 嵌入）。
+    'expo-font',
   ],
 };
 
