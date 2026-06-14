@@ -7,6 +7,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/build/**',
+      '**/lib/**',
       '**/coverage/**',
       '**/.expo/**',
       'apps/mobile/ios/**',

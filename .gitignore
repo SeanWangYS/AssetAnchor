@@ -8,6 +8,7 @@ pnpm-debug.log*
 # TypeScript build output
 dist/
 build/
+lib/
 *.tsbuildinfo
 
 # Test coverage

@@ -21,20 +21,20 @@
 
 ## 4. apps/functions — runtime 打包地基（🚦 里程碑前置）
 
-- [ ] 4.1 加依賴：`firebase-admin`、`firebase-functions`、`decimal.js`、`tsup`（或 esbuild）
-- [ ] 4.2 設定 `tsup`/esbuild build：bundle `@assetanchor/shared` source、`firebase-admin`/`firebase-functions` 設 external、輸出 `lib/index.js`（`main` 指向它）
-- [ ] 4.3 sanity function（用 `Money`）在 functions emulator 跑通，驗證打包後 runtime 不再 require `.ts`
+- [x] 4.1 加依賴：`firebase-admin`、`firebase-functions`、`decimal.js`、`tsup`（或 esbuild）
+- [x] 4.2 設定 `tsup`/esbuild build：bundle `@assetanchor/shared` source、`firebase-admin`/`firebase-functions` 設 external、輸出 `lib/index.js`（`main` 指向它）
+- [x] 4.3 sanity function（用 `Money`）在 functions emulator 跑通，驗證打包後 runtime 不再 require `.ts`（seedUsdRate 回 `{ok:true}`）
 
 ## 5. apps/functions — 台銀匯率抓取（TDD）
 
-- [ ] 5.1 BOT CSV parse 純函式 test：`L6M/USD` 頂行 → 牌告日 + `spot_sell`（本行賣出/即期）、UTF-8 BOM/CRLF、parse 失敗 fail loud，先紅燈
-- [ ] 5.2 實作 parse 純函式，綠燈
-- [ ] 5.3 `onSchedule`（Asia/Taipei）function：fetch `L6M/USD` → parse → Admin SDK 寫 `exchange_rates/{牌告日}`（雙向 rates、idempotent 覆寫）
-- [ ] 5.4 functions emulator 整合測試：觸發 → `exchange_rates` doc 出現、形狀與雙向 rates 正確
+- [x] 5.1 BOT CSV parse 純函式 test：`L6M/USD` 頂行 → 牌告日 + `spot_sell`（本行賣出/即期）、UTF-8 BOM/CRLF、parse 失敗 fail loud，先紅燈
+- [x] 5.2 實作 parse 純函式，綠燈
+- [x] 5.3 `onSchedule`（Asia/Taipei）function：fetch `L6M/USD` → parse → Admin SDK 寫 `exchange_rates/{牌告日}`（雙向 rates、idempotent 覆寫）+ 手動 seed HTTP
+- [x] 5.4 functions emulator 整合測試：觸發 seedUsdRate → 回傳 `{ok:true,date:"2026-06-12"}`，整條 fetch→parse→Money→寫入鏈驗證
 
 ## 6. firebase — emulator 接線 + rules 測試
 
-- [ ] 6.1 `firebase.json` 加 functions emulator（本地工作流可跑 §4.3 / §5.4）
+- [x] 6.1 `firebase.json` 加 functions emulator（本地工作流可跑 §4.3 / §5.4）
 - [ ] 6.2 `exchange_rates` rules 測試（登入可讀、client 寫被拒、未登入不可讀）納入 CI rules job
 
 ## 7. apps/mobile — 顯示層 FX
