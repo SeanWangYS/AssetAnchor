@@ -63,4 +63,4 @@
 
 ## 10. 基礎建設（時效，可獨立成 infra PR）
 
-- [ ] 10.1 （時效 2026-06-16 起 Actions 強制 Node 24）視 CI 狀況升 `actions/checkout`、`setup-node`、`pnpm/action-setup` 至相容版本，確保本 change PR 的 CI 不被擋
+- [x] 10.1 升 CI actions 至 Node24 相容主版本：checkout@v6、setup-node@v6、pnpm/action-setup@v6（移除 `version` input 改讀 `packageManager`）、setup-java@v5、upload-artifact@v7
