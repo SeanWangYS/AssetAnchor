@@ -59,6 +59,8 @@ apps/mobile/android/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+# Local emulator persistence (import/export snapshot — never committed)
+.emulator-data/
 
 # Claude
 .claude/
