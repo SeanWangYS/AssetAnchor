@@ -35,7 +35,7 @@
 ## 6. firebase — emulator 接線 + rules 測試
 
 - [x] 6.1 `firebase.json` 加 functions emulator（本地工作流可跑 §4.3 / §5.4）
-- [ ] 6.2 `exchange_rates` rules 測試（登入可讀、client 寫被拒、未登入不可讀）納入 CI rules job
+- [x] 6.2 `exchange_rates` rules 測試（登入可讀、client 寫被拒、未登入不可讀）納入 CI rules job
 
 ## 7. apps/mobile — 顯示層 FX
 

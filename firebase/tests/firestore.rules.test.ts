@@ -53,10 +53,23 @@ describe('users/{uid} 隔離（§7）', () => {
 });
 
 describe('全域 collection（§7）', () => {
-  it('登入者可讀 exchange_rates、不能寫', async () => {
+  it('登入者可讀 exchange_rates、client 不能寫（只有後端 Admin SDK 可寫）', async () => {
     const alice = testEnv.authenticatedContext('alice').firestore();
-    await assertSucceeds(getDoc(doc(alice, 'exchange_rates/2026-05-30')));
-    await assertFails(setDoc(doc(alice, 'exchange_rates/2026-05-30'), { x: 1 }));
+    await assertSucceeds(getDoc(doc(alice, 'exchange_rates/2026-06-12')));
+    await assertFails(
+      setDoc(doc(alice, 'exchange_rates/2026-06-12'), {
+        date: '2026-06-12',
+        source: 'BOT',
+        rate_type: 'spot_sell',
+        rates: { USD_TWD: '31.6800000000', TWD_USD: '0.0315656566' },
+        is_estimated: false,
+      }),
+    );
+  });
+
+  it('未登入不能讀 exchange_rates', async () => {
+    const anon = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(anon, 'exchange_rates/2026-06-12')));
   });
 
   it('登入者可讀+建立 symbols、不能更新', async () => {
