@@ -10,9 +10,9 @@
 ## TL;DR
 
 - **核心翻案（model A → B）**：交易改為**單幣別事件**（只記市場原幣別、不存對稱 amounts map）；匯率抽離為每日 `exchange_rates` 表；**只在顯示時用最新匯率即時換算**；不追蹤匯率損益。決策見 ADR-0005。
-- **🚦 里程碑「第一個 Cloud Function」**：已實作 + emulator live 驗證通過（`seedUsdRate` → `{ok:true,date:"2026-06-12"}`）；**正式 deploy 尚未做**。
+- **🚦 里程碑「第一個 Cloud Function」**：✅ 已部署上線（scheduledUsdRate + seedUsdRate @ asia-east1）；正式 `exchange_rates/2026-06-12` 寫入驗證通過（spot_sell 31.68、雙向、is_estimated=false）。排程每日 16:30 自動維護。
 - 測試全綠：shared 139 tests / 100%、functions parse 6、rules 16/16、mobile typecheck+lint+tests、全 monorepo typecheck。
-- 9 commits 已 push；CI（含 Node24 actions 升級）於 PR #6 跑驗。
+- PR #6 已 merge 進 main；CI 4/4 全綠（含 Node24 actions 升級）。change 已 archive（`archive/2026-06-14-add-multi-currency-fx`）。
 
 ## 任務狀態（10 組，對照 tasks.md）
 
@@ -38,14 +38,18 @@
 5. **設計包合併**：canonical 收斂至 `docs/design/`（刪重複舊版、`design-by-claude-web`→`design`）並對齊 model-B；`*.standalone.html`（~51MB）gitignore、`docs/design/**` 進 .prettierignore。
 6. **CI Node24**：actions 升 checkout@v6 / setup-node@v6 / pnpm-action@v6（改讀 packageManager）/ setup-java@v5 / upload-artifact@v7。
 
-## 下一步（task 9 部署，需 owner 執行）
+## 部署紀錄（已完成）
 
-1. **升 Blaze**：Firebase console → 專案 `assetanchor-832df` → 升級 Blaze（pay-as-you-go，綁信用卡）。實際用量在免費額度內，預期帳單 $0。
-2. **設 budget alert**：GCP billing → budget 設 US$1 email 警示（防呆）。
-3. **部署**：repo 根目錄 `cd firebase && firebase deploy --only functions`（predeploy 會自動 `pnpm --filter @assetanchor/functions build`）。
-4. **seed 一次**：部署後打一次 `seedUsdRate` endpoint（或 `firebase functions:shell`）→ 確認正式 Firestore 出現 `exchange_rates/{今日牌告日}`。
-5. **Simulator 驗收**：輸入一筆 USD 交易 → 持倉總覽底部「總成本（TWD）」正確、AssetDetail TWD/USD 切換即時換算、無匯率時顯示「匯率未就緒」。
-6. 驗收通過後 → merge PR #6 → `/opsx:archive` 收尾 change + sync specs。
+- 升 Blaze + budget alert（~25 TWD）；`firebase deploy --only functions` 上線 scheduledUsdRate + seedUsdRate（asia-east1, nodejs22）。
+- 部署踩雷修正（已 commit）：① `firebase.json`/`​.firebaserc` 移到 repo 根目錄（functions.source 須在專案目錄內）；② functions package.json 移除 `@assetanchor/shared`（workspace:\* 雲端 npm install 不支援），改 tsconfig paths + tsup esbuild alias 解析。
+- 重新部署 + force-run 排程 job → 正式 `exchange_rates/2026-06-12` 寫入驗證通過。
+- 排程 `scheduledUsdRate` 每日 16:30（Asia/Taipei）自動跑，匯率表自動維護。
+
+## 後續（非阻擋，日後隨手）
+
+- **9.4 iOS Simulator 視覺驗收**：owner 決定延後；核心顯示邏輯已 100% 單元測試 + 正式環境驗證覆蓋。日後跑 app 隨手確認「總成本（TWD）」合計、AssetDetail TWD/USD 切換、無匯率降級即可。
+- **RNTL 螢幕測試 infra**：可日後獨立補（見下 Notes）。
+- **`seedUsdRate` 公開性**：目前需驗證才可呼叫（403）；如需公開手動刷新端點再於 Cloud Run 開 allUsers invoker。
 
 ## Notes / 待辦
 
