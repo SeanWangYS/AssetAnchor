@@ -31,9 +31,9 @@ interface Accumulator {
 /**
  * 從 TransactionDocument[] 動態推導持倉（純函式、deterministic）。
  *
- * MVP 僅聚合 BUY（SELL 與持有週期為 Sprint 5）。同一 (market, symbol) 出現
- * 混幣別時由 Money 丟 CurrencyMismatchError——資料異常必須 fail loud，
- * 不得靜默混算（ADR-0007）。
+ * MVP 僅聚合 BUY（SELL 與持有週期為 Sprint 5）。成本讀交易的 flat 欄位
+ * `total`/`fee`/`tax`（ADR-0005 單幣別事件）。同一 (market, symbol) 出現混幣別時
+ * 由 Money 丟 CurrencyMismatchError——資料異常必須 fail loud，不得靜默混算（ADR-0007）。
  */
 export function deriveHoldings(transactions: TransactionDocument[]): Position[] {
   const acc = new Map<string, Accumulator>();
@@ -41,17 +41,10 @@ export function deriveHoldings(transactions: TransactionDocument[]): Position[] 
   for (const tx of transactions) {
     if (tx.transaction_type !== 'BUY') continue;
 
-    const amount = tx.amounts[tx.original_currency];
-    if (!amount) {
-      throw new Error(
-        `transaction ${tx.transaction_id} 缺少原幣別 amounts[${tx.original_currency}]`,
-      );
-    }
-
-    const currency = tx.original_currency;
-    const cost = Money.fromDecimalString(amount.total, currency)
-      .add(Money.fromDecimalString(amount.fee, currency))
-      .add(Money.fromDecimalString(amount.tax, currency));
+    const currency = tx.currency;
+    const cost = Money.fromDecimalString(tx.total, currency)
+      .add(Money.fromDecimalString(tx.fee, currency))
+      .add(Money.fromDecimalString(tx.tax, currency));
     const quantity = Money.fromDecimalString(tx.quantity, currency);
 
     const key = `${tx.market}_${tx.symbol}`;

@@ -1,6 +1,6 @@
 import { deriveHoldings } from './deriveHoldings.js';
 import { buildTransactionDoc } from '../transactions/buildTransactionDoc.js';
-import { CurrencyMismatchError } from '../money/index.js';
+import { CurrencyMismatchError, InvalidMoneyValueError } from '../money/index.js';
 import type { Market } from '../enums/index.js';
 import type { FirestoreTimestamp, TransactionDocument } from '../types/index.js';
 
@@ -28,7 +28,7 @@ function buy(opts: {
       asset_type: 'STOCK',
       transaction_type: 'BUY',
       transaction_date: '2024-01-15',
-      original_currency: opts.currency,
+      currency: opts.currency,
       quantity: opts.quantity,
       price: opts.price,
       fee: opts.fee ?? '0',
@@ -183,12 +183,12 @@ describe('deriveHoldings', () => {
     expect(positions[0]!.txCount).toBe(3);
   });
 
-  it('fails loud when amounts is missing the original currency entry (data corruption)', () => {
+  it('fails loud on corrupted money fields (data corruption)', () => {
     const broken = {
       ...buy({ symbol: '2330', market: 'TW', currency: 'TWD', quantity: '100', price: '500' }),
-      amounts: {},
+      total: 'Infinity',
     };
-    expect(() => deriveHoldings([broken])).toThrow(/缺少原幣別/);
+    expect(() => deriveHoldings([broken])).toThrow(InvalidMoneyValueError);
   });
 
   it('fails loud on mixed currencies within one (market, symbol)', () => {

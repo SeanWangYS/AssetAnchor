@@ -1,12 +1,16 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Money, type Market, type Position } from '@assetanchor/shared';
+import { Money, totalCostIn, type Market, type Position } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
 import { useHoldings } from '../useHoldings';
+import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { ListItem } from '../../../core/ui';
 import { colors, fontSize, spacing } from '../../../core/theme';
 import { zhTW } from '../../../i18n/zh-TW';
 
 const H = zhTW.holdings;
+
+/** 跨幣別合計的顯示幣別（MVP 固定 TWD = preferred_display_currency 預設；Settings 切換為 Sprint 6）。 */
+const DISPLAY_CURRENCY = 'TWD' as const;
 
 /** 市場分組（deriveHoldings 已依 market 升冪排序，TW 在 US 前）。 */
 function groupByMarket(positions: Position[]): [Market, Position[]][] {
@@ -43,34 +47,46 @@ export default function HoldingsOverviewScreen({
   navigation,
 }: HoldingsStackScreenProps<'HoldingsOverview'>) {
   const positions = useHoldings();
+  const rates = useExchangeRatesStore((s) => s.rates);
   const groups = groupByMarket(positions);
+
+  // 跨幣別總成本（TWD 快照）；rates 未就緒時為 null → 顯示降級提示。
+  const grandTotal = totalCostIn(positions, rates, DISPLAY_CURRENCY);
 
   return (
     <ScrollView>
       {positions.length === 0 ? (
         <Text style={styles.empty}>{H.empty}</Text>
       ) : (
-        groups.map(([market, list]) => (
-          <View key={market}>
-            <View style={styles.groupHeader}>
-              <Text style={styles.groupTitle}>{market}</Text>
-              <Text style={styles.groupSubtotal}>
-                {H.costSubtotal} {marketSubtotal(list)}
-              </Text>
+        <>
+          {groups.map(([market, list]) => (
+            <View key={market}>
+              <View style={styles.groupHeader}>
+                <Text style={styles.groupTitle}>{market}</Text>
+                <Text style={styles.groupSubtotal}>
+                  {H.costSubtotal} {marketSubtotal(list)}
+                </Text>
+              </View>
+              {list.map((p) => (
+                <ListItem
+                  key={`${p.market}_${p.symbol}`}
+                  title={p.symbol}
+                  subtitle={`${shares(p.quantity, p.currency)} ${H.shares} · ${H.avgCost} ${money(p.averageCost, p.currency)}`}
+                  right={<Text style={styles.cost}>{money(p.totalCost, p.currency)}</Text>}
+                  onPress={() =>
+                    navigation.navigate('AssetDetail', { market: p.market, symbol: p.symbol })
+                  }
+                />
+              ))}
             </View>
-            {list.map((p) => (
-              <ListItem
-                key={`${p.market}_${p.symbol}`}
-                title={p.symbol}
-                subtitle={`${shares(p.quantity, p.currency)} ${H.shares} · ${H.avgCost} ${money(p.averageCost, p.currency)}`}
-                right={<Text style={styles.cost}>{money(p.totalCost, p.currency)}</Text>}
-                onPress={() =>
-                  navigation.navigate('AssetDetail', { market: p.market, symbol: p.symbol })
-                }
-              />
-            ))}
+          ))}
+          <View style={styles.grandTotalRow}>
+            <Text style={styles.grandTotalLabel}>{H.grandTotalTwd}</Text>
+            <Text style={styles.grandTotalValue}>
+              {grandTotal === null ? H.rateNotReady : `NT$ ${money(grandTotal, DISPLAY_CURRENCY)}`}
+            </Text>
           </View>
-        ))
+        </>
       )}
     </ScrollView>
   );
@@ -90,4 +106,16 @@ const styles = StyleSheet.create({
   groupTitle: { fontSize: fontSize.caption, fontWeight: '600', color: colors.textMuted },
   groupSubtotal: { fontSize: fontSize.caption, color: colors.textMuted },
   cost: { fontSize: fontSize.body, color: colors.text },
+  grandTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    marginTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  grandTotalLabel: { fontSize: fontSize.body, fontWeight: '700', color: colors.text },
+  grandTotalValue: { fontSize: fontSize.body, fontWeight: '700', color: colors.text },
 });

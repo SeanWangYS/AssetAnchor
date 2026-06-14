@@ -9,7 +9,7 @@ const baseInput: TransactionInput = {
   asset_type: 'STOCK',
   transaction_type: 'BUY',
   transaction_date: '2024-01-15',
-  original_currency: 'USD',
+  currency: 'USD',
   quantity: '10',
   price: '180.5',
   fee: '1.25',
@@ -29,50 +29,48 @@ describe('buildTransactionDoc', () => {
     expect(doc.asset_type).toBe('STOCK');
     expect(doc.transaction_type).toBe('BUY');
     expect(doc.transaction_date).toBe('2024-01-15');
-    expect(doc.original_currency).toBe('USD');
+    expect(doc.currency).toBe('USD');
     expect(doc.notes).toBe('hi');
   });
 
-  it('leaves reserved fields null and marks status COMPLETE', () => {
+  it('leaves reserved fields null', () => {
     const doc = buildTransactionDoc(baseInput, ctx);
     expect(doc.ex_date).toBeNull();
     expect(doc.related_transaction_id).toBeNull();
     expect(doc.lot_id).toBeNull();
-    expect(doc.amounts_status).toBe('COMPLETE');
+  });
+
+  it('emits flat money fields and no amounts map / status (ADR-0005)', () => {
+    const doc = buildTransactionDoc(baseInput, ctx);
+    expect('amounts' in doc).toBe(false);
+    expect('amounts_status' in doc).toBe(false);
+    expect(typeof doc.price).toBe('string');
+    expect(typeof doc.total).toBe('string');
+    expect(typeof doc.fee).toBe('string');
+    expect(typeof doc.tax).toBe('string');
   });
 
   it('stores quantity as a 10-decimal string', () => {
     expect(buildTransactionDoc(baseInput, ctx).quantity).toBe('10.0000000000');
   });
 
-  it('builds a single-currency amounts map keyed by original_currency', () => {
-    const doc = buildTransactionDoc(baseInput, ctx);
-    expect(Object.keys(doc.amounts)).toEqual(['USD']);
-    const amt = doc.amounts.USD!;
-    expect(amt.is_original).toBe(true);
-    expect(amt.rate).toBe('1.0000000000');
-    expect(amt.rate_source).toBeNull();
-    expect(amt.rate_type).toBeNull();
-    expect(amt.rate_date).toBeNull();
-  });
-
   it('converts price/fee/tax to 10-decimal strings via Money', () => {
-    const amt = buildTransactionDoc(baseInput, ctx).amounts.USD!;
-    expect(amt.price).toBe('180.5000000000');
-    expect(amt.fee).toBe('1.2500000000');
-    expect(amt.tax).toBe('0.5000000000');
+    const doc = buildTransactionDoc(baseInput, ctx);
+    expect(doc.price).toBe('180.5000000000');
+    expect(doc.fee).toBe('1.2500000000');
+    expect(doc.tax).toBe('0.5000000000');
   });
 
   it('computes total = price × quantity (Money, not native float)', () => {
     // 180.5 × 10 = 1805
-    expect(buildTransactionDoc(baseInput, ctx).amounts.USD!.total).toBe('1805.0000000000');
+    expect(buildTransactionDoc(baseInput, ctx).total).toBe('1805.0000000000');
   });
 
   it('matches the §4 worked example shape (500 × 1000 = 500000)', () => {
     const doc = buildTransactionDoc(
       {
         ...baseInput,
-        original_currency: 'TWD',
+        currency: 'TWD',
         symbol: '2330',
         market: 'TW',
         price: '500',
@@ -80,8 +78,8 @@ describe('buildTransactionDoc', () => {
       },
       ctx,
     );
-    expect(Object.keys(doc.amounts)).toEqual(['TWD']);
-    expect(doc.amounts.TWD!.total).toBe('500000.0000000000');
+    expect(doc.currency).toBe('TWD');
+    expect(doc.total).toBe('500000.0000000000');
   });
 
   it('does not emit created_at / updated_at (write layer adds them)', () => {

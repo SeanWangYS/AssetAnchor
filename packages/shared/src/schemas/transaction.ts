@@ -64,7 +64,7 @@ export const transactionInputSchema = z.object({
   // MVP 只做 BUY；SELL 與公司行動等留待後續 sprint
   transaction_type: z.literal('BUY'),
   transaction_date: z.string().trim().refine(isRealDate, '日期需為 YYYY-MM-DD'),
-  original_currency: z.enum(MVP_CURRENCIES),
+  currency: z.enum(MVP_CURRENCIES),
   quantity: positiveDecimal('股數'),
   price: positiveDecimal('單價'),
   fee: nonNegativeDecimal('手續費').default('0'),

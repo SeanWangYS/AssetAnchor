@@ -249,66 +249,53 @@ for (let i = 0; i < 1000; i++) totalFee += 0.1;
 
 ## 5. 多幣別處理
 
-### MVP 多幣別策略
+> **模型已於 Sprint 4 翻案為 model B（單幣別事件 + 顯示時換算），見 [ADR-0005](adr/0005-single-currency-events-display-fx.md)。** 本節描述的即為 model B；早期「每筆交易同時記錄多幣別」的 model A 已廢除。
 
-- **每筆交易同時記錄多幣別換算**，使用交易日匯率（目的：歷史保真）
-- 用 **對稱式 JSON map** 儲存（包含原始幣別在內，所有幣別等權重）
-- MVP 幣別範圍：**只 USD ↔ TWD**（schema 預留多幣別 amounts map，未來加 JPY/EUR 不需重構）
-- UI 顯示：台股部位 / 美股部位分開顯示
-- 個別資產表格可切換顯示幣別
-- 使用者可手動覆蓋系統匯率
+### MVP 多幣別策略（model B：單幣別事件 + 顯示時換算）
+
+- **交易只記市場原幣別**：台股記 TWD、美股記 USD。交易事件**不**做 FX 換算、不存對稱多幣別 amounts map。
+- **不追蹤匯率損益**、不存每筆交易的歷史台幣值（owner 拍板的範圍決定；持有期間匯率波動不歸因）。
+- **匯率抽離為獨立的每日表** `exchange_rates/{牌告日}`，由後端 Cloud Function 寫、client 唯讀。
+- **跨幣別合計只在顯示／分析時即時換算**：用「最新匯率」把各原幣別資產換算成顯示幣別（MVP 預設 TWD）的 as-of-today 快照，不落地。
+- MVP 幣別範圍：**只 USD ↔ TWD**（enum / schema 已預留更多幣別）。
+- UI：持倉總覽各市場原幣別小計 + 跨幣別「總成本（TWD）」合計；AssetDetail 可切換 TWD / USD 顯示。
 
 ### 匯率資料來源
 
-#### 主來源：台灣銀行牌告匯率（已驗證 endpoint 可用）
+#### 主來源：台灣銀行牌告匯率（已實測）
 ```
-https://rate.bot.com.tw/xrt/flcsv/0/day  # 當日（18 種幣別 CSV）
-https://rate.bot.com.tw/xrt/flcsv/0/L6M  # 過去半年
+https://rate.bot.com.tw/xrt/flcsv/0/L6M/USD  # USD 近半年逐日（含「資料日期」欄）
 ```
-- 抓 CSV、parse、存 Firestore
-- 無官方 API，需自寫抓取邏輯
-- 匯率類型：**即期賣出**（spot_sell）作為主要換算基準
-- MVP 不細分買賣方向，第二階段再考慮
+- 抓 CSV、parse、存 Firestore（UTF-8 BOM + CRLF；spot_sell = 「本行賣出 / 即期」欄）。
+- ⚠️ 實測修正：`/xrt/flcsv/0/L6M`（無幣別）回「找不到資料」、`/xrt/flcsv/0/day` 無日期欄。故採 `/L6M/{幣別}`，取最上面一行 = 最新牌告（含實際牌告日）。
+- 匯率類型：**即期賣出**（spot_sell）作為唯一換算基準；MVP 不細分買賣方向（第二階段再考慮）。
+- 無官方 API，需自寫抓取邏輯。
 
 #### 備援來源（第二階段以後）
-- exchangerate.host、Yahoo Finance — 與 Q6/Q7 風格一致，MVP 不啟用
+- exchangerate.host、Yahoo Finance — MVP 不啟用。
 
-### 匯率抓取策略：Lazy + Permanent Date Cache
+### 匯率抓取策略：每日排程寫表，顯示讀最新
 
-**核心觀察**：實際需求不是「即時匯率」，而是「該交易日的匯率」（歷史保真）。台銀 16:00 後牌告固定，歷史匯率永不變動。
+**核心觀察**：本 App 不追蹤匯率損益，跨幣別合計只需「現在」的匯率快照——不需逐交易日的歷史匯率、也不需交易時抓匯率。
 
-**抓取邏輯**：
+**機制**：
 ```
-使用者輸入交易（交易日 = D，原始幣別 = USD）
-  ↓
-檢查 Firestore exchange_rates/{D}
-  ├─ 存在 → 用該筆計算 amounts → 寫入 transaction
-  └─ 不存在 → 抓台銀 endpoint：
-        ├─ D = 今天 → /xrt/flcsv/0/day
-        └─ D < 今天 → /xrt/flcsv/0/L6M（取 D 那一筆）
-        ↓
-        寫入 exchange_rates/{D}（permanent，全使用者共用）
-        ↓
-        計算 amounts → 寫入 transaction
+每日排程 Cloud Function（onSchedule, Asia/Taipei 16:30 牌告固定後）
+  ↓ 抓 /L6M/USD 取最新一行 → parse spot_sell + 牌告日
+  ↓ Admin SDK upsert exchange_rates/{牌告日}（雙向 USD_TWD / TWD_USD，idempotent）
+
+顯示層（mobile）：讀 exchange_rates 最新一筆（orderBy date desc limit 1）
+  ↓ convertMoney（packages/shared 純函式）即時換算跨幣別合計 / 幣別切換
 ```
 
 **關鍵特性**：
-- **無 cron job**（廢除 v1.0 的 17:00 / 18:00 兩階段寫入）
-- API call 量 = 涉及的日期數，與使用者數無關
-- 第一個使用者輸入 D 日交易 → 抓台銀並寫 → 之後同 D 所有使用者所有交易都從 Firestore 讀
-- Cache **永不過期**
+- 與交易寫入**完全解耦**；mobile 零新 Firebase 依賴（只用既有 Firestore 讀，不呼叫 Cloud Function）。
+- 表向前累積歷史（保留未來報稅佐證重建的可能），但顯示只用最新一筆。
+- API call 量 = 每日 1 次，與使用者數無關（廢除 v1.0 的 cron 兩階段寫入與 model A 的逐交易抓取）。
 
-### Edge case：今日 16:00 牌告未出（早上輸入今日交易）
-
-- 用「最近一個已有 USD 匯率的工作日」作為 placeholder
-- `exchange_rates/{D}` 寫入時 `is_estimated: true`
-- UI 標註「（略估）」
-- 使用者可手動覆蓋
-- 後續使用者「重新對帳」時可觸發重抓真實牌告
-
-### 假日處理
-- 假日無交易、無匯率，不在處理範圍
-- 若使用者在假日輸入「過去工作日的交易」，使用該交易日的歷史匯率（自動從 L6M endpoint 抓）
+### Edge case / 假日
+- 無最新匯率（函式還沒跑過）時 UI 優雅降級：總覽合計顯示「匯率未就緒」、AssetDetail 切換維持原幣別，不 crash。
+- 假日 / 早於 16:30：排程取到的是最近一個工作日牌告，以**實際牌告日**為 doc id（週末重跑 idempotent、`is_estimated` 恆 false）；顯示用最新一筆，對「今天還沒牌告」天然容忍。
 
 ---
 
@@ -323,7 +310,7 @@ firestore/
 │   ├── accounts/{accountId}                # 券商/持有位置帳戶
 │   └── transactions/{transactionId}        # 所有交易事件
 │
-├── exchange_rates/{date}                   # 全域：匯率資料（Cloud Function 寫，使用者輸入交易時被動觸發）
+├── exchange_rates/{date}                   # 全域：匯率資料（每日排程 Cloud Function 寫，顯示層讀最新）
 │
 ├── quotes/{symbolId}                       # 全域：報價快取（Cloud Function 寫，App 讀，TTL 15min）
 │
@@ -441,35 +428,12 @@ const ACCOUNT_TYPES = [
   // 數量（與幣別無關）
   quantity: "10.0000000000",               // string，支援小數（零股 / 碎股）
 
-  // 原始幣別標記
-  original_currency: "USD",
-
-  // 對稱式多幣別 amounts map（包含原始幣別）
-  amounts: {
-    "USD": {
-      is_original: true,
-      price:  "180.5000000000",
-      total:  "1805.0000000000",
-      fee:    "0.0000000000",
-      tax:    "0.0000000000",
-      rate:   "1.0000000000",       // 自身對自身永遠 = 1
-      rate_source: null,
-      rate_type:   null,
-      rate_date:   null
-    },
-    "TWD": {
-      is_original: false,
-      price:  "5712.8250000000",
-      total:  "57128.2500000000",
-      fee:    "0.0000000000",
-      tax:    "0.0000000000",
-      rate:   "31.6500000000",       // 1 USD = 31.65 TWD
-      rate_source: "BOT",
-      rate_type:   "spot_sell",
-      rate_date:   "2024-01-15"
-    }
-  },
-  amounts_status: "COMPLETE",        // PENDING | COMPLETE
+  // 市場原幣別 + flat 金額（單幣別事件，ADR-0005；不再存對稱多幣別 amounts map）
+  currency: "USD",                         // 台股 TWD、美股 USD
+  price:  "180.5000000000",                // 單價
+  total:  "1805.0000000000",               // = price × quantity（不含 fee/tax）
+  fee:    "0.0000000000",
+  tax:    "0.0000000000",
 
   // 預留欄位（MVP 不用，schema 已存在）
   related_transaction_id: null,      // 賣出對應到買入批次
@@ -521,24 +485,23 @@ const ASSET_TYPES = [
 ### Collection 4：`exchange_rates/{date}` — 全域共用
 
 ```javascript
-// Document ID: "2024-01-15"（用日期做 ID）
+// Document ID: 實際牌告日 "2024-01-15"
 
 {
-  date: "2024-01-15",
+  date: "2024-01-15",                      // = 牌告日（document id）
   source: "BOT",                           // BOT | EXCHANGERATE_HOST | YAHOO
+  rate_type: "spot_sell",                  // 即期賣出（MVP 唯一基準）
   rates: {
-    "TWD_USD": "0.0316000000",             // 1 TWD = 0.0316 USD
-    "USD_TWD": "31.6500000000",            // 反向預先存好，省計算
-    "TWD_USD_buy": "0.0314000000",         // 即期買入（備用）
-    "TWD_USD_cash_sell": "0.0319000000"    // 現金賣出（備用）
-    // 未來擴充更多幣別對
+    "USD_TWD": "31.6800000000",            // 1 USD = 31.68 TWD
+    "TWD_USD": "0.0315656566"              // 反向預先存好，省顯示層計算
+    // 第二階段再加 _buy / _cash_sell variant 與更多幣別對
   },
   fetched_at: timestamp,
-  is_estimated: false                      // edge case 略估時為 true（牌告未出）
+  is_estimated: false                      // 本模型以實際牌告日為 key，恆 false
 }
 ```
 
-寫入時機：使用者輸入交易時被動觸發（Lazy + Permanent Date Cache，見 §5）。使用者只能讀。
+寫入時機：每日排程 Cloud Function（Admin SDK 寫，見 §5）；表向前累積歷史。使用者只能讀，顯示層讀「最新一筆」。
 
 ### Collection 6：`quotes/{symbolId}` — 全域共用 quote cache
 
