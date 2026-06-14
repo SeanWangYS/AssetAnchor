@@ -26,6 +26,8 @@ planning doc §6 早已把 `users/{uid}/transactions/{id}` 定為「核心 event
 
 ### 3. 對稱式多幣別 amounts map（歷史保真）
 
+> ⚠️ **已被 [ADR-0005](0005-single-currency-events-display-fx.md) 取代（2026-06-14, Sprint 4）。** owner 拍板本 App 不追蹤匯率損益、不需每筆交易的歷史台幣值，故交易改為**單幣別事件**（攤平 `amounts` map / `amounts_status` / `rate*`），匯率抽離為每日 `exchange_rates` 表、僅在顯示時以最新匯率即時換算。以下原決策保留作歷史脈絡。
+
 每筆事件以對稱 JSON map 記錄各幣別金額（含原始幣別，`is_original` 標記），用**交易日**匯率換算。單幣別（MVP Sprint 3）只填原幣別一筆、`rate=1`、`amounts_status=COMPLETE`；多幣別（Sprint 4）再補第二個 key。schema 預留多幣別，未來加 JPY/EUR 不需重構。
 
 ### 4. 純推導邏輯放 `packages/shared`

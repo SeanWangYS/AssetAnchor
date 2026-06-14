@@ -1,15 +1,6 @@
-// Sprint 0 placeholder. Real Cloud Functions wiring starts in Sprint 4.
+// Cloud Functions 進入點。匯出的成員即為部署的函式（tsup bundle 進 lib/index.js）。
 //
-// ⚠️ Sprint 4 NOTE: this workspace currently typechecks against @assetanchor/shared
-// because TS resolves the workspace symlink. At RUNTIME, however, Node will try to
-// require '.../packages/shared/src/index.ts' and fail (Node can't execute .ts).
-// Before functions imports anything from @assetanchor/shared at runtime, decide:
-//   (a) add a `tsup`/`tsc` build step on shared emitting dist/ + conditional exports
-//       ("import": "./dist/index.js", "types": "./dist/index.d.ts"), OR
-//   (b) bundle shared into functions output via esbuild/rollup at deploy time.
-// Option (a) is cleaner for shared types/Money; option (b) reduces deploy size.
-import { Money } from '@assetanchor/shared';
-
-export function sanityCheck(): string {
-  return Money.zero('USD').toDisplayString();
-}
+// Sprint 4：第一個 Cloud Function——每日抓台銀匯率寫入 exchange_rates（ADR-0005）。
+// shared（Money）於 build 時由 tsup bundle 進輸出，runtime 不 require .ts
+// （解決原 Sprint 0 註記的 workspace runtime 問題，採 design D5 的 bundle 方案）。
+export { scheduledUsdRate, seedUsdRate } from './exchangeRates/fetchAndStore';

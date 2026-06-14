@@ -11,4 +11,7 @@ export const transactionsCol = (uid: string) => collection(db, 'users', uid, 'tr
 export const transactionDocRef = (uid: string, transactionId: string) =>
   doc(db, 'users', uid, 'transactions', transactionId);
 
+/** 全域匯率表（後端 Cloud Function 寫、登入者唯讀；顯示層讀最新一筆）。 */
+export const exchangeRatesCol = () => collection(db, 'exchange_rates');
+
 export { serverTimestamp };

@@ -4,23 +4,13 @@ import type { Currency } from '../enums/currencies.js';
 import type { Market } from '../enums/markets.js';
 import type { FirestoreTimestamp } from './user.js';
 
-export type RateSource = 'BOT' | 'EXCHANGERATE_HOST' | 'YAHOO' | null;
-export type RateType = 'spot_sell' | 'spot_buy' | 'cash_sell' | 'cash_buy' | null;
-
-export interface TransactionAmount {
-  is_original: boolean;
-  price: string;
-  total: string;
-  fee: string;
-  tax: string;
-  rate: string;
-  rate_source: RateSource;
-  rate_type: RateType;
-  rate_date: string | null;
-}
-
-export type AmountsMap = Partial<Record<Currency, TransactionAmount>>;
-
+/**
+ * 交易事件文件（ADR-0005：單幣別事件）。
+ *
+ * 交易只記市場原幣別（`currency`）的金額，**不**在事件內做 FX 換算、不存對稱
+ * 多幣別 amounts map。跨幣別換算為顯示層職責，於檢視時用最新 `exchange_rates`
+ * 即時計算（見 currency-display capability）。金額/數量一律 `Money` 10 位小數 string。
+ */
 export interface TransactionDocument {
   transaction_id: string;
   account_id: string;
@@ -31,9 +21,14 @@ export interface TransactionDocument {
   transaction_date: string;
   ex_date: string | null;
   quantity: string;
-  original_currency: Currency;
-  amounts: AmountsMap;
-  amounts_status: 'PENDING' | 'COMPLETE';
+  /** 市場原幣別（台股 TWD、美股 USD）。 */
+  currency: Currency;
+  /** 單價（Money 10 位小數 string）。 */
+  price: string;
+  /** 成交金額 = price × quantity（不含手續費與稅）。 */
+  total: string;
+  fee: string;
+  tax: string;
   related_transaction_id: string | null;
   lot_id: string | null;
   notes: string;

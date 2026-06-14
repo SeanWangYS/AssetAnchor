@@ -7,7 +7,7 @@ const valid = {
   asset_type: 'STOCK',
   transaction_type: 'BUY',
   transaction_date: '2024-01-15',
-  original_currency: 'TWD',
+  currency: 'TWD',
   quantity: '1000',
   price: '500',
   fee: '700',
@@ -55,18 +55,12 @@ describe('transactionInputSchema', () => {
   });
 
   it('accepts both MVP currencies USD and TWD', () => {
-    expect(transactionInputSchema.safeParse({ ...valid, original_currency: 'USD' }).success).toBe(
-      true,
-    );
-    expect(transactionInputSchema.safeParse({ ...valid, original_currency: 'TWD' }).success).toBe(
-      true,
-    );
+    expect(transactionInputSchema.safeParse({ ...valid, currency: 'USD' }).success).toBe(true);
+    expect(transactionInputSchema.safeParse({ ...valid, currency: 'TWD' }).success).toBe(true);
   });
 
   it('rejects a non-MVP currency even if it is a valid Currency enum (JPY)', () => {
-    expect(transactionInputSchema.safeParse({ ...valid, original_currency: 'JPY' }).success).toBe(
-      false,
-    );
+    expect(transactionInputSchema.safeParse({ ...valid, currency: 'JPY' }).success).toBe(false);
   });
 
   it('rejects malformed transaction_date (not YYYY-MM-DD)', () => {

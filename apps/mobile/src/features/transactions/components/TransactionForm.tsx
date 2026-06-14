@@ -24,7 +24,7 @@ interface TransactionFormValues {
   asset_type: string;
   transaction_type: string;
   transaction_date: string;
-  original_currency: string;
+  currency: string;
   quantity: string;
   price: string;
   fee: string;
@@ -59,7 +59,7 @@ export default function TransactionForm({
       asset_type: '',
       transaction_type: 'BUY',
       transaction_date: '',
-      original_currency: '',
+      currency: '',
       quantity: '',
       price: '',
       fee: '0',
@@ -130,10 +130,10 @@ export default function TransactionForm({
       />
       <Controller
         control={control}
-        name="original_currency"
+        name="currency"
         render={({ field, fieldState }) => (
           <SelectField
-            label={F.original_currency}
+            label={F.currency}
             value={field.value}
             options={enumOptions(MVP_CURRENCIES)}
             onSelect={field.onChange}

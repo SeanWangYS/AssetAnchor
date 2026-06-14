@@ -9,13 +9,11 @@ import { zhTW } from '../../i18n/zh-TW';
 
 /** 顯示原幣別金額為 2 位小數（儲存仍 10 位）。 */
 function displayPrice(t: TransactionDocument): string {
-  const amt = t.amounts[t.original_currency];
-  if (!amt) return '';
-  return Money.fromDecimalString(amt.price, t.original_currency).toDisplayString();
+  return Money.fromDecimalString(t.price, t.currency).toDisplayString();
 }
 
 function displayQty(t: TransactionDocument): string {
-  return Money.fromDecimalString(t.quantity, t.original_currency).toDisplayString();
+  return Money.fromDecimalString(t.quantity, t.currency).toDisplayString();
 }
 
 export default function TransactionsScreen({
@@ -42,7 +40,7 @@ export default function TransactionsScreen({
           <ListItem
             key={t.transaction_id}
             title={`${t.symbol} · ${displayQty(t)} 股`}
-            subtitle={`${t.transaction_date} · ${displayPrice(t)} ${t.original_currency}`}
+            subtitle={`${t.transaction_date} · ${displayPrice(t)} ${t.currency}`}
           />
         ))
       )}

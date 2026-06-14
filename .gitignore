@@ -8,10 +8,14 @@ pnpm-debug.log*
 # TypeScript build output
 dist/
 build/
+lib/
 *.tsbuildinfo
 
 # Test coverage
 coverage/
+
+# Design prototype 離線單檔（~7MB/檔，React/Babel/字體 inline 的產物，可由 prototype/ 重新產生）
+*.standalone.html
 
 # Secrets (Firebase plist, OAuth keys, etc.)
 .secrets/
