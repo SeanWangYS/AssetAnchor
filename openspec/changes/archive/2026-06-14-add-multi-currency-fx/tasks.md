@@ -59,7 +59,7 @@
 - [x] 9.1 Firebase 專案升 Blaze + 設 budget alert（~25 TWD ≈ US$1）
 - [x] 9.2 `firebase deploy --only functions`（scheduledUsdRate + seedUsdRate @ asia-east1 上線；修了 firebase.json 位置 + workspace dep 兩個部署阻擋）
 - [x] 9.3 seed：force-run Cloud Scheduler job → 正式 `exchange_rates/2026-06-12` 寫入（spot_sell 31.68、雙向 rates、is_estimated=false）驗證通過
-- [ ] 9.4 iOS Simulator 驗收：USD 交易 → 持倉總覽 TWD 合計 + AssetDetail 切換正確、無匯率 edge case 乾淨
+- [~] 9.4 iOS Simulator 視覺驗收 — **owner 決定延後（(b)）**：核心顯示邏輯已由 shared `convertMoney`/`totalCostIn` 100% 單元測試 + 正式環境匯率寫入驗證覆蓋，風險低；視覺驗收日後隨手補。
 
 ## 10. 基礎建設（時效，可獨立成 infra PR）
 
