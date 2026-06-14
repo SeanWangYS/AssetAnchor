@@ -15,9 +15,9 @@
 
 ## 3. packages/shared — FX 換算純函式 + exchange_rates 型別（TDD）
 
-- [ ] 3.1 換算純函式 test（USD→TWD 用 `USD_TWD`、同幣別回傳自身、deterministic、10 位小數），先紅燈
-- [ ] 3.2 實作換算純函式（`convertMoney`/`applyRate`），綠燈、納入 ≥90% gate
-- [ ] 3.3 新增 `exchange_rates` 文件型別（`date`/`source`/`rate_type`/`rates{USD_TWD,TWD_USD}`/`fetched_at`/`is_estimated`），自 `packages/shared` 匯出
+- [x] 3.1 換算純函式 test（USD→TWD 用 `USD_TWD`、同幣別回傳自身、deterministic、10 位小數），先紅燈
+- [x] 3.2 實作換算純函式（`convertMoney`），綠燈、納入 ≥90% gate
+- [x] 3.3 新增 `exchange_rates` 文件型別（`date`/`source`/`rate_type`/`rates{USD_TWD,TWD_USD}`/`fetched_at`/`is_estimated`），自 `packages/shared` 匯出
 
 ## 4. apps/functions — runtime 打包地基（🚦 里程碑前置）
 
