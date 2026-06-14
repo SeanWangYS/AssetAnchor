@@ -61,7 +61,7 @@ export const zhTW = {
       market: '市場',
       asset_type: '資產類型',
       transaction_date: '交易日（YYYY-MM-DD）',
-      original_currency: '幣別',
+      currency: '幣別',
       quantity: '股數',
       price: '單價',
       fee: '手續費',

@@ -1,17 +1,17 @@
 ## 1. packages/shared — 交易 schema 攤平（TDD 重構）
 
-- [ ] 1.1 改 `buildTransactionDoc.test.ts`：斷言 flat 欄位（`currency`/`price`/`total`/`fee`/`tax`、無 `amounts`/`amounts_status`），先紅燈
-- [ ] 1.2 攤平 `types/transaction.ts`：移除 `TransactionAmount`/`AmountsMap`/`amounts`/`amounts_status`，新增頂層 `currency`+`price`/`total`/`fee`/`tax`（`original_currency`→`currency`）
-- [ ] 1.3 `schemas/transaction.ts`：`original_currency`→`currency`（驗證邏輯不變），更新 `schemas/transaction.test.ts`
-- [ ] 1.4 `buildTransactionDoc.ts` 改組 flat 欄位，test 綠燈
-- [ ] 1.5 改 `deriveHoldings.test.ts`：讀 flat 欄位、混幣別防護用 `currency`，先紅燈
-- [ ] 1.6 `deriveHoldings.ts` 改讀 `tx.total`/`tx.fee`/`tx.tax`/`tx.currency`（§4 台積電 avg=550.76 fixture 綠燈）
-- [ ] 1.7 全 shared `typecheck` / `lint` / `test:coverage`（≥90%）綠
+- [x] 1.1 改 `buildTransactionDoc.test.ts`：斷言 flat 欄位（`currency`/`price`/`total`/`fee`/`tax`、無 `amounts`/`amounts_status`），先紅燈
+- [x] 1.2 攤平 `types/transaction.ts`：移除 `TransactionAmount`/`AmountsMap`/`amounts`/`amounts_status`，新增頂層 `currency`+`price`/`total`/`fee`/`tax`（`original_currency`→`currency`）
+- [x] 1.3 `schemas/transaction.ts`：`original_currency`→`currency`（驗證邏輯不變），更新 `schemas/transaction.test.ts`
+- [x] 1.4 `buildTransactionDoc.ts` 改組 flat 欄位，test 綠燈
+- [x] 1.5 改 `deriveHoldings.test.ts`：讀 flat 欄位、混幣別防護用 `currency`，先紅燈
+- [x] 1.6 `deriveHoldings.ts` 改讀 `tx.total`/`tx.fee`/`tx.tax`/`tx.currency`（§4 台積電 avg=550.76 fixture 綠燈）
+- [x] 1.7 全 shared `typecheck` / `lint` / `test:coverage`（≥90%）綠
 
 ## 2. apps/mobile — 跟隨 schema 攤平
 
-- [ ] 2.1 `transactionService.ts` / `TransactionForm.tsx` / 持倉畫面型別引用同步（`currency` 命名、移除 amounts 相關欄位）
-- [ ] 2.2 mobile `typecheck` + 既有 RNTL flow 綠（交易輸入、持倉推導不退化）
+- [x] 2.1 `transactionService.ts` / `TransactionForm.tsx` / 持倉畫面型別引用同步（`currency` 命名、移除 amounts 相關欄位）
+- [x] 2.2 mobile `typecheck` + 既有 RNTL flow 綠（交易輸入、持倉推導不退化）
 
 ## 3. packages/shared — FX 換算純函式 + exchange_rates 型別（TDD）
 

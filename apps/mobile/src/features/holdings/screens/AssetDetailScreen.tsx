@@ -9,7 +9,7 @@ import { zhTW } from '../../../i18n/zh-TW';
 
 const H = zhTW.holdings;
 
-function money(value: string, currency: TransactionDocument['original_currency']): string {
+function money(value: string, currency: TransactionDocument['currency']): string {
   return Money.fromDecimalString(value, currency).toDisplayString();
 }
 
@@ -58,21 +58,18 @@ export default function AssetDetailScreen({
       </View>
 
       <Text style={styles.sectionTitle}>{H.timeline.title}</Text>
-      {timeline.map((t) => {
-        const amt = t.amounts[t.original_currency];
-        return (
-          <View key={t.transaction_id} style={styles.txRow}>
-            <Text style={styles.txDate}>{t.transaction_date}</Text>
-            <Text style={styles.txDetail}>
-              {Money.fromDecimalString(t.quantity, t.original_currency).toNumber().toLocaleString()}{' '}
-              {H.shares} @ {amt ? money(amt.price, t.original_currency) : '—'}
-            </Text>
-            <Text style={styles.txFee}>
-              {H.timeline.fee} {amt ? money(amt.fee, t.original_currency) : '—'}
-            </Text>
-          </View>
-        );
-      })}
+      {timeline.map((t) => (
+        <View key={t.transaction_id} style={styles.txRow}>
+          <Text style={styles.txDate}>{t.transaction_date}</Text>
+          <Text style={styles.txDetail}>
+            {Money.fromDecimalString(t.quantity, t.currency).toNumber().toLocaleString()} {H.shares}{' '}
+            @ {money(t.price, t.currency)}
+          </Text>
+          <Text style={styles.txFee}>
+            {H.timeline.fee} {money(t.fee, t.currency)}
+          </Text>
+        </View>
+      ))}
     </ScrollView>
   );
 }
