@@ -5,7 +5,6 @@
 ## 開啟方式
 
 ### A. 線上版（這個資料夾，可編輯）
-
 `index.html` 透過 CDN 載入 React / ReactDOM / Babel，並用瀏覽器端 Babel 即時轉譯 `.jsx`。
 
 - **需要網路連線**（要抓 CDN 與 Google Fonts）。
@@ -17,7 +16,6 @@
   ```
 
 ### B. 單檔離線版（上一層資料夾）
-
 `../AssetAnchor-holdings-overview.standalone.html` 已把字體、函式庫、所有程式碼內嵌成單一檔。
 
 - **雙擊即可開**，免伺服器、可離線。檔案較大（內含 Babel）。
@@ -25,12 +23,12 @@
 
 ## 檔案角色
 
-| 檔案               | 內容                                                                                                                                  |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `index.html`       | HTML 殼、字體、樣式（`.aa-*` class）、掛載點、script 載入順序                                                                         |
-| `aa-core.jsx`      | 設計 tokens、假資料（HOLD/ACCT/SUM/SERIES）、共用構件（Chart / Card / Segmented / TimeTabs / Avatar / TabBar / 圓鈕 / count-up hook） |
-| `aa-screens.jsx`   | 三個畫面（Home / AssetDetail / AddTransaction）+ App 導航 + Tweaks 面板                                                               |
-| `tweaks-panel.jsx` | Tweaks 面板框架與控制元件                                                                                                             |
+| 檔案 | 內容 |
+|---|---|
+| `index.html` | HTML 殼、字體、樣式（`.aa-*` class）、掛載點、script 載入順序 |
+| `aa-core.jsx` | 設計 tokens、假資料（HOLD/ACCT/SUM/SERIES）、共用構件（Chart / Card / Segmented / TimeTabs / Avatar / TabBar / 圓鈕 / count-up hook） |
+| `aa-screens.jsx` | 三個畫面（Home / AssetDetail / AddTransaction）+ App 導航 + Tweaks 面板 |
+| `tweaks-panel.jsx` | Tweaks 面板框架與控制元件 |
 
 > script 載入順序固定：React → ReactDOM → Babel → tweaks-panel → aa-core → aa-screens。
 > 跨檔共用是透過 `Object.assign(window, {...})` 掛到 `window`，因為每個 `type="text/babel"` 各自有獨立 scope。

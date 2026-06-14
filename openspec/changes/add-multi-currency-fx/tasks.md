@@ -51,8 +51,8 @@
 - [x] 8.1 改寫 planning `§5`（多幣別策略）/`§6`（交易 schema 攤平 + `exchange_rates` 用途）為 model B
 - [x] 8.2 新增 `docs/adr/0005-single-currency-events-display-fx.md`：A→B 翻案（含 per-transaction FX、GitHub Actions cron、Option A 休眠 三個 alternatives）
 - [x] 8.3 `docs/adr/0004-event-sourcing-schema.md` §3 標注「已被 ADR-0005 取代」
-- [ ] 8.4 設計稿移除 AddTransaction「換算 USD」預覽 — **待與 owner 確認**：USD 換算殘留分散於多個未追蹤設計目錄（`docs/design/`、`docs/design-by-claude-web/`，含 .jsx 原型），屬 owner 平行設計工作，未逕自改
-- [ ] 8.5 `pnpm format` 設計目錄 — **待與 owner 確認**：是否要把未追蹤設計目錄納入本 change commit（同 8.4）
+- [x] 8.4 設計稿對齊 model-B：canonical 收斂為 `docs/design/`（刪重複舊版、`design-by-claude-web`→`design`）；移除「交易輸入時換算 USD」「逐筆多幣別換算卡」（holdings spec §3.3 / transactions T6 / aa-screens.jsx / aa-v2-txn.jsx），保留顯示時切換；README + \_planning-sync-notes 加 ADR-0005 註記
+- [x] 8.5 設計目錄納入版控：`*.standalone.html`（~51MB 產物）gitignore；`docs/design/**` 加入 .prettierignore（保留手作格式、CI format:check 不擋）
 
 ## 9. 部署 + 驗收（🚦 第一個 Cloud Function 部署）
 

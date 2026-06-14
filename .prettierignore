@@ -12,3 +12,7 @@ docs/portfolio_tracker_planning.md
 docs/superpowers/**/*.md
 docs/adr/**/*.md
 design_inspiration/**/*.md
+# 設計交付包：手作 spec 表格 + prototype 原型碼，保留作者格式（同 design_inspiration 慣例）
+docs/design/**
+# Prototype 離線單檔（gitignored、~7MB 產物，無需 prettier）
+*.standalone.html
