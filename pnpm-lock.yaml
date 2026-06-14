@@ -42,9 +42,6 @@ importers:
         specifier: ^7.0.0
         version: 7.2.5(firebase-admin@13.10.0)
     devDependencies:
-      '@assetanchor/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@types/jest':
         specifier: ^29.5.13
         version: 29.5.14

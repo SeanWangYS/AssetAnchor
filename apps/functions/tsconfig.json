@@ -1,12 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "./src",
     "outDir": "./lib",
     "module": "CommonJS",
     "moduleResolution": "Node",
     "target": "ES2022",
-    "types": ["jest", "node"]
+    "types": ["jest", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "@assetanchor/shared": ["../../packages/shared/src/index.ts"]
+    }
   },
   "include": ["src/**/*"]
 }

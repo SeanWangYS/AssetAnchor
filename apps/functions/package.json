@@ -17,7 +17,6 @@
     "firebase-functions": "^7.0.0"
   },
   "devDependencies": {
-    "@assetanchor/shared": "workspace:*",
     "@types/jest": "^29.5.13",
     "@types/node": "^22.7.5",
     "decimal.js": "^10.4.3",
