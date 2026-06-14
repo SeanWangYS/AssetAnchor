@@ -56,9 +56,9 @@
 
 ## 9. 部署 + 驗收（🚦 第一個 Cloud Function 部署）
 
-- [ ] 9.1 Firebase 專案升 Blaze + 設 budget alert（US$1）
-- [ ] 9.2 `firebase deploy --only functions`
-- [ ] 9.3 手動觸發一次 seed（`functions:shell` 或 dev-only HTTP wrapper）→ 確認正式 `exchange_rates` 出現
+- [x] 9.1 Firebase 專案升 Blaze + 設 budget alert（~25 TWD ≈ US$1）
+- [x] 9.2 `firebase deploy --only functions`（scheduledUsdRate + seedUsdRate @ asia-east1 上線；修了 firebase.json 位置 + workspace dep 兩個部署阻擋）
+- [x] 9.3 seed：force-run Cloud Scheduler job → 正式 `exchange_rates/2026-06-12` 寫入（spot_sell 31.68、雙向 rates、is_estimated=false）驗證通過
 - [ ] 9.4 iOS Simulator 驗收：USD 交易 → 持倉總覽 TWD 合計 + AssetDetail 切換正確、無匯率 edge case 乾淨
 
 ## 10. 基礎建設（時效，可獨立成 infra PR）

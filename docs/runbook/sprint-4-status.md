@@ -1,6 +1,6 @@
 # Sprint 4（多幣別 + 匯率）— 進度 Runbook
 
-**狀態：實作完成、待部署（2026-06-14）** — 工程 + CI 全數完成並驗證；唯一剩餘為正式部署（需 owner Firebase 帳號 / Blaze）。
+**狀態：已部署、待 App 驗收 + merge（2026-06-14）** — 工程 + CI + 雲端部署全數完成並驗證（Blaze 升級、functions 上線、正式 `exchange_rates` 寫入確認）；唯一剩餘為 iOS Simulator App 驗收（9.4）+ merge PR #6 + archive。
 
 - **OpenSpec change**：`openspec/changes/add-multi-currency-fx/`（proposal / design / specs / tasks）
 - **關鍵 ADR**：`docs/adr/0005-single-currency-events-display-fx.md`（取代 ADR-0004 §3）
@@ -16,18 +16,18 @@
 
 ## 任務狀態（10 組，對照 tasks.md）
 
-| 組  | 內容                                                | 狀態                         |
-| --- | --------------------------------------------------- | ---------------------------- |
-| 1   | shared 交易 schema 攤平（TDD）                      | ✅ DONE                      |
-| 2   | mobile 跟隨攤平                                     | ✅ DONE                      |
-| 3   | FX `convertMoney` + `exchange_rates` 型別           | ✅ DONE                      |
-| 4   | functions runtime 打包（tsup bundle shared）        | ✅ DONE + emulator 驗        |
-| 5   | 台銀 BOT 抓取（parse TDD + 排程/seed 函式）         | ✅ DONE + emulator live 驗   |
-| 6   | functions emulator 接線 + exchange_rates rules 測試 | ✅ DONE（rules 16/16）       |
-| 7   | mobile 顯示層 FX（總覽合計 + AssetDetail 切換）     | ✅ DONE（7.6 RNTL 見下）     |
-| 8   | 文件（planning §5/§6 + ADR-0005 + 設計包合併）      | ✅ DONE                      |
-| 9   | **部署 + Simulator 驗收**                           | ⏳ **TODO（需 owner 環境）** |
-| 10  | CI actions 升 Node24 相容版本                       | ✅ DONE                      |
+| 組  | 內容                                                | 狀態                       |
+| --- | --------------------------------------------------- | -------------------------- |
+| 1   | shared 交易 schema 攤平（TDD）                      | ✅ DONE                    |
+| 2   | mobile 跟隨攤平                                     | ✅ DONE                    |
+| 3   | FX `convertMoney` + `exchange_rates` 型別           | ✅ DONE                    |
+| 4   | functions runtime 打包（tsup bundle shared）        | ✅ DONE + emulator 驗      |
+| 5   | 台銀 BOT 抓取（parse TDD + 排程/seed 函式）         | ✅ DONE + emulator live 驗 |
+| 6   | functions emulator 接線 + exchange_rates rules 測試 | ✅ DONE（rules 16/16）     |
+| 7   | mobile 顯示層 FX（總覽合計 + AssetDetail 切換）     | ✅ DONE（7.6 RNTL 見下）   |
+| 8   | 文件（planning §5/§6 + ADR-0005 + 設計包合併）      | ✅ DONE                    |
+| 9   | 部署（9.1–9.3 ✅）+ Simulator 驗收（9.4 ⏳）        | 🟡 部署完成、待 App 驗收   |
+| 10  | CI actions 升 Node24 相容版本                       | ✅ DONE                    |
 
 ## 本次做了什麼（重點）
 
