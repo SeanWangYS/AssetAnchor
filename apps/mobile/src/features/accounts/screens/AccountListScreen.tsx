@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLayoutEffect, useMemo } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { AccountDocument, Currency } from '@assetanchor/shared';
 import type { AccountsStackScreenProps } from '../../../core/navigation/types';
 import { useAccountsStore } from '../accountsStore';
@@ -23,6 +23,21 @@ import { PlusIcon } from '../components/AccountIcons';
 export default function AccountListScreen({ navigation }: AccountsStackScreenProps<'AccountList'>) {
   const accounts = useAccountsStore((s) => s.accounts);
   const transactions = useTransactionsStore((s) => s.transactions);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="返回設定"
+          hitSlop={10}
+          onPress={() => navigation.goBack()}
+        >
+          <Icon name="back" size={22} color={colors.textPrimary} />
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
 
   const { active, inactive } = useMemo(() => {
     const a: AccountDocument[] = [];
