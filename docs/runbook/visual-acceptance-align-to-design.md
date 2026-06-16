@@ -68,41 +68,41 @@ pnpm --filter @assetanchor/mobile ios                                 # build + 
 
 **啟動 / Auth**
 
-- [ ] SplashGate：深色底 + 圓環錨點 logo
-- [ ] SignIn：品牌 lockup、Email/密碼欄（密碼眼睛切換）、錯誤橫幅、Google 鈕、略過登入連結
-- [ ] SignUp、ForgotPassword（送出後「寄信成功」全屏態）
+- [V] SplashGate：深色底 + 圓環錨點 logo
+- [V] SignIn：品牌 lockup、Email/密碼欄（密碼眼睛切換）、錯誤橫幅、Google 鈕、略過登入連結
+- [V] SignUp、ForgotPassword（送出後「寄信成功」全屏態）
 
 **底部導航**
 
-- [ ] 4 tab：**持倉 / 交易 / 分析 / 設定**，圖示（清單 / 交易 / 圓餅 / 齒輪，細線）
-- [ ] 全深色；數字圓潤等寬（Nunito tabular）、中文 Noto Sans TC
-- [ ] 帳戶**不在 tab**（在 設定 → 帳戶管理）
+- [V] 4 tab：**持倉 / 交易 / 分析 / 設定**，圖示（清單 / 交易 / 圓餅 / 齒輪，細線）
+- [V] 全深色；數字圓潤等寬（Nunito tabular）、中文 Noto Sans TC
+- [V] 帳戶**不在 tab**（在 設定 → 帳戶管理）
 
 **持倉**
 
-- [ ] 總資產 Hero（開啟有 count-up 動畫）
-- [ ] 2×2 Bento（總報酬率帶光暈 / 總未實現 / 今日 / 本月已實現）
-- [ ] 走勢圖卡 + Segmented（持股 / 帳戶 / 類別 切換重新分組）
-- [ ] 持股列（代號圓標 + 市值 / 漲跌%）；header 右上 **＋**
-- [ ] 點一檔 → AssetDetail：現價 hero、Chart + TimeTabs、**TWD/USD 切換**、我的持倉卡、「為此標的新增交易」「查看完整交易歷史」（後者 → 個股交易史）
+- [V] 總資產 Hero（開啟有 count-up 動畫）
+- [V] 2×2 Bento（總報酬率帶光暈 / 總未實現 / 今日 / 本月已實現）
+- [V] 走勢圖卡 + Segmented（持股 / 帳戶 / 類別 切換重新分組）
+- [V] 持股列（代號圓標 + 市值 / 漲跌%）；header 右上 **＋**
+- [V] 點一檔 → AssetDetail：現價 hero、Chart + TimeTabs、**TWD/USD 切換**、我的持倉卡、「為此標的新增交易」「查看完整交易歷史」（後者 → 個股交易史）
 
 **交易**
 
-- [ ] 時間軸版型（左日期欄、按月分組、**買/賣漸層膠囊**）
-- [ ] 右下 **FAB**、header **無 ＋**；點 FAB → 新增交易（買/賣漸層切換 + 即時計算預覽卡）
-- [ ] 點一筆 → 詳情（編輯 / 刪除）；期間篩選（全部 / 本月 / 近三月 / 今年）
+- [V] 時間軸版型（左日期欄、按月分組、**買/賣漸層膠囊**）
+- [V] 右下 **FAB**、header **無 ＋**；點 FAB → 新增交易（買/賣漸層切換 + 即時計算預覽卡）
+- [V] 點一筆 → 詳情（編輯 / 刪除）；期間篩選（全部 / 本月 / 近三月 / 今年）-> ✅ 交易日期欄打不進字/渲染空白已修復（根因：DateField 把共用 Input 再包一層致 flex 塌陷；改直接用 Input + 日曆 icon 走 rightSlot。workflow round1, 2026-06-15）
 
 **分析**
 
-- [ ] 單頁捲動：hero + 5 圖表卡（資產配置 donut、市值vs成本、報酬率 / 未實現 / 市值佔比）
-- [ ] **TWD/USD 全頁切換**；右上 refresh → toast
+- [V] 單頁捲動：hero + 5 圖表卡（資產配置 donut、市值vs成本、報酬率 / 未實現 / 市值佔比）
+- [V] **TWD/USD 全頁切換**；右上 refresh → toast
 
 **設定**
 
-- [ ] 分組清單（帳戶 / 偏好 / 其他）+ 我的帳號卡（logo + email）
-- [ ] 帳戶管理 → 列表（**色圓標**、停用區、FAB）→ 詳情（**帳戶色光暈**、現金 **inline 編輯**）
-- [ ] 顯示偏好（TWD/USD + 主題）、個人資料、關於
-- [ ] 登出 → 確認對話框 → 回 SignIn
+- [V] 分組清單（帳戶 / 偏好 / 其他）+ 我的帳號卡（logo + email）
+- [V] 帳戶管理 → 列表（**色圓標**、停用區、FAB）→ 詳情（**帳戶色光暈**、現金 **inline 編輯**）-> ✅ 已修復：AccountList 加左上返回鍵（navigation.goBack 回設定）；帳戶管理與現金餘額共用同一 Accounts 子頁，一次解決兩入口。workflow round1, 2026-06-15
+- [~] 顯示偏好（TWD/USD + 主題）、個人資料、關於 -> ⏸️ 個人資料「儲存」＝刻意未接後端（純 UI + demo 提示，非 bug；見「已知範圍邊界 #3」）。要真正寫回（Firebase updateProfile + users/{uid}）需另開 change。**已決定（2026-06-15）：本 branch merge 後另開新的 OpenSpec change 接上，不混入本輪。**
+- [V] 登出 → 確認對話框 → 回 SignIn
 
 ### 5. 回報
 
