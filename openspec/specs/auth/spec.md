@@ -5,7 +5,7 @@
 管理使用者身分：Email/密碼與 Google 登入、註冊、登出、密碼重設，以及登入狀態驅動的導航切換與使用者資料隔離。對應 Sprint 1（Auth + Hello Firebase Rail）已建成的行為。
 
 > 來源：docs/portfolio_tracker_planning.md §3（帳號系統）、§11（導航）；
-> 實作紀錄：docs/runbook/sprint-1-status.md。
+> 實作紀錄：docs/retros/sprint-1.md。
 
 ## Requirements
 

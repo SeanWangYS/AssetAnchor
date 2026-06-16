@@ -1,5 +1,7 @@
 # 視覺驗收 Runbook — align-to-design（手動）
 
+> 🧊 **凍結歷史紀錄（retro）**：本檔是 align-to-design-package（全畫面對齊設計稿，2026-06-15）的逐畫面視覺驗收清單與當時 checklist 快照，已從 runbook 歸檔至 retros、不再更新。權威來源：OpenSpec change `align-to-design-package`（archive 後在 `openspec/changes/archive/`）與 `docs/adr/0008-design-package-as-source-of-truth.md`；通用的 seeded-emulator 啟動方式已併入 `docs/runbook/local-testing.md`。
+>
 > 建立：2026-06-15。對應 branch **`feature/align-to-design`**（**PR #8**）。
 > 寫給「一週後回來、沒有上下文」的自己：照著做就能在 iOS Simulator 逐畫面對照設計稿驗收。
 

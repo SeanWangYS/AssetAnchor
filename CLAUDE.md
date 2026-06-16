@@ -84,7 +84,7 @@ Feature-based：`src/features/<feature>/`（screens + `*Service.ts` Firestore CR
 1. **照原計劃書 §13.2 的 vertical slice 走**：一次只做一個 sprint，每個 sprint 前後端一起做（schema/邏輯 → Firestore CRUD → UI 畫面），結尾在 iOS Simulator 上可 demo。
 2. **預設 1 個 sprint = 1 個 OpenSpec change**：走完整 explore →（propose → apply → archive）一輪工作流。
 3. **若某個 sprint 規劃範圍太大，就拆成多個 OpenSpec change 執行**：拆分原則是各 change 要 cohesive、tasks 跑得完；當一個 sprint 明顯包含兩組以上獨立的 capability 時才拆。
-4. **Sprint 1 是例外**：收尾走舊 runbook（`docs/runbook/sprint-1-status.md`），OpenSpec change 自 **Sprint 2（Accounts）** 起。
+4. **Sprint 1 是例外**：收尾走舊 runbook（`docs/retros/sprint-1.md`），OpenSpec change 自 **Sprint 2（Accounts）** 起。
 
 文件層級：`docs/adr/`（跨 change 重大決策，Context→Decision→Consequences→Alternatives）、`docs/tech_note/`（值得回顧的技術教學）、`docs/runbook/`、`docs/retros/`、`docs/superpowers/plans/`。
 
