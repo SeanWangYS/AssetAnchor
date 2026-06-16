@@ -13,6 +13,7 @@ import {
   DEMO_SUMMARY,
   avatarColor,
   currencyPrefix,
+  displayDecimals,
   fmtAmount,
   fmtMoney,
   fmtShares,
@@ -177,8 +178,23 @@ export default function HoldingsOverviewScreen({
 
   const sections = useMemo(() => buildSections(positions, mode), [positions, mode]);
 
+  // Hero / bento 的金額類 mock 摘要（TWD 示意值）一律以顯示幣別偏好呈現：用 rates（或 demo
+  // 匯率退回）換算；百分比（報酬率 / 今日%）為幣別無關，不換算。真實「總成本」另計（grandCost）。
+  const demo = useMemo(() => {
+    const conv = (twd: number): number => {
+      const m = toDisplay(new Money(String(twd), 'TWD'), rates, displayCcy);
+      return m ? m.toNumber() : twd;
+    };
+    return {
+      totalAssets: conv(DEMO_SUMMARY.totalAssets),
+      unrealized: conv(DEMO_SUMMARY.unrealized),
+      today: conv(DEMO_SUMMARY.today),
+      realizedThisMonth: conv(DEMO_SUMMARY.realizedThisMonth),
+    };
+  }, [rates, displayCcy]);
+
   // 總資產 Hero（mock 摘要；需報價，故 count-up 跑 demo 值）。
-  const totalAssets = useCountUp(DEMO_SUMMARY.totalAssets);
+  const totalAssets = useCountUp(demo.totalAssets);
 
   // 真實跨幣別「總成本」：以使用者顯示幣別偏好為基準，rates（或 demo 匯率退回）即時換算加總。
   const grandCost = useMemo(() => {
@@ -191,22 +207,30 @@ export default function HoldingsOverviewScreen({
     return sum;
   }, [positions, rates, displayCcy]);
 
+  // 顯示幣別的金額格式（前綴 + 小數位）；Pnl display 取絕對值（正負由 Pnl 自行呈現）。
+  const dp = displayDecimals(displayCcy);
+  const fmtCcy = (n: number): string =>
+    `${currencyPrefix(displayCcy)} ${Math.abs(n).toLocaleString('en-US', {
+      minimumFractionDigits: dp,
+      maximumFractionDigits: dp,
+    })}`;
+
   const series = DEMO_SERIES[tf] ?? [];
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* 總資產 Hero */}
       <View style={styles.hero}>
-        <Text style={styles.heroLabel}>總資產（TWD）</Text>
+        <Text style={styles.heroLabel}>總資產（{displayCcy}）</Text>
         <Text style={styles.heroValue} numberOfLines={1}>
-          NT$ {Math.round(totalAssets).toLocaleString('en-US')}
+          {currencyPrefix(displayCcy)}{' '}
+          {totalAssets.toLocaleString('en-US', {
+            minimumFractionDigits: dp,
+            maximumFractionDigits: dp,
+          })}
         </Text>
         <View style={styles.heroChange}>
-          <Pnl
-            value={DEMO_SUMMARY.unrealized}
-            display={`NT$ ${Math.abs(DEMO_SUMMARY.unrealized).toLocaleString('en-US')}`}
-            size={14}
-          />
+          <Pnl value={DEMO_SUMMARY.unrealized} display={fmtCcy(demo.unrealized)} size={14} />
           <Pnl
             value={DEMO_SUMMARY.totalReturnPct}
             display={`${Math.abs(DEMO_SUMMARY.totalReturnPct).toFixed(2)}%`}
@@ -236,21 +260,13 @@ export default function HoldingsOverviewScreen({
         <Card padding={spacing.cardInner} style={styles.bentoCell}>
           <Text style={styles.bentoLabel}>總未實現損益</Text>
           <View style={styles.bentoVal}>
-            <Pnl
-              value={DEMO_SUMMARY.unrealized}
-              display={`NT$ ${Math.abs(DEMO_SUMMARY.unrealized).toLocaleString('en-US')}`}
-              size={18}
-            />
+            <Pnl value={DEMO_SUMMARY.unrealized} display={fmtCcy(demo.unrealized)} size={18} />
           </View>
         </Card>
         <Card padding={spacing.cardInner} style={styles.bentoCell}>
           <Text style={styles.bentoLabel}>今日損益</Text>
           <View style={styles.bentoVal}>
-            <Pnl
-              value={DEMO_SUMMARY.today}
-              display={`NT$ ${Math.abs(DEMO_SUMMARY.today).toLocaleString('en-US')}`}
-              size={16}
-            />
+            <Pnl value={DEMO_SUMMARY.today} display={fmtCcy(demo.today)} size={16} />
           </View>
           <View style={styles.bentoSub}>
             <Pnl
@@ -266,7 +282,7 @@ export default function HoldingsOverviewScreen({
           <View style={styles.bentoVal}>
             <Pnl
               value={DEMO_SUMMARY.realizedThisMonth}
-              display={`NT$ ${Math.abs(DEMO_SUMMARY.realizedThisMonth).toLocaleString('en-US')}`}
+              display={fmtCcy(demo.realizedThisMonth)}
               size={18}
             />
           </View>

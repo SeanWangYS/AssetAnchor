@@ -36,5 +36,6 @@
 - [x] 6.1 新增 `apps/mobile/src/core/preferences` store（`preferredDisplayCurrency` + `hydrate`/`set`/`reset`）；住 core 以守依賴方向（holdings/analysis/settings 共用）
 - [x] 6.2 `App.tsx`：登入 `getUserDoc()` → `hydrate(doc)`；登出 `reset()`
 - [x] 6.3 持倉總覽「總成本」合計改讀偏好（label/`NT$`↔`US$`/小數位隨之切）；移除 dead `DISPLAY_CURRENCY` 常數
+- [x] 6.6 持倉總覽 Hero + bento 金額（總資產 / 總未實現 / 今日 / 本月已實現）改以偏好幣別呈現（demo TWD 示意值經 rates/demo 匯率換算）；百分比（總報酬率 / 今日 %）不換算（owner 二次微調）
 - [x] 6.4 分析頁 TWD/USD 切換預設改讀偏好（使用者仍可頁內覆寫）
 - [x] 6.5 spec 同步：`user-preferences` 新增「跨畫面套用」requirement、`analysis` 切換預設改讀偏好（MODIFIED）；typecheck/lint/prettier/測試全綠

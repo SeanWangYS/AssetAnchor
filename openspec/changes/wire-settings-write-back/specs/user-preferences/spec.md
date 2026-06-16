@@ -79,10 +79,15 @@ DisplayPrefsScreen SHALL 讓使用者選擇顯示幣別並持久化至 `users/{u
 
 `preferred_display_currency` SHALL 由 app-wide 顯示偏好 store 持有：登入時自 `users/{uid}` 灌入（缺值 / 非支援值 fallback `TWD`）、登出 reset；DisplayPrefs 切換時樂觀更新此 store。消費此偏好的畫面 SHALL 即時反映其變更。
 
-#### Scenario: 持倉總覽合計反映偏好
+#### Scenario: 持倉總覽金額反映偏好
 
 - **WHEN** 顯示幣別偏好為 `USD`
-- **THEN** 持倉總覽「總成本」grand total SHALL 以 `USD` 呈現（`US$`、USD 小數位），label 顯示 `總成本（USD）`；偏好為 `TWD` 時以 `NT$` 呈現
+- **THEN** 持倉總覽**所有金額**（Hero 總資產、總未實現損益、今日損益、本月已實現損益等 demo 摘要，以及真實「總成本」合計）SHALL 以 `USD` 呈現（`US$`、USD 小數位、label 隨之切）；偏好為 `TWD` 時以 `NT$` 呈現
+
+#### Scenario: 百分比不隨幣別換算
+
+- **WHEN** 切換顯示幣別偏好
+- **THEN** 持倉總覽的百分比（總報酬率、今日損益 %）SHALL 維持不變（幣別無關）
 
 #### Scenario: 切換偏好即時更新消費畫面
 

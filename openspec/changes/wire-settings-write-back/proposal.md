@@ -6,7 +6,7 @@
 
 - **ProfileScreen 寫回**：「儲存」改為實際持久化 `display_name` 到 `users/{uid}.display_name` 與 Firebase Auth profile（`updateProfile({ displayName })`），並更新 `updated_at`；進畫面時由 user doc 載入現值（fallback 到 Auth `displayName`）；以真實 loading / disabled / 成功 / 失敗回饋取代「demo，尚未寫回」字樣。Email 維持唯讀（變更 email 屬 auth 流程，不在此範圍）。
 - **DisplayPrefsScreen 寫回**：幣別（TWD/USD）切換改為持久化 `preferred_display_currency` 到 `users/{uid}`；值來自跨切面 `preferencesStore`（樂觀更新 + 失敗還原），畫面新增說明「套用於持倉總覽合計與分析頁預設」。**移除 dark-mode toggle**（owner 決定：app dark-first、無 light 主題，不需此開關）。
-- **跨畫面套用 `preferred_display_currency`（本輪由 Sprint 6 提前）**：新增 app-wide `core/preferences` store，登入時由 `users/{uid}` 灌入、登出 reset。**持倉總覽「總成本」合計**改讀偏好（NT$↔US$、label/小數位隨之切；`currency-display` spec 本就要求用偏好，先前 code hardcode TWD）；**分析頁 TWD/USD 切換預設**改讀偏好（使用者仍可於頁內自行切換）。個股詳情頁按 spec 維持「預設原幣別」，不動。
+- **跨畫面套用 `preferred_display_currency`（本輪由 Sprint 6 提前）**：新增 app-wide `core/preferences` store，登入時由 `users/{uid}` 灌入、登出 reset。**持倉總覽所有金額**改讀偏好（NT$↔US$、label/小數位隨之切）：真實「總成本」合計（`currency-display` spec 本就要求，先前 code hardcode TWD），以及 Hero 總資產、總未實現損益、今日損益、本月已實現損益等 demo 摘要（以 rates/demo 匯率換算的示意值）；**百分比**（總報酬率、今日 %）幣別無關、不換算。**分析頁 TWD/USD 切換預設**改讀偏好（使用者仍可於頁內自行切換）。個股詳情頁按 spec 維持「預設原幣別」，不動。
 - **服務層**：擴充 `apps/mobile/src/features/auth/userDoc.ts`，新增 `updateUserProfile` / `updateDisplayCurrency`，以 `serverTimestamp()` 寫 `updated_at`，僅以 modular API（v24）`updateDoc`。
 - **shared 驗證純函式**：新增「待寫回欄位」的最小驗證純函式（trim 後 `display_name` 長度、currency 為合法顯示幣別），於 shared 以 TDD 撰寫並納 coverage gate。
 
@@ -35,7 +35,7 @@
 
 本 change **不**做：
 
-- **持倉總覽 Hero「總資產」與其他 mock 摘要切幣別**：那些是 demo 值（需 Sprint 5 報價才有真值），維持 TWD 示意；本輪只切**真實**的「總成本」合計。
+- **Hero / bento 改用真實報價**：那些金額仍是 demo 示意值（真值需 Sprint 5 報價），本輪只是讓它們**以偏好幣別呈現**（換算示意值），不接真報價。
 - **個股詳情頁套偏好**：按 `currency-display` spec 預設顯示**原幣別**，不套偏好。
 - **主題（`settings.theme`）**：dark-mode toggle 已**移除**（無 light 主題可切）；theme 持久化待 light 主題出現再議。
 - **AboutScreen**：純資訊頁，無可持久化內容，不動。
