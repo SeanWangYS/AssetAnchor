@@ -4,9 +4,11 @@ import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth, wireEmulatorsOnce } from './src/services/firebase';
 import { useAuthStore } from './src/features/auth/authStore';
+import { getUserDoc } from './src/features/auth/userDoc';
 import { useAccountsStore } from './src/features/accounts/accountsStore';
 import { useTransactionsStore } from './src/features/transactions/transactionsStore';
 import { useExchangeRatesStore } from './src/services/exchange-rates';
+import { usePreferencesStore } from './src/core/preferences';
 import RootNavigator from './src/core/navigation/RootNavigator';
 import SplashGate from './src/core/navigation/SplashGate';
 import { fontMap, useFonts } from './src/core/theme/fonts';
@@ -26,14 +28,18 @@ export default function App() {
       const accounts = useAccountsStore.getState();
       const transactions = useTransactionsStore.getState();
       const exchangeRates = useExchangeRatesStore.getState();
+      const preferences = usePreferencesStore.getState();
       if (user) {
         accounts.subscribe(user.uid);
         transactions.subscribe(user.uid);
         exchangeRates.subscribe();
+        // 顯示偏好：登入後一次性灌入（holdings 合計 / analysis 預設讀此 store）。
+        void getUserDoc().then((doc) => preferences.hydrate(doc));
       } else {
         accounts.stop();
         transactions.stop();
         exchangeRates.stop();
+        preferences.reset();
       }
     });
     return unsubscribe;

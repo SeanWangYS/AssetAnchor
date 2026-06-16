@@ -17,12 +17,14 @@ ProfileScreen 與 DisplayPrefsScreen 已在 align-to-design 完成視覺定稿�
 - `preferred_display_currency` 切換 → 寫回 `users/{uid}`，跨重啟保存。
 - 寫回前的欄位驗證以 `packages/shared` 純函式實作（TDD + coverage gate）。
 - 真實 loading / 成功 / 失敗回饋取代示意字樣。
+- **顯示幣別偏好真正生效**：持倉總覽「總成本」合計 + 分析頁切換預設讀偏好（owner 決定提前自 Sprint 6）。
 
 **Non-Goals:**
 
-- holdings / analysis / asset-detail 以 `preferred_display_currency` 為預設切換值（Sprint 6）。
-- `settings.theme` 持久化（無 light 主題可切）。
+- 個股詳情頁套偏好（spec 維持預設原幣別）；Hero / mock 摘要切幣別（demo 值待 Sprint 5）。
+- `settings.theme` 持久化；dark-mode toggle 已**移除**（無 light 主題可切）。
 - 變更 email / 密碼、`preferred_locale`、`default_account_id`。
+- 偏好即時跨裝置同步（採登入時一次性 hydrate，非 onSnapshot）。
 
 ## Decisions
 
@@ -52,6 +54,15 @@ ProfileScreen 與 DisplayPrefsScreen 已在 align-to-design 完成視覺定稿�
 
 - ProfileScreen：mount 時 `getUserDoc()` 取 `display_name`（缺值 fallback Auth `displayName` → `''`）；維持受控 input；「儲存」依驗證結果 enable/disable；寫入期間 disable + loading，成功 / 失敗以既有 UI 元件呈現（沿用畫面現有 `saved` 提示樣式，加錯誤態）。
 - DisplayPrefsScreen：mount 時載入現值；切換採「先樂觀更新 UI → 寫入 → 失敗則還原為前一個已持久化值 + 顯示錯誤」。
+
+### D5：顯示幣別偏好用 app-wide store（住 `core/`，非 feature）+ 登入 hydrate
+
+新增 `core/preferences/preferencesStore.ts`（Zustand）持有 `preferredDisplayCurrency`。`App.tsx` 的 `onAuthStateChanged`：登入 → `getUserDoc()` → `hydrate(doc)`（缺值/非支援值 fallback TWD）；登出 → `reset()`。holdings 總覽合計、analysis 切換預設、DisplayPrefs 皆讀此 store。
+
+- **為何放 `core/` 而非 `features/settings`**：holdings / analysis / settings 三個 feature 都消費它；放任一 feature 會違反「features 之間不互相 import」依賴方向。store 只 import `@assetanchor/shared`（`isDisplayCurrency` / 型別），不依賴任何 feature——可安全住 core。對照既有跨切面 store（`services/exchange-rates`）。
+- **為何一次性 hydrate 而非 `onSnapshot`**：單機 MVP；偏好的唯一寫入端是 DisplayPrefs，已用樂觀更新即時改 store，毋須再開一個 Firestore listener（少一個 cleanup 負擔）。日後要跨裝置即時同步再升級為訂閱。
+- **DisplayPrefs 改源自 store**（不再各自 `getUserDoc` + local state）：store 是 in-app 單一真相、Firestore 是持久層；切換＝樂觀 `setPreferredDisplayCurrency` →（store 即時生效令 holdings/analysis 同步）→ `updateDisplayCurrency` 持久化 → 失敗還原前值。
+- **持倉合計只切「總成本」（真值），不切 Hero/mock**：Hero「總資產」等是 demo 摘要（需 Sprint 5 報價），維持 TWD 示意；`currency-display` spec 也只規定「總成本」grand total 用偏好。
 
 ## Risks / Trade-offs
 

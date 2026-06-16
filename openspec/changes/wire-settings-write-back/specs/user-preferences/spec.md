@@ -74,3 +74,22 @@ DisplayPrefsScreen SHALL 讓使用者選擇顯示幣別並持久化至 `users/{u
 
 - **WHEN** 持久化過程拋錯
 - **THEN** SHALL 顯示失敗回饋，切換值還原為先前已持久化的值
+
+### Requirement: 顯示幣別偏好跨畫面套用
+
+`preferred_display_currency` SHALL 由 app-wide 顯示偏好 store 持有：登入時自 `users/{uid}` 灌入（缺值 / 非支援值 fallback `TWD`）、登出 reset；DisplayPrefs 切換時樂觀更新此 store。消費此偏好的畫面 SHALL 即時反映其變更。
+
+#### Scenario: 持倉總覽合計反映偏好
+
+- **WHEN** 顯示幣別偏好為 `USD`
+- **THEN** 持倉總覽「總成本」grand total SHALL 以 `USD` 呈現（`US$`、USD 小數位），label 顯示 `總成本（USD）`；偏好為 `TWD` 時以 `NT$` 呈現
+
+#### Scenario: 切換偏好即時更新消費畫面
+
+- **WHEN** 使用者在顯示偏好頁切換幣別
+- **THEN** 持倉總覽「總成本」合計 SHALL 即時改以新幣別呈現（無需重新登入 / 重啟）
+
+#### Scenario: 分析頁切換預設取自偏好
+
+- **WHEN** 使用者開啟分析頁
+- **THEN** 全頁 TWD/USD 切換 SHALL 預設為使用者顯示幣別偏好（缺值 fallback `TWD`），使用者仍可於頁內自行切換

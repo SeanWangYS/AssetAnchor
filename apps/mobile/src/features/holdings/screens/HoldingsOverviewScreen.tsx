@@ -6,11 +6,11 @@ import { Avatar, Card, Chart, Icon, Pnl, Segmented, TimeTabs } from '../../../co
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
 import { useHoldings } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
+import { usePreferencesStore } from '../../../core/preferences';
 import { useCountUp } from '../useCountUp';
 import {
   DEMO_SERIES,
   DEMO_SUMMARY,
-  DISPLAY_CURRENCY,
   avatarColor,
   currencyPrefix,
   fmtAmount,
@@ -149,6 +149,7 @@ export default function HoldingsOverviewScreen({
 }: HoldingsStackScreenProps<'HoldingsOverview'>) {
   const positions = useHoldings();
   const rates = useExchangeRatesStore((s) => s.rates);
+  const displayCcy = usePreferencesStore((s) => s.preferredDisplayCurrency);
   const [mode, setMode] = useState<GroupMode>('持股');
   const [tf, setTf] = useState<Timeframe>('1Y');
 
@@ -179,20 +180,16 @@ export default function HoldingsOverviewScreen({
   // 總資產 Hero（mock 摘要；需報價，故 count-up 跑 demo 值）。
   const totalAssets = useCountUp(DEMO_SUMMARY.totalAssets);
 
-  // 真實跨幣別「總成本（TWD）」：以 rates（或 demo 匯率退回）即時換算加總。
+  // 真實跨幣別「總成本」：以使用者顯示幣別偏好為基準，rates（或 demo 匯率退回）即時換算加總。
   const grandCost = useMemo(() => {
-    let sum = Money.zero(DISPLAY_CURRENCY);
+    let sum = Money.zero(displayCcy);
     for (const p of positions) {
-      const conv = toDisplay(
-        Money.fromDecimalString(p.totalCost, p.currency),
-        rates,
-        DISPLAY_CURRENCY,
-      );
+      const conv = toDisplay(Money.fromDecimalString(p.totalCost, p.currency), rates, displayCcy);
       if (conv === null) return null;
       sum = sum.add(conv);
     }
     return sum;
-  }, [positions, rates]);
+  }, [positions, rates, displayCcy]);
 
   const series = DEMO_SERIES[tf] ?? [];
 
@@ -293,13 +290,13 @@ export default function HoldingsOverviewScreen({
         <Segmented options={GROUP_OPTIONS} value={mode} onChange={setMode} />
       </View>
 
-      {/* 真實「總成本（TWD）」快照 */}
+      {/* 真實「總成本」快照（以顯示幣別偏好呈現） */}
       <View style={styles.costRow}>
-        <Text style={styles.costLabel}>總成本（TWD）</Text>
+        <Text style={styles.costLabel}>總成本（{displayCcy}）</Text>
         <Text style={styles.costValue}>
           {grandCost === null
             ? '匯率未就緒'
-            : `NT$ ${grandCost.toNumber().toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+            : `${currencyPrefix(displayCcy)} ${fmtAmount(grandCost, displayCcy)}`}
         </Text>
       </View>
 
