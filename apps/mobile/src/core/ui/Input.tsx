@@ -35,7 +35,13 @@ export default function Input({
   return (
     <View style={styles.wrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.field, { borderColor }, focused && !error ? styles.focusRing : null]}>
+      {/* collapsable={false}：focus 時才套的 focusRing 陰影會觸發 Fabric view-flattening 的
+          remove+insert，使內層 TextInput 當場失焦、鍵盤打不進（RN #45798）。釘住此 view
+          不被 flatten 即可在新架構下正常輸入。見 ADR-0009。 */}
+      <View
+        collapsable={false}
+        style={[styles.field, { borderColor }, focused && !error ? styles.focusRing : null]}
+      >
         {leftIcon ? <View style={styles.icon}>{leftIcon}</View> : null}
         <TextInput
           style={[styles.input, style]}
