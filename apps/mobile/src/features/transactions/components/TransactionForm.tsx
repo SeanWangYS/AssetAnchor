@@ -465,21 +465,17 @@ interface DateFieldProps {
  */
 function DateField({ label, value, onChange, error }: DateFieldProps) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={[styles.control, error ? styles.controlError : null]}>
-        <Input
-          value={value}
-          onChangeText={onChange}
-          placeholder={Platform.OS === 'ios' ? 'YYYY-MM-DD' : '2026-06-15'}
-          autoCapitalize="none"
-          keyboardType="numbers-and-punctuation"
-          style={styles.dateInput}
-        />
-        <Icon name="calendar" size={16} color={colors.textFaint} />
-      </View>
-      {error ? <Text style={styles.fieldErr}>{error}</Text> : null}
-    </View>
+    <Input
+      label={label}
+      value={value}
+      onChangeText={onChange}
+      placeholder={Platform.OS === 'ios' ? 'YYYY-MM-DD' : '2026-06-15'}
+      autoCapitalize="none"
+      keyboardType="numbers-and-punctuation"
+      error={error ?? null}
+      style={numericStyle}
+      rightSlot={<Icon name="calendar" size={16} color={colors.textFaint} />}
+    />
   );
 }
 
@@ -553,7 +549,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.text,
     color: colors.textFaint,
   },
-  dateInput: { flex: 1, paddingVertical: 0, ...numericStyle },
   fieldErr: {
     fontFamily: fontFamily.text.medium,
     fontSize: fontSize.label,
