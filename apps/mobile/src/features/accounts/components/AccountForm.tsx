@@ -6,15 +6,38 @@ import {
   MARKETS,
   accountInputSchema,
   type AccountInput,
+  type AccountType,
+  type Broker,
+  type Market,
 } from '@assetanchor/shared';
-import { Button, Input, Sheet } from '../../../core/ui';
-import { ACCOUNT_COLORS, colors, fontSize, radius, spacing } from '../../../core/theme';
-import { zhTW } from '../../../i18n/zh-TW';
+import { Button, ColorSwatches, Icon, Input, Segmented, Sheet } from '../../../core/ui';
+import { colors, fontFamily, fontSize, radius, spacing } from '../../../core/theme';
+import { accountTypeLabel, brokerLabel } from '../accountDisplay';
 
-const MVP_CURRENCIES = ['USD', 'TWD'] as const;
-const F = zhTW.accounts.fields;
+/** 基礎幣別（accountInputSchema 僅收 USD / TWD）。 */
+type BaseCcy = 'TWD' | 'USD';
+const CURRENCY_OPTIONS: readonly { value: BaseCcy; label: string }[] = [
+  { value: 'TWD', label: 'TWD' },
+  { value: 'USD', label: 'USD' },
+];
 
-type AccountFormInitial = Partial<Record<keyof typeof F, string>>;
+/** 主要市場繁中標籤。 */
+const MARKET_LABELS: Record<Market, string> = {
+  TW: '台股',
+  US: '美股',
+  CRYPTO: '加密貨幣',
+  OTHER: '其他',
+};
+
+type AccountFormInitial = Partial<{
+  account_name: string;
+  broker: string;
+  account_type: string;
+  base_currency: string;
+  market: string;
+  color: string;
+  notes: string;
+}>;
 
 interface AccountFormProps {
   initial?: AccountFormInitial;
@@ -26,9 +49,11 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
   const [accountName, setAccountName] = useState(initial?.account_name ?? '');
   const [broker, setBroker] = useState(initial?.broker ?? '');
   const [accountType, setAccountType] = useState(initial?.account_type ?? '');
-  const [baseCurrency, setBaseCurrency] = useState(initial?.base_currency ?? '');
+  const [baseCurrency, setBaseCurrency] = useState<BaseCcy>(
+    initial?.base_currency === 'USD' ? 'USD' : 'TWD',
+  );
   const [market, setMarket] = useState(initial?.market ?? '');
-  const [color, setColor] = useState(initial?.color ?? ACCOUNT_COLORS[0]);
+  const [color, setColor] = useState(initial?.color ?? colors.accent);
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -64,78 +89,96 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
   return (
     <View style={styles.form}>
       <Input
-        label={F.account_name}
+        label="帳戶名稱"
         value={accountName}
         onChangeText={setAccountName}
         error={errors.account_name ?? null}
+        placeholder="例：富邦複委託"
         autoCapitalize="none"
       />
-      <SelectField
-        label={F.broker}
+
+      <PickerField
+        label="券商"
+        sheetTitle="選擇券商"
         value={broker}
-        options={BROKERS}
+        display={broker ? brokerLabel(broker as Broker) : ''}
+        options={BROKERS.map((b) => ({ value: b, label: brokerLabel(b) }))}
         onSelect={setBroker}
         error={errors.broker ?? null}
       />
-      <SelectField
-        label={F.account_type}
+
+      <PickerField
+        label="帳戶類型"
+        sheetTitle="選擇帳戶類型"
         value={accountType}
-        options={ACCOUNT_TYPES}
+        display={accountType ? accountTypeLabel(accountType as AccountType) : ''}
+        options={ACCOUNT_TYPES.map((t) => ({ value: t, label: accountTypeLabel(t) }))}
         onSelect={setAccountType}
         error={errors.account_type ?? null}
       />
-      <SelectField
-        label={F.base_currency}
-        value={baseCurrency}
-        options={MVP_CURRENCIES}
-        onSelect={setBaseCurrency}
-        error={errors.base_currency ?? null}
-      />
-      <SelectField
-        label={F.market}
+
+      <View style={styles.field}>
+        <Text style={styles.label}>基礎幣別</Text>
+        <Segmented options={CURRENCY_OPTIONS} value={baseCurrency} onChange={setBaseCurrency} />
+        {errors.base_currency ? <Text style={styles.err}>{errors.base_currency}</Text> : null}
+      </View>
+
+      <PickerField
+        label="主要市場"
+        sheetTitle="選擇主要市場"
         value={market}
-        options={MARKETS}
+        display={market ? (MARKET_LABELS[market as Market] ?? market) : ''}
+        options={MARKETS.map((m) => ({ value: m, label: MARKET_LABELS[m] }))}
         onSelect={setMarket}
         error={errors.market ?? null}
       />
+
       <View style={styles.field}>
-        <Text style={styles.label}>{F.color}</Text>
-        <View style={styles.swatches}>
-          {ACCOUNT_COLORS.map((c) => (
-            <Pressable
-              key={c}
-              accessibilityRole="button"
-              onPress={() => setColor(c)}
-              style={[
-                styles.swatch,
-                { backgroundColor: c },
-                color === c ? styles.swatchSelected : null,
-              ]}
-            />
-          ))}
-        </View>
+        <Text style={styles.label}>識別色</Text>
+        <ColorSwatches value={color} onChange={setColor} />
       </View>
+
       <Input
-        label={F.notes}
+        label="備註"
         value={notes}
         onChangeText={setNotes}
         multiline
         error={errors.notes ?? null}
       />
-      <Button title={submitLabel} onPress={handleSubmit} disabled={busy} />
+
+      <View style={styles.submit}>
+        <Button title={submitLabel} onPress={handleSubmit} loading={busy} disabled={busy} />
+      </View>
     </View>
   );
 }
 
-interface SelectFieldProps {
-  label: string;
+interface PickerOption {
   value: string;
-  options: readonly string[];
+  label: string;
+}
+
+interface PickerFieldProps {
+  label: string;
+  sheetTitle: string;
+  value: string;
+  /** 顯示用繁中標籤（空字串 → 顯示佔位）。 */
+  display: string;
+  options: readonly PickerOption[];
   onSelect: (value: string) => void;
   error?: string | null;
 }
 
-function SelectField({ label, value, options, onSelect, error }: SelectFieldProps) {
+/** 表單內聯選單（feature 本地 picker，沿用 core/ui Sheet）。 */
+function PickerField({
+  label,
+  sheetTitle,
+  value,
+  display,
+  options,
+  onSelect,
+  error,
+}: PickerFieldProps) {
   const [open, setOpen] = useState(false);
   return (
     <View style={styles.field}>
@@ -145,51 +188,83 @@ function SelectField({ label, value, options, onSelect, error }: SelectFieldProp
         style={[styles.select, error ? styles.selectError : null]}
         onPress={() => setOpen(true)}
       >
-        <Text style={value ? styles.selectText : styles.selectPlaceholder}>
-          {value || zhTW.accounts.actions.select}
+        <Text style={display ? styles.selectText : styles.selectPlaceholder} numberOfLines={1}>
+          {display || '請選擇'}
         </Text>
+        <Icon name="chevron" size={18} color={colors.textWeak} />
       </Pressable>
       {error ? <Text style={styles.err}>{error}</Text> : null}
-      <Sheet visible={open} title={label} onClose={() => setOpen(false)}>
-        {options.map((opt) => (
-          <Pressable
-            key={opt}
-            accessibilityRole="button"
-            style={styles.option}
-            onPress={() => {
-              onSelect(opt);
-              setOpen(false);
-            }}
-          >
-            <Text style={styles.optionText}>{opt}</Text>
-          </Pressable>
-        ))}
+      <Sheet visible={open} title={sheetTitle} onClose={() => setOpen(false)}>
+        {options.map((opt) => {
+          const on = opt.value === value;
+          return (
+            <Pressable
+              key={opt.value}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={styles.option}
+              onPress={() => {
+                onSelect(opt.value);
+                setOpen(false);
+              }}
+            >
+              <Text style={[styles.optionText, on ? styles.optionTextOn : null]}>{opt.label}</Text>
+              {on ? <Icon name="check" size={20} color={colors.accent} /> : null}
+            </Pressable>
+          );
+        })}
       </Sheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { gap: spacing.md },
-  field: { gap: spacing.xs },
-  label: { fontSize: fontSize.caption, color: colors.textMuted },
+  form: { gap: spacing.lg },
+  field: { gap: spacing.sm },
+  submit: { marginTop: spacing.sm },
+  label: {
+    fontFamily: fontFamily.text.bold,
+    fontSize: fontSize.label,
+    color: colors.textSecondary,
+    letterSpacing: 0.3,
+  },
   select: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md + 1,
   },
-  selectError: { borderColor: colors.danger },
-  selectText: { fontSize: fontSize.body, color: colors.text },
-  selectPlaceholder: { fontSize: fontSize.body, color: colors.textMuted },
-  err: { fontSize: fontSize.caption, color: colors.danger },
-  swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  swatch: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: 'transparent' },
-  swatchSelected: { borderColor: colors.text },
+  selectError: { borderColor: colors.down },
+  selectText: {
+    fontFamily: fontFamily.text.medium,
+    fontSize: fontSize.text,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  selectPlaceholder: {
+    fontFamily: fontFamily.text.regular,
+    fontSize: fontSize.text,
+    color: colors.textFaint,
+    flex: 1,
+  },
+  err: { fontFamily: fontFamily.text.medium, fontSize: fontSize.label, color: colors.down },
   option: {
-    paddingVertical: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md + 1,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.divider,
   },
-  optionText: { fontSize: fontSize.body, color: colors.text },
+  optionText: {
+    fontFamily: fontFamily.text.medium,
+    fontSize: fontSize.text,
+    color: colors.textSecondary,
+  },
+  optionTextOn: { fontFamily: fontFamily.text.bold, color: colors.textPrimary },
 });

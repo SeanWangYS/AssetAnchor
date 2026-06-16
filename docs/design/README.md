@@ -15,7 +15,9 @@
 | **Auth 登入 / 註冊 / 忘記密碼流程** | [`auth-flow/`](./auth-flow/) | ✅ 2026-06-14（整合進 app-prototype） |
 | **整合版 App prototype（最新，含以上全部流程）** | [`app-prototype/`](./app-prototype/) | ✅ 2026-06-14 |
 
-> `app-prototype/` 是**唯一持續更新**的整合原型；各頁面資料夾保留 spec 與探索記錄（`exploration/`）。`analysis-page/prototype/` 為當時定稿快照，已被 app-prototype 取代。
+> ⚠️ 上表「✅ v1 定稿」指**該流程主畫面**已定稿，**不代表 MVP 全部畫面已齊**。截至 2026-06-14 仍**缺 ~11 個 MVP 畫面/狀態**（顯示偏好、個資編輯、關於、該帳戶交易列表、股票代號搜尋、帳戶選擇 picker、日期選擇器、券商/類型選單 ＋ 首次引導、Loading skeleton、離線/抓取失敗態）。完整缺漏清單見 `_READ-ME-FIRST.md`「✅ 已完成 / ⬜ 尚缺」。
+
+> `app-prototype/` 是**唯一持續更新**的整合原型；各頁面資料夾保留 spec 與探索記錄（`exploration/`）。各單頁資料夾內的 `prototype/`（含 `analysis-page/prototype/`）＝該畫面當初的獨立原型，屬**歷史**，已併入 `app-prototype/`，衝突時**以 `app-prototype/` 為準**（同 `_READ-ME-FIRST.md`）。
 
 ## 導航（已落實於 prototype）
 
