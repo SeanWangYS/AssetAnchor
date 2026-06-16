@@ -335,6 +335,8 @@ https://rate.bot.com.tw/xrt/flcsv/0/L6M/USD  # USD 近半年逐日（含「資�
 
 ## 6. Firestore Schema 完整設計
 
+> **Schema 是「聖牛」但不是凍結的**：設計包（ADR-0008）可驅動 schema 變更以支撐畫面所需的功能與資料；變更走紀律——逐欄評估三端（mobile/functions/shared）影響 + 屬人類介入 gate（先找 owner，見 §2.5）。金額/數量精度仍歸 `Money`/decimal.js（ADR-0005）。
+
 ### 整體結構
 
 ```

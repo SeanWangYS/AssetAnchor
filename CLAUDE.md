@@ -4,6 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > 主計劃書（ADR-000）：`docs/portfolio_tracker_planning.md`。第 2–8 章決策已拍板，修改前須評估影響。完整 tech stack / 開發慣例 / 測試紀律見 `openspec/config.yaml` 的 `context`。
 
+## 核心開發紀律（不可違反的不變量）
+
+> 這是專案「憲法」——每次開發都必須遵守，違反任一條前停下來找 owner。權威細節見各自 ADR。
+
+1. **設計包＝產品最高權威**（ADR-0008）：`docs/design/`（以 `app-prototype/` 為準）是**功能、UI、與資料需求**的最終對齊依據；planning / ADR / code / **Firestore schema** 一律對齊設計，**後端為滿足設計畫面所需而調整**（衝突時設計贏）。兩護欄：(A) 金額/數量/匯率/成本**精度**仍歸 `Money`/decimal.js（ADR-0005，設計數字僅顯示示意）；(B) schema 變更走「聖牛」紀律（第 3 條）。
+2. **Money/decimal 紀律**（ADR-0005）：金錢/數量/匯率/成本一律用 `packages/shared` 的 `Money`，**禁用 native number**；Firestore 存 10 位小數 string。
+3. **Schema 變更紀律（聖牛）**：schema 可為設計而改，但**改前逐欄評估三端（mobile/functions/shared）影響**，且**屬人類介入 gate——先找 owner**（見 planning §2.5）。設計決定「要什麼資料」、schema 改動「怎麼改」仍受紀律與 gate 約束。
+4. **依賴方向**：`features/* → core | services | packages/shared`；feature 之間不互 import。
+5. **Firebase**：一律 `@react-native-firebase` v24 modular API（禁 namespaced）。
+6. **OpenSpec 工作流**：每個 change 走 explore→propose→apply→archive；**帶 UI 的 change 必引對應 `docs/design/<feature>/*-spec.md` + 通過 iOS Simulator 視覺對圖**。
+7. **測試紀律**（ADR-0007）：測試金字塔寫進每個 change 的 Definition-of-Done（shared 純函式 coverage gate、rules 必測、UI 關鍵 flow RNTL）。
+8. **Git 安全 + 分級 merge 授權**：只 push 當次開發分支；**絕不直接 push main**。main 採**分級 merge**：
+   - ✅ **AI 可自 merge**（`gh pr merge`）：純 docs / 測試 / `shared` 純函式 / 低風險重構等「自動 gate（typecheck/lint/coverage/rules）完全涵蓋、且無設計/schema/Money/UX 判斷」的 change。
+   - 🛑 **owner 本人 merge**（AI 開 PR 後停下等）：帶 UI 的 change（ADR-0008 視覺保真）、聖牛 schema、Money/decimal 精度、跨 change ADR、部署/花錢/真機（即第 9 條 gate）。
+   - 不確定屬哪層 → 當高風險、停下找 owner。**前提**：須與 user global CLAUDE.md 的 merge 規則一致（global 那條「絕對禁止 merge main」需加上「本專案分級授權」但書，否則仍以 global 為準＝全部停下）。
+9. **人類介入 gate**（planning §2.5）：聖牛 schema 變更、設計衝突/缺 spec、花錢·部署·真機、Money 精度規則、跨 change 重大決策——**必停找 owner**；其餘可自走。
+
 ## 常用指令
 
 Monorepo 用 **pnpm@9.12.0 + Node 22**（asdf，非 nvm；`.tool-versions` pin 22）。`pnpm -r <script>` 會跑遍所有 workspace。

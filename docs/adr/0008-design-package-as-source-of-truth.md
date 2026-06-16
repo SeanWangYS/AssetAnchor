@@ -1,7 +1,8 @@
-# ADR-0008: 設計包為產品最高權威（UI 真理凌駕 planning 與 code）
+# ADR-0008: 設計包為產品最高權威（功能・UI・資料皆對齊設計，凌駕 planning 與 code）
 
 - **狀態**：Accepted
 - **日期**：2026-06-14
+- **本文修訂**：2026-06-16——範圍從「UI 面向」明示擴充為「**功能與資料需求；後端/schema 為設計而調整**」（原意在當時 Alternatives 已決，但 Decision 正文僅表述為 UI）；新增護欄 B（schema 變更紀律）。
 - **修訂**：ADR-0003（導航結構，4-tab 持倉/交易/帳戶/設定 → 持倉/交易/分析/設定）
 - **相關**：planning doc §2/§11/§13、`docs/design/`（`_READ-ME-FIRST.md`、`README.md`）、整合原型 `docs/design/app-prototype/`；於 OpenSpec change `align-to-design-package` 落地
 
@@ -17,13 +18,19 @@ AssetAnchor 是兩條平行線長大的：後端／邏輯（Sprint 0–4）對�
 
 ## Decision
 
-### 1. 設計包＝產品最高權威（單一視覺契約）
+### 1. 設計包＝產品最高權威（單一契約，涵蓋功能與資料）
 
-`docs/design/`（衝突時以整合原型 `docs/design/app-prototype/` 為準，見 `_READ-ME-FIRST.md:29`）為產品在 **UI 一切面向**（導航、畫面、視覺、互動）的最高事實來源，**凌駕 planning doc 與既有 code**。衝突時**設計贏**；planning／ADR／CLAUDE.md／code 一律對齊設計，不是反向。各畫面像素級細節以對應 `docs/design/<feature>/*-spec.md` 為準。
+`docs/design/`（衝突時以整合原型 `docs/design/app-prototype/` 為準，見 `_READ-ME-FIRST.md:29`）為產品在**一切面向**的最高事實來源：**功能範圍、導航、畫面、視覺、互動，以及為支撐設計畫面所需的資料/後端**。設計決定「**要什麼功能與資料**」；planning／ADR／CLAUDE.md／code（**含 Firestore schema 與後端**）一律對齊設計，不是反向——衝突時**設計贏**。各畫面像素級細節以對應 `docs/design/<feature>/*-spec.md` 為準。
 
-### 2. 唯一但書——金額儲存精度仍歸 Money/decimal.js
+> **範圍澄清（2026-06-16 修訂）**：本決策原 Decision 正文表述為「UI 一切面向」，但下方 Alternatives 已否決「design 管 UI、planning §6 管 schema」的分權（owner 要設計包**無歧義地居於最上位**）。本次將該本意明示於 Decision：**設計權威涵蓋功能與資料需求，後端/Firestore schema 為滿足設計而調整**，僅受下列兩個護欄約束。
 
-設計稿自陳其數字僅為顯示層示意（`holdings-overview-spec.md:181`）。**金額／數量／匯率／成本的儲存與運算精度，仍由 `packages/shared` 的 `Money`（decimal.js）與 ADR-0005 治理**，設計包對此明示讓位。除此一處，UI 其餘面向設計包說了算。
+### 2. 護欄 A——金額儲存精度仍歸 Money/decimal.js
+
+設計稿自陳其數字僅為顯示層示意（`holdings-overview-spec.md:181`）。**金額／數量／匯率／成本的儲存與運算精度，仍由 `packages/shared` 的 `Money`（decimal.js）與 ADR-0005 治理**，設計包對此明示讓位（設計只治理顯示、不治理儲存精度）。
+
+### 2b. 護欄 B——schema 變更走「聖牛」紀律
+
+設計**可驅動** Firestore schema 變更（新增/調整欄位以支撐畫面所需資料），但**變更的執行**仍受紀律約束：**逐欄評估三端（mobile / functions / shared）影響**，且 schema 變更**屬人類介入 gate——先找 owner**（見 planning §2.5）。即：設計決定「**要什麼資料**」，schema 改動的「**怎麼改**」仍走紀律與 gate，不繞過 schema 是聖牛（planning §6）的審慎。
 
 ### 3. 導航重構為 持倉 / 交易 / 分析 / 設定
 
