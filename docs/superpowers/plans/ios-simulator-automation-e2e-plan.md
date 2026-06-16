@@ -1,8 +1,10 @@
 # iOS Simulator 自動化 + E2E 測試啟用計劃
 
 > 讓 **Claude Code（CLI agent）能自主「觀察 + 操控」iOS Simulator 並跑 E2E 測試**，供未來自主開發 / debug 使用。
-> 狀態：**Proposed（尚未實作）** ｜ 日期：2026-06-15 ｜ 對應環境：Expo SDK 54 / RN 0.81.5、iPhone 16 Pro Simulator、Firebase 本地 Emulator。
+> 狀態：**Backlog / nice-to-have（ADR-0007 §6 park；未實作）** ｜ 日期：2026-06-15 ｜ 對應環境：Expo SDK 54 / RN 0.81.5、iPhone 16 Pro Simulator、Firebase 本地 Emulator。
 > 讀者：未來某個沒有上下文的 Claude Code session（或 Sean）。照本文 Phase 1→4 執行即可。
+>
+> **這份計劃目前 park 在產品 backlog（上架前再議）**，登記於 [`docs/product-backlog.md`](../../product-backlog.md)「E2E / 測試自動化」段。觸發：要做自主 E2E / agent-driven debug，或上架前回歸測試時，再照本文執行。
 
 ---
 
@@ -56,7 +58,7 @@
 3. **繁中 / CJK**：HID 僅 US layout → 中文**必須**走 (b) pbcopy+paste。Xcode 26 有剪貼簿同步 bug，貼上前先補一招：`pbpaste | xcrun simctl pbcopy booted`（貼上前即時重打一次剪貼簿）。
 4. **給元件加 `testID`（及/或 `accessibilityLabel`）**：Fabric view-flattening 會丟掉沒標記的節點 → a11y tree / 元素匹配才可靠。Detox 的 `by.id` 必需、Maestro/AXe 匹配也更穩。需要被自動化操作的螢幕/元件就補上。
 5. **idb ↔ Xcode 版本歪斜是 #1 故障源**：優先 AXe；**每次升 Xcode 後重驗**（`idb list-targets` / `axe list-simulators`）。
-6. **與今天的 New-Arch 鍵盤 bug 的關係**：我們已設 `newArchEnabled:false`（`apps/mobile/app.config.ts`），手動打字 bug 暫時消失。**但本計劃的文字輸入策略不依賴這個開關**——即使日後重開 New Arch，**Maestro `inputText`（XCUITest 路徑）仍然可用**，自動化 E2E 不受影響。raw-HID type 則無論如何都別用。
+6. **與 New-Arch 鍵盤 bug 的關係（已 root-fix，本段為更新後狀態）**：本文初稿時暫以 `newArchEnabled:false`（退回 Paper）繞過 TextInput 失焦 bug，但 **ADR-0009 已把 New Architecture 重新打開（`newArchEnabled:true`）並從根因修掉**——bug 是 Fabric view-flattening（RN #45798），在 `core/ui/Input.tsx` 的 field 容器加 `collapsable={false}` 即解，鍵盤輸入（中英文）已恢復正常。**現況：New Arch 是 ON。** 本計劃的文字輸入策略本就**與架構無關**：**Maestro `inputText`（走 XCUITest typing path）在新舊架構下都成立**，自動化 E2E 不受影響；raw-HID `type`（AXe/idb）則無論如何都別拿來打 RN TextInput（caveat #1）。
 
 ---
 
@@ -156,6 +158,6 @@ appId: com.assetanchor.mobile      # 以 app.config.ts 實際 bundle id 為準
 ## 相關文件
 
 - 本地測試 / Emulator 起法：`docs/runbook/local-testing.md`
-- 視覺驗收（手動逐畫面對圖）：`docs/runbook/visual-acceptance-align-to-design.md`
+- 視覺驗收（手動逐畫面對圖）：`docs/retros/align-to-design.md`
 - 設計權威 / 視覺對圖規範：`docs/adr/0008-design-package-as-source-of-truth.md`、`CLAUDE.md`「設計驅動工作流」
-- New-Arch 鍵盤 bug 暫解所在：`apps/mobile/app.config.ts`（`newArchEnabled:false`）
+- New-Arch 鍵盤 bug 根因 + 修法（**現況：New Arch ON**）：`docs/adr/0009-keep-new-architecture-fabric-textinput-fix.md`；修法在 `apps/mobile/src/core/ui/Input.tsx`（`collapsable={false}`），設定在 `apps/mobile/app.config.ts`（`newArchEnabled:true`）。（自動化 E2E 的 Maestro `inputText` 走 XCUITest path，與架構開關無關。）

@@ -12,6 +12,8 @@ AssetAnchor 在 Sprint 0 開始前完成了完整 MVP 規劃（議題 1–7 全�
 
 `docs/portfolio_tracker_planning.md` 為**規劃決策的 source of truth**。所有後續 ADR（0001+）皆為對某一決策的補述或重新評估，不重複論證已寫在 planning doc 內的內容。
 
+> **UI 例外（ADR-0008 凌駕本文件）**：在 UI 一切面向（導航 / 畫面 / 視覺 / 互動）上，**設計包（`docs/design/`）為最高權威並 OVERRIDE 本 planning doc**；衝突時以設計包為準（見 [ADR-0008](0008-design-package-as-source-of-truth.md)）。本 planning doc 在 UI 以外的所有面向（schema、Money/decimal 精度、後端、測試紀律等）仍為權威來源。
+
 ## Consequences
 
 - 任何 v2.3.1 後的核心決策變更，須同步更新 planning doc + 新增對應 ADR

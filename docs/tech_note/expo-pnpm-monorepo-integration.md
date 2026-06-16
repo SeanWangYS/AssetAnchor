@@ -157,6 +157,43 @@ pnpm create expo-app --template default@sdk-54 apps/mobile
 
 ---
 
+## 5.5 iOS build 雷：RNFB + SDK54 + `useFrameworks: static` 要 `forceStaticLinking`
+
+> 這是 Sprint 1 go/no-go 的關鍵障礙：app 在 iOS Simulator 上**根本編不起來**。
+> ⚠️ 與 ADR-0009（New Architecture 的 `TextInput` 問題）**無關**，也與 `ios-code-signing-and-eas.md`（簽章）**無關**——這純粹是 native 編譯期的 Clang modules ownership 衝突。
+
+**症狀**：`@react-native-firebase` + Expo SDK54 / RN 0.81，在 `useFrameworks: static` 下做 `expo run:ios`，編譯失敗。
+
+**根因**：`app.config.ts`（`expo-build-properties`）缺 `forceStaticLinking`。RNFB Firestore 的 ObjC header 與靜態 framework 模式相撞，觸發 **Clang modules ownership 錯誤**。
+
+**修法**（對齊官方 demonstrator [`mikehardy/rnfbdemo`](https://github.com/mikehardy/rnfbdemo)）：
+
+1. 把 `expo-build-properties` 排成 **plugins 陣列的第一個** plugin。
+2. 在它的 ios 設定裡加 `forceStaticLinking`，列出三個 RNFB pod：
+
+```ts
+// apps/mobile/app.config.ts（plugins，expo-build-properties 放第一個）
+[
+  'expo-build-properties',
+  {
+    ios: {
+      useFrameworks: 'static',
+      forceStaticLinking: ['RNFBApp', 'RNFBAuth', 'RNFBFirestore'],
+    },
+  },
+],
+```
+
+> ⚠️ **新增 RNFB 模組要同步加**：之後若引入別的 `@react-native-firebase/*`（如 messaging / storage），對應的 `RNFBxxx` pod 也要加進 `forceStaticLinking`，否則同類 Clang modules 錯誤會在那個模組上復發。
+>
+> 因為 `ios/` 是 gitignored 的 CNG 生成物，EAS 雲端 build 會從 `app.config.ts` 重跑 prebuild → 自動吃到 `forceStaticLinking`，本機與雲端一致。
+
+**驗證**：`expo prebuild --clean -p ios` + `expo run:ios` → Build Succeeded（0 errors）。
+
+> 另一個常被誤判成 build 失敗的雷：對「明明已安裝」的套件報 `Unable to resolve module ...`（例如 `react-native-safe-area-context`），多半是 **stale Metro cache**（套件其實在 root node_modules、resolver 也對），`expo start -c` 清 cache 即解，**不要**去動 native 設定。
+
+---
+
 ## 6. 複習要點（Cheat Sheet）
 
 - 「複雜」的根因是 **pnpm symlink × Metro**，不是 Expo 或 iOS 本質難。
@@ -165,6 +202,8 @@ pnpm create expo-app --template default@sdk-54 apps/mobile
 - 產生器吐獨立版設定 → **永遠記得補回**：`@assetanchor/shared: workspace:*` + tsconfig `extends` base。
 - `workspace:*` = 從 monorepo 內部解析依賴。
 - native module（RN-Firebase）→ 不能用 Expo Go → **必須 dev build**。
+- **RNFB + SDK54 + `useFrameworks: static`** → `app.config.ts` 必須 `forceStaticLinking: ['RNFBApp','RNFBAuth','RNFBFirestore']`（`expo-build-properties` 放第一個 plugin），否則 Clang modules ownership build fail；加新 RNFB 模組要同步補對應 pod（詳見 §5.5）。
+- 「明明已安裝卻 `Unable to resolve module`」多半是 stale Metro cache → `expo start -c`，別動 native 設定。
 - 驗收下一步前，用既有 `sanityCheck()`（import Money）證明 shared library 接線成功。
 
 ---

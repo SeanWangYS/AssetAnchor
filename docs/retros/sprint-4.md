@@ -1,5 +1,7 @@
 # Sprint 4（多幣別 + 匯率）— 進度 Runbook
 
+> 🧊 **凍結歷史紀錄（retro）**：本檔是 Sprint 4（多幣別 + 匯率，完成於 2026-06-14）的完成報告快照，已從 runbook 歸檔至 retros、不再更新。權威來源：OpenSpec change `archive/2026-06-14-add-multi-currency-fx/` 與 `docs/adr/0005-single-currency-events-display-fx.md`；可重用的 functions 部署細節已抽到 `docs/tech_note/firebase-functions-deploy.md`。
+
 **狀態：✅ 完成（2026-06-14）** — 工程 + CI + 雲端部署全數完成並驗證；PR #6 已 merge 進 main。9.4 iOS Simulator 視覺驗收經 owner 決定延後（核心邏輯已 100% 單元測試 + 正式環境驗證覆蓋）。change 已 archive。
 
 - **OpenSpec change**：`openspec/changes/add-multi-currency-fx/`（proposal / design / specs / tasks）

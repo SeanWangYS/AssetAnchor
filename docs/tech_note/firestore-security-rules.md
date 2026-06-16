@@ -103,7 +103,7 @@ Security Rules 是**高風險程式碼**：寫錯不會 crash、不會跳紅字�
 
 這就是「把安全邊界當成可測試的程式碼」的精神——規則的每一句承諾，都有一條測試在守。
 
-> 對照本專案：這對應到 **T10**（`firebase/tests/firestore.rules.test.ts`）。**規則本身是正確的、也已部署**；目前那輪 test run 卡在一個與規則無關的 test harness 版本相容性問題，正另案修復中。
+> 對照本專案：這對應到 **T10**（`firebase/tests/firestore.rules.test.ts`）。**規則本身是正確的、也已部署**；rules 測試現已納入 **CI 作為硬性 gate**（見 ADR-0007），每次 push 自動跑 emulator 驗證。
 
 ---
 
