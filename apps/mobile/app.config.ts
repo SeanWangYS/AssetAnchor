@@ -8,12 +8,11 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   // 設計包是 dark-first（design.md §3 / D4）；MVP 不做 light theme。
   userInterfaceStyle: 'dark',
-  // New Architecture (Fabric/Bridgeless) 的 iOS TextInput 在本機 Simulator 出現鍵盤/聚焦回歸
-  // bug：游標閃一下即失焦、實體+螢幕鍵盤皆打不進，僅 paste 的 insertText 路徑有效（對照
-  // RN #45297 / #32844、Expo #31505）。MVP 開發期先關閉新架構（Paper TextInput 正常），
-  // 待上游修復或 Apple Developer 階段再評估重新開啟。E2E 自動化改用 Maestro inputText（走
-  // XCUITest path）可繞過此問題，見 docs/superpowers/plans/ios-simulator-automation-e2e-plan.md。
-  newArchEnabled: false,
+  // New Architecture (Fabric/Bridgeless) iOS TextInput 曾出現「focus 後立即失焦、鍵盤打不進、
+  // 僅 paste 有效」。根因為 Fabric view-flattening：core/ui/Input.tsx 在 focus 時套 focusRing
+  // 陰影，觸發該 view 的 remove+insert 致內層 TextInput 失焦（RN #45798）。已於 Input.tsx 加
+  // collapsable={false} 修正，故維持新架構啟用（與 SDK 54 預設一致，避免 Paper 技術債）。詳見 ADR-0009。
+  newArchEnabled: true,
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'com.seanwangys.assetanchor',
