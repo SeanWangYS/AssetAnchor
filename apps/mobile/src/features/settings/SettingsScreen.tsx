@@ -16,7 +16,8 @@ function rowChevron() {
  *
  * 由上到下：
  * 1. 「我的帳號」card —— AABrandLockup（圓環錨點品牌）+ 使用者 email。
- * 2. 分組清單：帳戶（帳戶管理 / 現金餘額）/ 偏好（顯示偏好 / 個人資料）/ 其他（關於），列尾 chevron。
+ * 2. 分組清單：帳戶（帳戶管理 / 現金餘額）/ 偏好（個人資料）/ 其他（關於），列尾 chevron。
+ *    （顯示幣別切換已移至持倉頁＝偏好控制；原「顯示偏好」子頁移除。）
  * 3. 破壞性「登出」 → 置中 ConfirmDialog（破壞性紅，auth-flow-spec §6）。
  *
  * 登出採既有跨切面模式：authService.signOut()（Firebase）→ onAuthStateChanged 翻 authStore.user=null
@@ -61,11 +62,6 @@ export default function SettingsScreen({ navigation }: SettingsStackScreenProps<
         {/* 偏好 */}
         <Text style={styles.groupLabel}>偏好</Text>
         <View style={styles.group}>
-          <ListItem
-            title="顯示偏好"
-            right={rowChevron()}
-            onPress={() => navigation.navigate('DisplayPrefs')}
-          />
           <ListItem
             title="個人資料"
             right={rowChevron()}

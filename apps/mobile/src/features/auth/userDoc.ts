@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import { updateProfile } from '@react-native-firebase/auth';
-import type { DisplayCurrency, UserDocument } from '@assetanchor/shared';
+import type { UserDocument } from '@assetanchor/shared';
 import { auth, db } from '../../services/firebase';
 
 /** 註冊後建立 users/{uid}（已存在則略過）。created_at/updated_at 用 serverTimestamp。 */
@@ -44,14 +44,4 @@ export async function updateUserProfile(fields: { display_name: string }): Promi
     updated_at: serverTimestamp(),
   });
   await updateProfile(current, { displayName: fields.display_name });
-}
-
-/** 寫回顯示幣別偏好至 users/{uid}.preferred_display_currency（+ updated_at）。未登入則 no-op。 */
-export async function updateDisplayCurrency(currency: DisplayCurrency): Promise<void> {
-  const current = auth.currentUser;
-  if (!current) return;
-  await updateDoc(doc(db, 'users', current.uid), {
-    preferred_display_currency: currency,
-    updated_at: serverTimestamp(),
-  });
 }

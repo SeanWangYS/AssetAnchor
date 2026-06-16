@@ -39,3 +39,11 @@
 - [x] 6.6 持倉總覽 Hero + bento 金額（總資產 / 總未實現 / 今日 / 本月已實現）改以偏好幣別呈現（demo TWD 示意值經 rates/demo 匯率換算）；百分比（總報酬率 / 今日 %）不換算（owner 二次微調）
 - [x] 6.4 分析頁 TWD/USD 切換預設改讀偏好（使用者仍可頁內覆寫）
 - [x] 6.5 spec 同步：`user-preferences` 新增「跨畫面套用」requirement、`analysis` 切換預設改讀偏好（MODIFIED）；typecheck/lint/prettier/測試全綠
+
+## 7. 顯示幣別切換移到持倉頁 + 移除「顯示偏好」子頁（owner 設計決策 2026-06-17）
+
+- [x] 7.1 store 自 `core/preferences` 移至 **`services/preferences`** 並內建持久化（`changeDisplayCurrency`：樂觀更新 → `updateDoc(users/{uid})` → 失敗還原回傳 false）；rewire App/holdings/analysis import
+- [x] 7.2 持倉總覽「資產走勢」走勢圖**之上**加 TWD/USD `Segmented`（label「顯示幣別」）；onChange 呼叫 `changeDisplayCurrency`、失敗 Toast「更新失敗，已還原」
+- [x] 7.3 刪除 `DisplayPrefsScreen.tsx`；移除 `SettingsStack` route + `SettingsScreen` 清單入口 + `SettingsStackParamList.DisplayPrefs`（設定「偏好」組剩「個人資料」）
+- [x] 7.4 移除 `userDoc.updateDisplayCurrency`（持久化改由 store 負責；保留 `updateUserProfile`）
+- [x] 7.5 typecheck/lint/prettier/shared+mobile 測試全綠；Simulator 實證持倉頁切換鈕在走勢圖上、切 USD 全頁金額切換、百分比不變

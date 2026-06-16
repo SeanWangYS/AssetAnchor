@@ -56,28 +56,28 @@ ProfileScreen SHALL 讓使用者編輯顯示名稱並於儲存時持久化至 `u
 - **WHEN** 寫入 Firestore / Auth 過程拋錯
 - **THEN** SHALL 顯示失敗回饋且不顯示成功狀態，使用者可重試
 
-### Requirement: 顯示偏好寫回（preferred_display_currency）
+### Requirement: 顯示幣別偏好寫回（preferred_display_currency）
 
-DisplayPrefsScreen SHALL 讓使用者選擇顯示幣別並持久化至 `users/{uid}.preferred_display_currency`，使選擇跨 app 重啟保存。
+顯示幣別偏好的控制 SHALL 設於**持倉總覽頁（走勢圖之上）的 TWD/USD 切換**（owner 設計決策 2026-06-17：原獨立「顯示偏好」設定子頁移除）。切換 SHALL 持久化至 `users/{uid}.preferred_display_currency`、更新 `updated_at`，使選擇跨 app 重啟保存。
 
-#### Scenario: 進畫面載入現有顯示幣別
+#### Scenario: 切換反映現值
 
-- **WHEN** 使用者開啟顯示偏好頁
-- **THEN** 幣別切換 SHALL 反映 `users/{uid}.preferred_display_currency`（缺值時預設 `TWD`）
+- **WHEN** 使用者進入持倉總覽
+- **THEN** 幣別切換 SHALL 反映目前 `users/{uid}.preferred_display_currency`（缺值時預設 `TWD`）
 
 #### Scenario: 切換幣別並持久化
 
 - **WHEN** 使用者切換顯示幣別（TWD ⇄ USD）
-- **THEN** SHALL 將新值寫入 `users/{uid}.preferred_display_currency` 並更新 `updated_at`，重進畫面 / 重啟後仍維持該選擇
+- **THEN** SHALL 將新值寫入 `users/{uid}.preferred_display_currency` 並更新 `updated_at`，重啟後仍維持該選擇
 
 #### Scenario: 寫入失敗顯示錯誤回饋且還原
 
 - **WHEN** 持久化過程拋錯
-- **THEN** SHALL 顯示失敗回饋，切換值還原為先前已持久化的值
+- **THEN** SHALL 顯示失敗回饋（Toast），切換值還原為先前已持久化的值
 
 ### Requirement: 顯示幣別偏好跨畫面套用
 
-`preferred_display_currency` SHALL 由 app-wide 顯示偏好 store 持有：登入時自 `users/{uid}` 灌入（缺值 / 非支援值 fallback `TWD`）、登出 reset；DisplayPrefs 切換時樂觀更新此 store。消費此偏好的畫面 SHALL 即時反映其變更。
+`preferred_display_currency` SHALL 由 app-wide 顯示偏好 store（`services/preferences`，自帶 Firestore 持久化）持有：登入時自 `users/{uid}` 灌入（缺值 / 非支援值 fallback `TWD`）、登出 reset；持倉頁切換時樂觀更新此 store 並持久化。消費此偏好的畫面 SHALL 即時反映其變更。
 
 #### Scenario: 持倉總覽金額反映偏好
 
@@ -91,8 +91,8 @@ DisplayPrefsScreen SHALL 讓使用者選擇顯示幣別並持久化至 `users/{u
 
 #### Scenario: 切換偏好即時更新消費畫面
 
-- **WHEN** 使用者在顯示偏好頁切換幣別
-- **THEN** 持倉總覽「總成本」合計 SHALL 即時改以新幣別呈現（無需重新登入 / 重啟）
+- **WHEN** 使用者在持倉頁切換幣別
+- **THEN** 同頁所有金額即時改以新幣別呈現，且分析頁切換預設、後續重啟皆沿用新偏好（無需重新登入）
 
 #### Scenario: 分析頁切換預設取自偏好
 

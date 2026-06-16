@@ -3,7 +3,7 @@ import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import type { Money, RateMap } from '@assetanchor/shared';
 import type { AnalysisStackScreenProps } from '../../../core/navigation/types';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
-import { usePreferencesStore } from '../../../core/preferences';
+import { usePreferencesStore } from '../../../services/preferences';
 import {
   Card,
   Donut,

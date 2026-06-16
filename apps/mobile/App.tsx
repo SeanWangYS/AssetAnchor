@@ -8,7 +8,7 @@ import { getUserDoc } from './src/features/auth/userDoc';
 import { useAccountsStore } from './src/features/accounts/accountsStore';
 import { useTransactionsStore } from './src/features/transactions/transactionsStore';
 import { useExchangeRatesStore } from './src/services/exchange-rates';
-import { usePreferencesStore } from './src/core/preferences';
+import { usePreferencesStore } from './src/services/preferences';
 import RootNavigator from './src/core/navigation/RootNavigator';
 import SplashGate from './src/core/navigation/SplashGate';
 import { fontMap, useFonts } from './src/core/theme/fonts';

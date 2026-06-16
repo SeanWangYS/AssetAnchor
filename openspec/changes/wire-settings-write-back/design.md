@@ -53,22 +53,23 @@ ProfileScreen 與 DisplayPrefsScreen 已在 align-to-design 完成視覺定稿�
 ### D4：載入與回饋模型
 
 - ProfileScreen：mount 時 `getUserDoc()` 取 `display_name`（缺值 fallback Auth `displayName` → `''`）；維持受控 input；「儲存」依驗證結果 enable/disable；寫入期間 disable + loading，成功 / 失敗以既有 UI 元件呈現（沿用畫面現有 `saved` 提示樣式，加錯誤態）。
-- DisplayPrefsScreen：mount 時載入現值；切換採「先樂觀更新 UI → 寫入 → 失敗則還原為前一個已持久化值 + 顯示錯誤」。
+- 顯示幣別切換（持倉頁）：切換採「先樂觀更新 store（令本頁與 analysis 即時切）→ 持久化 → 失敗還原前值 + Toast」。
 
-### D5：顯示幣別偏好用 app-wide store（住 `core/`，非 feature）+ 登入 hydrate
+### D5：顯示幣別偏好 = app-wide store（住 `services/`）+ 切換鈕設於持倉頁（owner 設計決策 2026-06-17）
 
-新增 `core/preferences/preferencesStore.ts`（Zustand）持有 `preferredDisplayCurrency`。`App.tsx` 的 `onAuthStateChanged`：登入 → `getUserDoc()` → `hydrate(doc)`（缺值/非支援值 fallback TWD）；登出 → `reset()`。holdings 總覽合計、analysis 切換預設、DisplayPrefs 皆讀此 store。
+新增 `services/preferences/preferencesStore.ts`（Zustand）持有 `preferredDisplayCurrency` 並**自帶 Firestore 持久化**。`App.tsx` 的 `onAuthStateChanged`：登入 → `getUserDoc()` → `hydrate(doc)`（缺值/非支援值 fallback TWD）；登出 → `reset()`。**切換鈕設於持倉總覽頁（走勢圖之上）**＝偏好控制；holdings hero/bento/總成本、analysis 切換預設皆讀此 store。
 
-- **為何放 `core/` 而非 `features/settings`**：holdings / analysis / settings 三個 feature 都消費它；放任一 feature 會違反「features 之間不互相 import」依賴方向。store 只 import `@assetanchor/shared`（`isDisplayCurrency` / 型別），不依賴任何 feature——可安全住 core。對照既有跨切面 store（`services/exchange-rates`）。
-- **為何一次性 hydrate 而非 `onSnapshot`**：單機 MVP；偏好的唯一寫入端是 DisplayPrefs，已用樂觀更新即時改 store，毋須再開一個 Firestore listener（少一個 cleanup 負擔）。日後要跨裝置即時同步再升級為訂閱。
-- **DisplayPrefs 改源自 store**（不再各自 `getUserDoc` + local state）：store 是 in-app 單一真相、Firestore 是持久層；切換＝樂觀 `setPreferredDisplayCurrency` →（store 即時生效令 holdings/analysis 同步）→ `updateDisplayCurrency` 持久化 → 失敗還原前值。
-- **持倉合計只切「總成本」（真值），不切 Hero/mock**：Hero「總資產」等是 demo 摘要（需 Sprint 5 報價），維持 TWD 示意；`currency-display` spec 也只規定「總成本」grand total 用偏好。
+- **為何住 `services/` 而非 `core/` 或某 feature**：holdings / analysis 都消費它，放任一 feature 違反 #4（features 不互 import）；且本 store 自帶 Firestore I/O，屬資料層、非 core 展示層——與 `services/exchange-rates` 同列。store 只 import `services/firebase` + `@assetanchor/shared`，無 feature 依賴。
+- **持久化內建於 store（`changeDisplayCurrency`）**：樂觀更新 → `updateDoc(users/{uid})` → 失敗自動還原並回傳 false。持倉頁據回傳值決定是否 Toast。如此 holdings **不需** import `features/auth/userDoc`（避免新增 feature→feature）；`userDoc.updateDisplayCurrency` 移除（display_name 寫回仍在 userDoc）。
+- **「顯示偏好」設定子頁移除**：dark-mode 先前移除、幣別又移到持倉頁後該頁清空 → 移除子頁 + 設定清單入口 + nav route。
+- **持倉頁所有金額隨偏好切（含 Hero/bento demo 摘要）**：owner 要求 Hero 總資產與各損益 bento（demo 示意值、當 TWD）亦以偏好幣別換算呈現；百分比（報酬率/今日%）不換。真實「總成本」同樣讀偏好。
 
 ## Risks / Trade-offs
 
 - **Auth/Firestore 部分失敗的短暫不一致**（D3）→ 以錯誤回饋 + 重試收斂；Firestore 為準。
 - **離線寫入**：RNFirebase 預設離線佇列可能讓寫入「看似成功」後才在連線時 reject → 以 await + catch 呈現錯誤；MVP 不做樂觀離線 UX 強化。
-- **持久化但無消費**：`preferred_display_currency` 落地後 holdings/analysis 暫不讀（Sprint 6）→ 已於 proposal Non-goals 與程式註解標明，避免被誤解為「設定壞掉」。
+- **持倉頁切換鈕推翻 currency-display 原 spec**（「本畫面不提供切換鈕」）→ owner 設計決策（ADR-0008 最高權威），已更新 `currency-display` MODIFIED delta；archive 時 sync 回主 spec。
+- **Hero/bento 為 demo 示意值**：隨偏好切的是換算後的示意數字（真報價待 Sprint 5）→ 畫面 footnote 已標「示意」。
 - **顯示名稱上限 50**：屬產品決定的保守值，非 schema 約束 → 純函式集中管理，日後調整單點修改。
 
 ## Migration Plan
