@@ -1,5 +1,7 @@
 # Sprint 1（Auth + Hello Firebase Rail）— 進度 Runbook
 
+> 🧊 **凍結歷史紀錄（retro）**：本檔是 Sprint 1（Auth + Hello Firebase Rail，2026-05〜06-07）的進度收尾快照，已從 runbook 歸檔至 retros、不再更新。權威規格見 `openspec/specs/auth/`；可重用的技術細節已抽到 `docs/tech_note/`（forceStaticLinking → `expo-pnpm-monorepo-integration.md`§5.5；firebase JS SDK pin → `react-native-firebase-version-pinning.md`）。
+
 **狀態：續作中（2026-06-03）** — T10 已修復；T8/T9 仍卡 Apple Developer Program 審核（尚未確認通過）。
 
 - **規格**：`openspec/specs/auth/spec.md`（原 Sprint 1 plan/design spec 已隨 align-to-design-package 移除；auth 行為規格已 sync 至 openspec）
