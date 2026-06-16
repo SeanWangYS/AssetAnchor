@@ -2,8 +2,7 @@
 
 **狀態：續作中（2026-06-03）** — T10 已修復；T8/T9 仍卡 Apple Developer Program 審核（尚未確認通過）。
 
-- **Plan**：`docs/superpowers/plans/2026-05-30-sprint-1-auth.md`
-- **Spec**：`docs/superpowers/specs/2026-05-30-sprint-1-auth-design.md`
+- **規格**：`openspec/specs/auth/spec.md`（原 Sprint 1 plan/design spec 已隨 align-to-design-package 移除；auth 行為規格已 sync 至 openspec）
 - **分支**：`chore/align-simplified-expo-setup`（PR #2 開著、**未 merge**，使用者自行按 merge）
 - **Firebase 專案**：`assetanchor-832df`
 

@@ -8,11 +8,16 @@ import { useAccountsStore } from './src/features/accounts/accountsStore';
 import { useTransactionsStore } from './src/features/transactions/transactionsStore';
 import { useExchangeRatesStore } from './src/services/exchange-rates';
 import RootNavigator from './src/core/navigation/RootNavigator';
+import SplashGate from './src/core/navigation/SplashGate';
+import { fontMap, useFonts } from './src/core/theme/fonts';
 
 GoogleSignin.configure({ webClientId: 'autoDetect' });
 
 export default function App() {
   const setUser = useAuthStore((s) => s.setUser);
+  // 字型載入前不渲染畫面，避免 fallback 字型閃動；等待態與 RootNavigator 的 auth-resolving
+  // 共用同一個 SplashGate 視覺（品牌閘門）。
+  const [fontsLoaded] = useFonts(fontMap);
 
   useEffect(() => {
     wireEmulatorsOnce();
@@ -33,6 +38,14 @@ export default function App() {
     });
     return unsubscribe;
   }, [setUser]);
+
+  if (!fontsLoaded) {
+    return (
+      <SafeAreaProvider>
+        <SplashGate />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
