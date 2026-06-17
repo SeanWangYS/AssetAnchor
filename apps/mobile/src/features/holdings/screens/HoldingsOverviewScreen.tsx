@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   DISPLAY_CURRENCIES,
   Money,
@@ -13,10 +13,10 @@ import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../co
 import { useHoldings, useRealizedEvents } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { usePreferencesStore } from '../../../services/preferences';
+import { quoteFor, useQuotes, useQuotesStore, type QuoteEntry } from '../../../services/quotes';
 import { useCountUp } from '../useCountUp';
 import {
   DEMO_SERIES,
-  DEMO_SUMMARY,
   avatarColor,
   currencyPrefix,
   displayDecimals,
@@ -111,16 +111,23 @@ function buildSections(positions: Position[], mode: GroupMode): GroupSection[] {
 function HoldingRow({
   position,
   dense,
+  quote,
   onPress,
 }: {
   position: Position;
   dense: boolean;
+  quote: QuoteEntry | undefined;
   onPress: () => void;
 }) {
   const meta = symbolMeta(position.symbol);
-  const mv = mockMarketValue(position);
-  const retPct = mockReturnPct(position.symbol);
   const avg = Money.fromDecimalString(position.averageCost, position.currency);
+  // 報價就緒→真值市值/報酬%；未就緒→暫以 demo 示意（AssetDetail 顯示精確「報價未就緒」）。
+  const priceM = quote ? new Money(quote.price, position.currency) : null;
+  const mv = priceM ? priceM.multiply(position.quantity) : mockMarketValue(position);
+  const retPct =
+    priceM && !avg.isZero()
+      ? priceM.subtract(avg).divide(position.averageCost).multiply('100').toNumber()
+      : mockReturnPct(position.symbol);
 
   return (
     <Pressable
@@ -165,6 +172,23 @@ export default function HoldingsOverviewScreen({
   const [mode, setMode] = useState<GroupMode>('持股');
   const [tf, setTf] = useState<Timeframe>('1Y');
   const [ccyToast, setCcyToast] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // 報價（ADR-0006 雙層 cache）：為目前持倉 on-demand 載入；pull-to-refresh 強制刷新。
+  const quoteTargets = positions.map((p) => ({
+    market: p.market,
+    symbol: p.symbol,
+    currency: p.currency,
+  }));
+  const quotes = useQuotes(quoteTargets);
+  async function onRefresh() {
+    setRefreshing(true);
+    try {
+      await useQuotesStore.getState().loadFor(quoteTargets, { force: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   // 顯示幣別切換＝全 app 偏好控制：樂觀更新 + 持久化（失敗 store 自動還原，這裡提示）。
   async function onChangeCurrency(next: DisplayCurrency) {
@@ -196,19 +220,51 @@ export default function HoldingsOverviewScreen({
 
   const sections = useMemo(() => buildSections(positions, mode), [positions, mode]);
 
-  // Hero / bento 的金額類 mock 摘要（TWD 示意值）一律以顯示幣別偏好呈現：用 rates（或 demo
-  // 匯率退回）換算；百分比（報酬率 / 今日%）為幣別無關，不換算。真實「總成本」另計（grandCost）。
-  const demo = useMemo(() => {
-    const conv = (twd: number): number => {
-      const m = toDisplay(new Money(String(twd), 'TWD'), rates, displayCcy);
-      return m ? m.toNumber() : twd;
-    };
+  // Hero / bento 真值彙總（報價）：總市值 / 未實現 / 報酬率 / 今日損益，皆以顯示幣別偏好換算。
+  // **全部持倉皆有報價且匯率就緒**才回值；否則回 null → 畫面顯示「報價載入中…」（不混 demo）。
+  // 今日損益需 prevClose，缺者 today=null。本月已實現另計（realizedThisMonth，不需報價）。
+  const hero = useMemo(() => {
+    if (positions.length === 0 || rates === null) return null;
+    let value = Money.zero(displayCcy);
+    let cost = Money.zero(displayCcy);
+    let today = Money.zero(displayCcy);
+    let todayKnown = true;
+    for (const p of positions) {
+      const q = quoteFor(quotes, p.market, p.symbol);
+      if (!q) return null;
+      const price = new Money(q.price, p.currency);
+      const mv = toDisplay(price.multiply(p.quantity), rates, displayCcy);
+      const c = toDisplay(Money.fromDecimalString(p.totalCost, p.currency), rates, displayCcy);
+      if (mv === null || c === null) return null;
+      value = value.add(mv);
+      cost = cost.add(c);
+      if (q.prevClose) {
+        const ch = toDisplay(
+          price.subtract(new Money(q.prevClose, p.currency)).multiply(p.quantity),
+          rates,
+          displayCcy,
+        );
+        if (ch) today = today.add(ch);
+        else todayKnown = false;
+      } else todayKnown = false;
+    }
+    const unrealized = value.subtract(cost);
+    const returnPct = cost.isZero()
+      ? 0
+      : unrealized.divide(cost.toDecimalString()).multiply('100').toNumber();
+    const prevValue = value.subtract(today);
+    const todayPct =
+      !todayKnown || prevValue.isZero()
+        ? null
+        : today.divide(prevValue.toDecimalString()).multiply('100').toNumber();
     return {
-      totalAssets: conv(DEMO_SUMMARY.totalAssets),
-      unrealized: conv(DEMO_SUMMARY.unrealized),
-      today: conv(DEMO_SUMMARY.today),
+      value: value.toNumber(),
+      unrealized: unrealized.toNumber(),
+      returnPct,
+      today: todayKnown ? today.toNumber() : null,
+      todayPct,
     };
-  }, [rates, displayCcy]);
+  }, [positions, quotes, rates, displayCcy]);
 
   // 「本月已實現損益」真值（§4）：當月 SELL 已實現，各原幣別以最新匯率換算成顯示幣別後加總。
   const realizedThisMonth = useMemo(() => {
@@ -224,8 +280,8 @@ export default function HoldingsOverviewScreen({
     return sum;
   }, [realizedEvents, rates, displayCcy]);
 
-  // 總資產 Hero（mock 摘要；需報價，故 count-up 跑 demo 值）。
-  const totalAssets = useCountUp(demo.totalAssets);
+  // 總資產 Hero count-up：報價就緒跑真值總市值，否則 0（顯示「報價載入中…」不跑數字）。
+  const totalAssets = useCountUp(hero?.value ?? 0);
 
   // 真實跨幣別「總成本」：以使用者顯示幣別偏好為基準，rates（或 demo 匯率退回）即時換算加總。
   const grandCost = useMemo(() => {
@@ -250,29 +306,43 @@ export default function HoldingsOverviewScreen({
 
   return (
     <>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        {/* 總資產 Hero */}
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+        }
+      >
+        {/* 總資產 Hero（報價真值；未就緒顯示載入中） */}
         <View style={styles.hero}>
           <Text style={styles.heroLabel}>總資產（{displayCcy}）</Text>
-          <Text style={styles.heroValue} numberOfLines={1}>
-            {currencyPrefix(displayCcy)}{' '}
-            {totalAssets.toLocaleString('en-US', {
-              minimumFractionDigits: dp,
-              maximumFractionDigits: dp,
-            })}
-          </Text>
-          <View style={styles.heroChange}>
-            <Pnl value={DEMO_SUMMARY.unrealized} display={fmtCcy(demo.unrealized)} size={14} />
-            <Pnl
-              value={DEMO_SUMMARY.totalReturnPct}
-              display={`${Math.abs(DEMO_SUMMARY.totalReturnPct).toFixed(2)}%`}
-              signMode="plusminus"
-              size={13}
-            />
-            <Text style={styles.heroPeriod}>全期</Text>
-          </View>
+          {hero ? (
+            <>
+              <Text style={styles.heroValue} numberOfLines={1}>
+                {currencyPrefix(displayCcy)}{' '}
+                {totalAssets.toLocaleString('en-US', {
+                  minimumFractionDigits: dp,
+                  maximumFractionDigits: dp,
+                })}
+              </Text>
+              <View style={styles.heroChange}>
+                <Pnl value={hero.unrealized} display={fmtCcy(hero.unrealized)} size={14} />
+                <Pnl
+                  value={hero.returnPct}
+                  display={`${Math.abs(hero.returnPct).toFixed(2)}%`}
+                  signMode="plusminus"
+                  size={13}
+                />
+                <Text style={styles.heroPeriod}>全期</Text>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.heroValue} numberOfLines={1}>
+              報價載入中…
+            </Text>
+          )}
           <Text style={styles.demoNote}>
-            市值與今日數據為示意（報價接入為後續），成本來自實際交易
+            市值/今日為報價即時計算（延遲 15 分鐘）；成本與已實現來自實際交易
           </Text>
         </View>
 
@@ -281,33 +351,47 @@ export default function HoldingsOverviewScreen({
           <Card glow padding={spacing.cardInner} style={styles.bentoCell}>
             <Text style={styles.bentoLabel}>總報酬率</Text>
             <View style={styles.bentoVal}>
-              <Pnl
-                value={DEMO_SUMMARY.totalReturnPct}
-                display={`${Math.abs(DEMO_SUMMARY.totalReturnPct).toFixed(2)}%`}
-                size={21}
-                weight="extrabold"
-              />
+              {hero ? (
+                <Pnl
+                  value={hero.returnPct}
+                  display={`${Math.abs(hero.returnPct).toFixed(2)}%`}
+                  size={21}
+                  weight="extrabold"
+                />
+              ) : (
+                <Text style={styles.bentoPending}>—</Text>
+              )}
             </View>
           </Card>
           <Card padding={spacing.cardInner} style={styles.bentoCell}>
             <Text style={styles.bentoLabel}>總未實現損益</Text>
             <View style={styles.bentoVal}>
-              <Pnl value={DEMO_SUMMARY.unrealized} display={fmtCcy(demo.unrealized)} size={18} />
+              {hero ? (
+                <Pnl value={hero.unrealized} display={fmtCcy(hero.unrealized)} size={18} />
+              ) : (
+                <Text style={styles.bentoPending}>—</Text>
+              )}
             </View>
           </Card>
           <Card padding={spacing.cardInner} style={styles.bentoCell}>
             <Text style={styles.bentoLabel}>今日損益</Text>
             <View style={styles.bentoVal}>
-              <Pnl value={DEMO_SUMMARY.today} display={fmtCcy(demo.today)} size={16} />
+              {hero && hero.today !== null ? (
+                <Pnl value={hero.today} display={fmtCcy(hero.today)} size={16} />
+              ) : (
+                <Text style={styles.bentoPending}>—</Text>
+              )}
             </View>
-            <View style={styles.bentoSub}>
-              <Pnl
-                value={DEMO_SUMMARY.todayPct}
-                display={`${Math.abs(DEMO_SUMMARY.todayPct).toFixed(2)}%`}
-                signMode="plusminus"
-                size={12}
-              />
-            </View>
+            {hero && hero.today !== null && hero.todayPct !== null ? (
+              <View style={styles.bentoSub}>
+                <Pnl
+                  value={hero.todayPct}
+                  display={`${Math.abs(hero.todayPct).toFixed(2)}%`}
+                  signMode="plusminus"
+                  size={12}
+                />
+              </View>
+            ) : null}
           </Card>
           <Card padding={spacing.cardInner} style={styles.bentoCell}>
             <Text style={styles.bentoLabel}>本月已實現損益</Text>
@@ -374,6 +458,7 @@ export default function HoldingsOverviewScreen({
                   key={`${p.market}_${p.symbol}`}
                   position={p}
                   dense={mode !== '持股'}
+                  quote={quoteFor(quotes, p.market, p.symbol)}
                   onPress={() =>
                     navigation.navigate('AssetDetail', { market: p.market, symbol: p.symbol })
                   }
@@ -430,6 +515,12 @@ const styles = StyleSheet.create({
   bentoLabel: { fontFamily: fontFamily.text.medium, fontSize: 11.5, color: colors.textWeak },
   bentoVal: { marginTop: 7 },
   bentoSub: { marginTop: 3 },
+  bentoPending: {
+    fontFamily: fontFamily.num.semibold,
+    fontSize: 18,
+    color: colors.textFaint,
+    ...numericStyle,
+  },
 
   // 顯示幣別切換（走勢圖之上）
   ccyRow: { marginTop: spacing.lg, gap: spacing.sm },

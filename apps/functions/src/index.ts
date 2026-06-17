@@ -4,3 +4,6 @@
 // shared（Money）於 build 時由 tsup bundle 進輸出，runtime 不 require .ts
 // （解決原 Sprint 0 註記的 workspace runtime 問題，採 design D5 的 bundle 方案）。
 export { scheduledUsdRate, seedUsdRate } from './exchangeRates/fetchAndStore';
+
+// Sprint 5b：報價 callable（ADR-0006，Yahoo + quotes 雙層 cache 15min TTL）。
+export { fetchQuote } from './quotes/fetchQuote';

@@ -6,17 +6,13 @@ import { Button, Card, Chart, Pnl, Segmented, TimeTabs } from '../../../core/ui'
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
 import { useHoldings } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
+import { quoteFor, useQuotes } from '../../../services/quotes';
 import {
   DEMO_SERIES,
   currencyPrefix,
   displayDecimals,
   fmtShares,
   marketLabel,
-  mockMarketValue,
-  mockPrice,
-  mockReturnPct,
-  mockTodayPct,
-  mockUnrealized,
   symbolMeta,
   toDisplay,
 } from '../holdingsDemo';
@@ -39,6 +35,9 @@ export default function AssetDetailScreen({
 
   const position = positions.find((p) => p.market === market && p.symbol === symbol);
   const meta = symbolMeta(symbol);
+
+  // 報價（ADR-0006 雙層 cache）：on-demand 載入本 symbol。
+  const quotes = useQuotes(position ? [{ market, symbol, currency: position.currency }] : []);
 
   const [tf, setTf] = useState<Timeframe>('1M');
   const [displayCcy, setDisplayCcy] = useState<Currency>(position?.currency ?? 'TWD');
@@ -81,14 +80,25 @@ export default function AssetDetailScreen({
     );
   }
 
-  const price = mockPrice(position);
-  const marketValue = mockMarketValue(position);
-  const unrealized = mockUnrealized(position);
+  // 現價/市值/未實現損益：報價真值（ADR-0006）。報價未就緒 → null（畫面降級為「報價未就緒」/「—」）。
+  const quote = quoteFor(quotes, market, symbol);
+  const priceM = quote ? new Money(quote.price, position.currency) : null;
+  const marketValue = priceM ? priceM.multiply(position.quantity) : null;
+  const totalCostM = Money.fromDecimalString(position.totalCost, position.currency);
+  const unrealized = marketValue ? marketValue.subtract(totalCostM) : null;
+  const avgCostM = Money.fromDecimalString(position.averageCost, position.currency);
+  const retPct =
+    priceM && !avgCostM.isZero()
+      ? priceM.subtract(avgCostM).divide(position.averageCost).multiply('100').toNumber()
+      : null;
   const realized = Money.fromDecimalString(position.realizedPnl, position.currency);
-  const retPct = mockReturnPct(symbol);
-  const todayPct = mockTodayPct(symbol);
-  // 今日漲跌金額（mock）= 現價 × 今日% （原幣別）。
-  const todayDelta = price.multiply((todayPct / 100).toFixed(6));
+  // 今日漲跌（每股）：現價 − 前收（報價真值）。缺 prevClose 則不顯示今日列。
+  const prevCloseM = quote?.prevClose ? new Money(quote.prevClose, position.currency) : null;
+  const todayDelta = priceM && prevCloseM ? priceM.subtract(prevCloseM) : null;
+  const todayPct =
+    priceM && prevCloseM && !prevCloseM.isZero()
+      ? priceM.subtract(prevCloseM).divide(prevCloseM.toDecimalString()).multiply('100').toNumber()
+      : null;
 
   const series = DEMO_SERIES[tf] ?? [];
   const priceCcyPrefix = currencyPrefix(position.currency);
@@ -97,31 +107,39 @@ export default function AssetDetailScreen({
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* 現價 hero */}
       <Text style={styles.priceLabel}>目前股價</Text>
-      <Text style={styles.priceValue} numberOfLines={1}>
-        {priceCcyPrefix}{' '}
-        {price.toNumber().toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}
-      </Text>
-      <View style={styles.todayLine}>
-        <Pnl
-          value={todayPct}
-          display={`${priceCcyPrefix} ${Math.abs(todayDelta.toNumber()).toLocaleString('en-US', {
+      {priceM ? (
+        <Text style={styles.priceValue} numberOfLines={1}>
+          {priceCcyPrefix}{' '}
+          {priceM.toNumber().toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
-          })}`}
-          size={14}
-        />
-        <Pnl
-          value={todayPct}
-          display={`${Math.abs(todayPct).toFixed(2)}%`}
-          signMode="plusminus"
-          size={13}
-        />
-        <Text style={styles.todayWord}>今日</Text>
-      </View>
-      <Text style={styles.delayNote}>資料延遲 15 分鐘 · Yahoo Finance（示意）</Text>
+          })}
+        </Text>
+      ) : (
+        <Text style={styles.priceValue} numberOfLines={1}>
+          報價未就緒
+        </Text>
+      )}
+      {priceM && todayDelta && todayPct !== null ? (
+        <View style={styles.todayLine}>
+          <Pnl
+            value={todayPct}
+            display={`${priceCcyPrefix} ${Math.abs(todayDelta.toNumber()).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}
+            size={14}
+          />
+          <Pnl
+            value={todayPct}
+            display={`${Math.abs(todayPct).toFixed(2)}%`}
+            signMode="plusminus"
+            size={13}
+          />
+          <Text style={styles.todayWord}>今日</Text>
+        </View>
+      ) : null}
+      <Text style={styles.delayNote}>資料延遲 15 分鐘 · Yahoo Finance</Text>
 
       {/* 走勢圖 + 時間 tabs */}
       <View style={styles.chart}>
@@ -144,23 +162,27 @@ export default function AssetDetailScreen({
           k="平均成本"
           v={show(Money.fromDecimalString(position.averageCost, position.currency))}
         />
-        <Kv k="市值" v={show(marketValue)} />
+        <Kv k="市值" v={marketValue ? show(marketValue) : '報價未就緒'} />
         <Kv
           k="未實現損益"
           v={
-            <View style={styles.unrealRow}>
-              <Pnl
-                value={unrealized.toNumber()}
-                display={show(unrealized.isNegative() ? unrealized.negate() : unrealized)}
-                size={13}
-              />
-              <Pnl
-                value={retPct}
-                display={`${Math.abs(retPct).toFixed(2)}%`}
-                signMode="plusminus"
-                size={12}
-              />
-            </View>
+            unrealized && retPct !== null ? (
+              <View style={styles.unrealRow}>
+                <Pnl
+                  value={unrealized.toNumber()}
+                  display={show(unrealized.isNegative() ? unrealized.negate() : unrealized)}
+                  size={13}
+                />
+                <Pnl
+                  value={retPct}
+                  display={`${Math.abs(retPct).toFixed(2)}%`}
+                  signMode="plusminus"
+                  size={12}
+                />
+              </View>
+            ) : (
+              '報價未就緒'
+            )
           }
         />
         <Kv
