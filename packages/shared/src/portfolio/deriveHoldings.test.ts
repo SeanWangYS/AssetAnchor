@@ -1,4 +1,4 @@
-import { deriveHoldings } from './deriveHoldings.js';
+import { deriveHoldings, deriveRealizedEvents, sellableQuantity } from './deriveHoldings.js';
 import { buildTransactionDoc } from '../transactions/buildTransactionDoc.js';
 import { CurrencyMismatchError, InvalidMoneyValueError } from '../money/index.js';
 import type { Market } from '../enums/index.js';
@@ -8,8 +8,7 @@ const ts: FirestoreTimestamp = { seconds: 0, nanoseconds: 0, toDate: () => new D
 
 let seq = 0;
 
-/** 用已測過的 buildTransactionDoc 組 schema 一致的 BUY 文件當 fixture。 */
-function buy(opts: {
+interface TxOpts {
   symbol: string;
   market: Market;
   currency: 'USD' | 'TWD';
@@ -18,7 +17,12 @@ function buy(opts: {
   fee?: string;
   tax?: string;
   accountId?: string;
-}): TransactionDocument {
+  /** 預設 2024-01-15；SELL 時序測試用。 */
+  date?: string;
+}
+
+/** 用已測過的 buildTransactionDoc 組 schema 一致的交易文件當 fixture。 */
+function tx(type: 'BUY' | 'SELL', opts: TxOpts): TransactionDocument {
   seq += 1;
   const doc = buildTransactionDoc(
     {
@@ -26,8 +30,8 @@ function buy(opts: {
       symbol: opts.symbol,
       market: opts.market,
       asset_type: 'STOCK',
-      transaction_type: 'BUY',
-      transaction_date: '2024-01-15',
+      transaction_type: type,
+      transaction_date: opts.date ?? '2024-01-15',
       currency: opts.currency,
       quantity: opts.quantity,
       price: opts.price,
@@ -39,6 +43,9 @@ function buy(opts: {
   );
   return { ...doc, created_at: ts, updated_at: ts };
 }
+
+const buy = (opts: TxOpts): TransactionDocument => tx('BUY', opts);
+const sell = (opts: TxOpts): TransactionDocument => tx('SELL', opts);
 
 /** §4 worked example：台積電三筆買入。 */
 function tsmcFixture(): TransactionDocument[] {
@@ -173,16 +180,6 @@ describe('deriveHoldings', () => {
     expect(deriveHoldings(txs)).toEqual(deriveHoldings(txs));
   });
 
-  it('ignores non-BUY transactions (defensive; MVP data is BUY-only)', () => {
-    const sell = {
-      ...buy({ symbol: '2330', market: 'TW', currency: 'TWD', quantity: '100', price: '600' }),
-      transaction_type: 'SELL' as const,
-    };
-    const positions = deriveHoldings([...tsmcFixture(), sell]);
-    expect(positions[0]!.quantity).toBe('2500.0000000000');
-    expect(positions[0]!.txCount).toBe(3);
-  });
-
   it('fails loud on corrupted money fields (data corruption)', () => {
     const broken = {
       ...buy({ symbol: '2330', market: 'TW', currency: 'TWD', quantity: '100', price: '500' }),
@@ -197,5 +194,237 @@ describe('deriveHoldings', () => {
       buy({ symbol: '2330', market: 'TW', currency: 'USD', quantity: '100', price: '16' }),
     ];
     expect(() => deriveHoldings(txs)).toThrow(CurrencyMismatchError);
+  });
+
+  it('BUY-only position has realizedPnl 0', () => {
+    const p = deriveHoldings(tsmcFixture())[0]!;
+    expect(p.realizedPnl).toBe('0.0000000000');
+  });
+});
+
+describe('deriveHoldings — SELL', () => {
+  it('partial sell reduces quantity, keeps average cost unchanged', () => {
+    // TSMC avg 550.76 / 2500；賣 1000 @600（晚於買入）
+    const positions = deriveHoldings([
+      ...tsmcFixture(),
+      sell({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1000',
+        price: '600',
+        fee: '855',
+        date: '2024-02-01',
+      }),
+    ]);
+    const p = positions[0]!;
+    expect(p.quantity).toBe('1500.0000000000');
+    expect(p.averageCost).toBe('550.7600000000'); // 不變
+    expect(p.totalCost).toBe('826140.0000000000'); // 550.76 × 1500
+    // realized = (600×1000 − 855) − 550.76×1000 = 48385
+    expect(p.realizedPnl).toBe('48385.0000000000');
+  });
+
+  it('full sell with no rebuy drops the position from the list', () => {
+    const positions = deriveHoldings([
+      buy({ symbol: '2330', market: 'TW', currency: 'TWD', quantity: '1000', price: '500' }),
+      sell({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1000',
+        price: '600',
+        date: '2024-02-01',
+      }),
+    ]);
+    expect(positions).toEqual([]);
+  });
+
+  it('sell-to-zero then rebuy starts a fresh cost cycle (no historical carry)', () => {
+    const positions = deriveHoldings([
+      buy({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1000',
+        price: '500',
+        date: '2024-01-01',
+      }),
+      sell({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1000',
+        price: '600',
+        date: '2024-01-02',
+      }),
+      buy({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '500',
+        price: '550',
+        date: '2024-01-03',
+      }),
+    ]);
+    const p = positions[0]!;
+    expect(p.quantity).toBe('500.0000000000');
+    expect(p.averageCost).toBe('550.0000000000'); // 重算、不累加
+    expect(p.totalCost).toBe('275000.0000000000');
+    expect(p.realizedPnl).toBe('100000.0000000000'); // (600−500)×1000
+  });
+
+  it('processes chronologically by transaction_date, not array order', () => {
+    // 陣列順序故意把 SELL 放前面；應依日期 buy(1/1) → sell(2/1)
+    const positions = deriveHoldings([
+      sell({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '400',
+        price: '600',
+        date: '2024-02-01',
+      }),
+      buy({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1000',
+        price: '500',
+        date: '2024-01-01',
+      }),
+    ]);
+    expect(positions[0]!.quantity).toBe('600.0000000000');
+    expect(positions[0]!.averageCost).toBe('500.0000000000');
+  });
+
+  it('fails loud on oversell (sold qty exceeds held)', () => {
+    const txs = [
+      buy({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1000',
+        price: '500',
+        date: '2024-01-01',
+      }),
+      sell({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1500',
+        price: '600',
+        date: '2024-02-01',
+      }),
+    ];
+    expect(() => deriveHoldings(txs)).toThrow();
+  });
+});
+
+describe('deriveRealizedEvents', () => {
+  it('returns empty for no sells', () => {
+    expect(deriveRealizedEvents(tsmcFixture())).toEqual([]);
+  });
+
+  it('computes §4 realized P&L for a sell', () => {
+    const events = deriveRealizedEvents([
+      ...tsmcFixture(),
+      sell({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1000',
+        price: '600',
+        fee: '855',
+        date: '2024-02-01',
+      }),
+    ]);
+    expect(events).toHaveLength(1);
+    const e = events[0]!;
+    expect(e.market).toBe('TW');
+    expect(e.symbol).toBe('2330');
+    expect(e.currency).toBe('TWD');
+    expect(e.transaction_date).toBe('2024-02-01');
+    expect(e.realized).toBe('48385.0000000000');
+  });
+
+  it('zero-fee sell: realized = total − avgCost × qty', () => {
+    const events = deriveRealizedEvents([
+      buy({ symbol: 'AAPL', market: 'US', currency: 'USD', quantity: '10', price: '100' }),
+      sell({
+        symbol: 'AAPL',
+        market: 'US',
+        currency: 'USD',
+        quantity: '10',
+        price: '120',
+        date: '2024-02-01',
+      }),
+    ]);
+    // (120×10) − 100×10 = 200
+    expect(events[0]!.realized).toBe('200.0000000000');
+  });
+
+  it('emits one event per sell, chronological', () => {
+    const events = deriveRealizedEvents([
+      buy({
+        symbol: 'AAPL',
+        market: 'US',
+        currency: 'USD',
+        quantity: '10',
+        price: '100',
+        date: '2024-01-01',
+      }),
+      sell({
+        symbol: 'AAPL',
+        market: 'US',
+        currency: 'USD',
+        quantity: '4',
+        price: '120',
+        date: '2024-02-01',
+      }),
+      sell({
+        symbol: 'AAPL',
+        market: 'US',
+        currency: 'USD',
+        quantity: '6',
+        price: '130',
+        date: '2024-03-01',
+      }),
+    ]);
+    expect(events.map((e) => e.transaction_date)).toEqual(['2024-02-01', '2024-03-01']);
+    expect(events[0]!.realized).toBe('80.0000000000'); // (120−100)×4
+    expect(events[1]!.realized).toBe('180.0000000000'); // (130−100)×6
+  });
+});
+
+describe('sellableQuantity', () => {
+  it('returns held quantity for a held symbol', () => {
+    expect(sellableQuantity(tsmcFixture(), 'TW', '2330')).toBe('2500.0000000000');
+  });
+
+  it('returns 0 for a symbol with no position', () => {
+    expect(sellableQuantity(tsmcFixture(), 'US', 'AAPL')).toBe('0.0000000000');
+  });
+
+  it('returns 0 after a full sell (nothing left to sell)', () => {
+    const txs = [
+      buy({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1000',
+        price: '500',
+        date: '2024-01-01',
+      }),
+      sell({
+        symbol: '2330',
+        market: 'TW',
+        currency: 'TWD',
+        quantity: '1000',
+        price: '600',
+        date: '2024-02-01',
+      }),
+    ];
+    expect(sellableQuantity(txs, 'TW', '2330')).toBe('0.0000000000');
   });
 });

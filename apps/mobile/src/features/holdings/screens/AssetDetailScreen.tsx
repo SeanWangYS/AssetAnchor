@@ -84,6 +84,7 @@ export default function AssetDetailScreen({
   const price = mockPrice(position);
   const marketValue = mockMarketValue(position);
   const unrealized = mockUnrealized(position);
+  const realized = Money.fromDecimalString(position.realizedPnl, position.currency);
   const retPct = mockReturnPct(symbol);
   const todayPct = mockTodayPct(symbol);
   // 今日漲跌金額（mock）= 現價 × 今日% （原幣別）。
@@ -160,6 +161,16 @@ export default function AssetDetailScreen({
                 size={12}
               />
             </View>
+          }
+        />
+        <Kv
+          k="已實現損益"
+          v={
+            <Pnl
+              value={realized.toNumber()}
+              display={show(realized.isNegative() ? realized.negate() : realized)}
+              size={13}
+            />
           }
         />
         <Kv k="帳戶分布" v={meta.account} last />

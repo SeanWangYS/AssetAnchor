@@ -7,9 +7,12 @@ import {
   ASSET_TYPES,
   MARKETS,
   Money,
+  sellableQuantity,
   transactionInputSchema,
   type AccountDocument,
   type Currency,
+  type Market,
+  type TransactionDocument,
   type TransactionInput,
 } from '@assetanchor/shared';
 import { Button, Card, Icon, Input, Sheet } from '../../../core/ui';
@@ -61,10 +64,17 @@ export type TransactionFormDefaults = Partial<TransactionFormValues>;
 
 interface TransactionFormProps {
   accounts: AccountDocument[];
+  /** 使用者交易（推導「可賣股數」做 SELL 超賣驗證；編輯時應排除被編輯的該筆）。 */
+  transactions: TransactionDocument[];
   /** 編輯時帶入原值（screens 由 TransactionDocument 映射）。 */
   initialValues?: TransactionFormDefaults;
   submitLabel: string;
   onSubmit: (input: TransactionInput) => void | Promise<void>;
+}
+
+/** 去尾零的股數顯示（"2500.0000000000" → "2500"）。 */
+function trimShares(s: string): string {
+  return s.includes('.') ? s.replace(/\.?0+$/, '') : s;
 }
 
 /** YYYY-MM-DD（本機今天），交易日預設值。 */
@@ -77,6 +87,7 @@ function today(): string {
 
 export default function TransactionForm({
   accounts,
+  transactions,
   initialValues,
   submitLabel,
   onSubmit,
@@ -104,14 +115,13 @@ export default function TransactionForm({
     },
   });
 
-  // resolver 已驗證；再 parse 一次取得型別化（symbol 大寫、預設套用）的 TransactionInput。
-  const submit = handleSubmit((values) => onSubmit(transactionInputSchema.parse(values)));
-
   // 即時計算預覽（單幣別 ADR-0005：total = 股數×單價 ± 手續費，不做 FX 換算）。
   const txType = watch('transaction_type');
   const qty = watch('quantity');
   const price = watch('price');
   const fee = watch('fee');
+  const market = watch('market');
+  const symbolRaw = watch('symbol');
   const currency = (watch('currency') || 'TWD') as Currency;
   const isBuy = txType !== 'SELL';
 
@@ -119,6 +129,24 @@ export default function TransactionForm({
     () => computeTotal(qty, price, fee, currency, isBuy),
     [qty, price, fee, currency, isBuy],
   );
+
+  // SELL 不可超賣：可賣股數＝該 (market, symbol) 衍生持倉（shared 單一事實來源）。
+  const sellable = useMemo(() => {
+    if (isBuy || !market || !symbolRaw.trim()) return null;
+    return sellableQuantity(transactions, market as Market, symbolRaw.trim().toUpperCase());
+  }, [isBuy, market, symbolRaw, transactions]);
+  const noHolding = sellable !== null && new Money(sellable, currency).isZero();
+  const oversell = useMemo(() => {
+    if (sellable === null) return false;
+    const q = safeMoney(qty, currency);
+    return q !== null && q.compareTo(new Money(sellable, currency)) > 0;
+  }, [sellable, qty, currency]);
+
+  // resolver 已驗證；SELL 額外 gate「不可超賣 / 須有持倉」，過了再 parse 取型別化 input。
+  const submit = handleSubmit((values) => {
+    if (!isBuy && (noHolding || oversell)) return;
+    return onSubmit(transactionInputSchema.parse(values));
+  });
 
   const accountOptions = accounts.map((a) => ({ value: a.account_id, label: a.account_name }));
 
@@ -131,10 +159,14 @@ export default function TransactionForm({
         render={({ field }) => (
           <View>
             <BuySellToggle value={field.value} onChange={field.onChange} />
-            {/* MVP 僅支援買入（賣出 = Sprint 5）；選賣出時給明確說明，避免 zod literal 報錯難解。 */}
-            {field.value === 'SELL' ? (
-              <Text style={styles.fieldErr}>
-                賣出交易尚未開放（規劃於後續版本），目前僅支援買入。
+            {/* SELL：顯示可賣股數；無持倉 / 超賣以紅字提示並擋送出（不可超賣）。 */}
+            {!isBuy && sellable !== null ? (
+              <Text style={noHolding || oversell ? styles.fieldErr : styles.sellHint}>
+                {noHolding
+                  ? '此標的目前無持倉可賣'
+                  : oversell
+                    ? `賣出股數超過可賣（${trimShares(sellable)} 股）`
+                    : `可賣 ${trimShares(sellable)} 股`}
               </Text>
             ) : null}
           </View>
@@ -553,6 +585,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.text.medium,
     fontSize: fontSize.label,
     color: colors.down,
+  },
+  sellHint: {
+    fontFamily: fontFamily.text.medium,
+    fontSize: fontSize.label,
+    color: colors.textWeak,
+    marginTop: spacing.xs,
   },
 
   // —— Sheet 選項 ——

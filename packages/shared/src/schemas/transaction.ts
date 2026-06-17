@@ -61,8 +61,8 @@ export const transactionInputSchema = z.object({
     .transform((s) => s.toUpperCase()),
   market: z.enum(MARKETS),
   asset_type: z.enum(ASSET_TYPES),
-  // MVP 只做 BUY；SELL 與公司行動等留待後續 sprint
-  transaction_type: z.literal('BUY'),
+  // BUY / SELL（Sprint 5）；公司行動等其餘型別留待後續 sprint。不可超賣為表單層驗證（需衍生持倉）。
+  transaction_type: z.enum(['BUY', 'SELL']),
   transaction_date: z.string().trim().refine(isRealDate, '日期需為 YYYY-MM-DD'),
   currency: z.enum(MVP_CURRENCIES),
   quantity: positiveDecimal('股數'),
