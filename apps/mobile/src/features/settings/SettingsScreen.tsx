@@ -4,7 +4,7 @@ import type { SettingsStackScreenProps } from '../../core/navigation/types';
 import { useAuthStore } from '../auth/authStore';
 import { signOut } from '../auth/authService';
 import { AABrandLockup, Card, ConfirmDialog, Icon, ListItem } from '../../core/ui';
-import { colors, fontFamily, fontSize, spacing } from '../../core/theme';
+import { colors, fontFamily, fontSize, radius, spacing } from '../../core/theme';
 
 /** 可導航列右側的 chevron（弱色，1.8-stroke）。 */
 function rowChevron() {
@@ -81,16 +81,15 @@ export default function SettingsScreen({ navigation }: SettingsStackScreenProps<
           />
         </View>
 
-        {/* 破壞性：登出 */}
-        <View style={styles.signOutWrap}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setConfirmLogout(true)}
-            style={({ pressed }) => [styles.signOutBtn, pressed ? styles.pressed : null]}
-          >
-            <Text style={styles.signOut}>登出</Text>
-          </Pressable>
-        </View>
+        {/* 破壞性：登出 —— 紅色按鈕（對齊 prototype aa-screens-v2 登出鈕：淡紅底 + 紅邊 + 紅字，
+            非實心 danger，破壞性確認仍交給 ConfirmDialog）。 */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setConfirmLogout(true)}
+          style={({ pressed }) => [styles.signOutBtn, pressed ? styles.pressed : null]}
+        >
+          <Text style={styles.signOut}>登出</Text>
+        </Pressable>
       </ScrollView>
 
       <ConfirmDialog
@@ -144,8 +143,23 @@ const styles = StyleSheet.create({
     marginHorizontal: -spacing.page,
   },
 
-  signOutWrap: { paddingTop: spacing.xxl, paddingBottom: spacing.lg, alignItems: 'center' },
-  signOutBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.xl },
-  pressed: { opacity: 0.6 },
-  signOut: { fontFamily: fontFamily.text.semibold, fontSize: fontSize.body, color: colors.danger },
+  // 登出紅色按鈕：淡紅底（~8%）+ 紅邊（~28%）+ 紅粗字，full-width（對齊 prototype）。
+  signOutBtn: {
+    marginTop: spacing.xxl,
+    marginBottom: spacing.lg,
+    minHeight: 50,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${colors.danger}14`,
+    borderWidth: 1,
+    borderColor: `${colors.danger}47`,
+  },
+  pressed: { opacity: 0.7 },
+  signOut: {
+    fontFamily: fontFamily.text.bold,
+    fontSize: fontSize.body,
+    color: colors.danger,
+    letterSpacing: 0.5,
+  },
 });
