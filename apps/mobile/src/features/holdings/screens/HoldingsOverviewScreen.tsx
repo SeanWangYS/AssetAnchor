@@ -10,7 +10,7 @@ import {
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
 import { Avatar, Card, Chart, Icon, Pnl, Segmented, TimeTabs, Toast } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
-import { useHoldings } from '../useHoldings';
+import { useHoldings, useRealizedEvents } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { usePreferencesStore } from '../../../services/preferences';
 import { useCountUp } from '../useCountUp';
@@ -158,6 +158,7 @@ export default function HoldingsOverviewScreen({
   navigation,
 }: HoldingsStackScreenProps<'HoldingsOverview'>) {
   const positions = useHoldings();
+  const realizedEvents = useRealizedEvents();
   const rates = useExchangeRatesStore((s) => s.rates);
   const displayCcy = usePreferencesStore((s) => s.preferredDisplayCurrency);
   const changeDisplayCurrency = usePreferencesStore((s) => s.changeDisplayCurrency);
@@ -206,9 +207,22 @@ export default function HoldingsOverviewScreen({
       totalAssets: conv(DEMO_SUMMARY.totalAssets),
       unrealized: conv(DEMO_SUMMARY.unrealized),
       today: conv(DEMO_SUMMARY.today),
-      realizedThisMonth: conv(DEMO_SUMMARY.realizedThisMonth),
     };
   }, [rates, displayCcy]);
+
+  // 「本月已實現損益」真值（§4）：當月 SELL 已實現，各原幣別以最新匯率換算成顯示幣別後加總。
+  const realizedThisMonth = useMemo(() => {
+    const now = new Date();
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    let sum = Money.zero(displayCcy);
+    for (const ev of realizedEvents) {
+      if (!ev.transaction_date.startsWith(monthPrefix)) continue;
+      const conv = toDisplay(new Money(ev.realized, ev.currency), rates, displayCcy);
+      if (conv === null) continue; // TWD/USD 恆有 demo fallback，理論不會 null
+      sum = sum.add(conv);
+    }
+    return sum;
+  }, [realizedEvents, rates, displayCcy]);
 
   // 總資產 Hero（mock 摘要；需報價，故 count-up 跑 demo 值）。
   const totalAssets = useCountUp(demo.totalAssets);
@@ -299,8 +313,8 @@ export default function HoldingsOverviewScreen({
             <Text style={styles.bentoLabel}>本月已實現損益</Text>
             <View style={styles.bentoVal}>
               <Pnl
-                value={DEMO_SUMMARY.realizedThisMonth}
-                display={fmtCcy(demo.realizedThisMonth)}
+                value={realizedThisMonth.toNumber()}
+                display={fmtCcy(realizedThisMonth.toNumber())}
                 size={18}
               />
             </View>
