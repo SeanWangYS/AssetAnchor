@@ -21,13 +21,8 @@ import {
   spacing,
 } from '../../../core/theme';
 import { useTransactionsStore } from '../../transactions/transactionsStore';
-import {
-  currencyPrefix,
-  displayDecimals,
-  fmtShares,
-  marketLabel,
-  symbolMeta,
-} from '../holdingsDemo';
+import { useSymbolMap, symbolNameOf } from '../../../services/symbols';
+import { currencyPrefix, displayDecimals, fmtShares, marketLabel } from '../holdingsDemo';
 
 /** 買/賣膠囊（design §2.2：買 紫→洋紅 / 賣 藍→青；非台股紅綠）。其餘類型用次文字底。 */
 function TypePill({ type }: { type: TransactionType }) {
@@ -67,7 +62,8 @@ export default function AssetTransactionsScreen({
 }: HoldingsStackScreenProps<'AssetTransactions'>) {
   const { market, symbol } = route.params;
   const allTx = useTransactionsStore((s) => s.transactions);
-  const meta = symbolMeta(symbol);
+  // 名稱真值（Sprint 6）：唯讀訂閱 symbols store（自個股詳情進入時已 enrich）；缺值 fallback 代號。
+  const symbols = useSymbolMap();
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTitle: `${symbol} 交易歷史` });
@@ -108,7 +104,8 @@ export default function AssetTransactionsScreen({
           {/* 目前彙總 */}
           <Card style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>
-              <Text style={styles.summarySymbol}>{symbol}</Text> {meta.name} · {marketLabel(market)}
+              <Text style={styles.summarySymbol}>{symbol}</Text>{' '}
+              {symbolNameOf(symbols, market, symbol)} · {marketLabel(market)}
             </Text>
             <Kv k="持有股數" v={`${fmtShares(summary.qty, summary.ccy)} 股`} />
             <Kv k="加權均價" v={fmt(summary.avg, summary.ccy)} />

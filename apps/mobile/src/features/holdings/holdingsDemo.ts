@@ -21,26 +21,23 @@ import {
 /** demo 匯率 fallback：1 USD = 30.95 TWD（design §5；rates 未就緒時用）。 */
 export const DEMO_USD_TWD = '30.95';
 
-/** 標的中文名 / 英文名（prototype HOLD 對照；未知標的回退代號本身）。 */
-interface SymbolMeta {
-  name: string;
-  en: string;
-  /** 帳戶分布顯示名（單一帳戶 demo；真實多帳戶分布為後續）。 */
-  account: string;
-}
-
-const SYMBOL_META: Record<string, SymbolMeta> = {
-  '2330': { name: '台積電', en: 'TSMC', account: '群益證券' },
-  '2317': { name: '鴻海', en: 'Hon Hai', account: '群益證券' },
-  '0050': { name: '元大台灣50', en: 'Yuanta TW Top50', account: '富邦證券' },
-  '00878': { name: '國泰永續高股息', en: 'Cathay Sustainability', account: '富邦證券' },
-  AAPL: { name: 'Apple', en: 'Apple Inc.', account: 'Firstrade' },
-  VTI: { name: 'Vanguard Total', en: 'Total Stock Market', account: 'Interactive Brokers' },
-  QQQ: { name: 'Invesco QQQ', en: 'Nasdaq-100 ETF', account: 'Firstrade' },
+/**
+ * 標的「帳戶分布」demo 對照（單一帳戶 demo；真實多帳戶分布屬對帳 change `complete-reconciliation`）。
+ * ⚠️ 標的「名稱」已改由 `services/symbols`（symbols/{symbolId} + Yahoo enrich）提供真值，不再硬編於此。
+ */
+const DEMO_ACCOUNT: Record<string, string> = {
+  '2330': '群益證券',
+  '2317': '群益證券',
+  '0050': '富邦證券',
+  '00878': '富邦證券',
+  AAPL: 'Firstrade',
+  VTI: 'Interactive Brokers',
+  QQQ: 'Firstrade',
 };
 
-export function symbolMeta(symbol: string): SymbolMeta {
-  return SYMBOL_META[symbol] ?? { name: symbol, en: symbol, account: '—' };
+/** 標的的 demo 帳戶分布名（未知標的回退「—」）。 */
+export function accountOf(symbol: string): string {
+  return DEMO_ACCOUNT[symbol] ?? '—';
 }
 
 export function marketLabel(market: Market): string {

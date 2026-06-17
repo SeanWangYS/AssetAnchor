@@ -7,3 +7,6 @@ export { scheduledUsdRate, seedUsdRate } from './exchangeRates/fetchAndStore';
 
 // Sprint 5b：報價 callable（ADR-0006，Yahoo + quotes 雙層 cache 15min TTL）。
 export { fetchQuote } from './quotes/fetchQuote';
+
+// Sprint 6：symbol metadata enrich（Yahoo quoteSummary → symbols/{symbolId} upsert）。
+export { fetchSymbolMeta } from './symbols/fetchSymbolMeta';

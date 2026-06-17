@@ -14,9 +14,12 @@ import { useHoldings, useRealizedEvents } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { usePreferencesStore } from '../../../services/preferences';
 import { quoteFor, useQuotes, useQuotesStore, type QuoteEntry } from '../../../services/quotes';
+import { useSymbols, symbolNameOf, symbolTargetsFromTransactions } from '../../../services/symbols';
+import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { useCountUp } from '../useCountUp';
 import {
   DEMO_SERIES,
+  accountOf,
   avatarColor,
   currencyPrefix,
   displayDecimals,
@@ -26,7 +29,6 @@ import {
   marketLabel,
   mockMarketValue,
   mockReturnPct,
-  symbolMeta,
   toDisplay,
 } from '../holdingsDemo';
 
@@ -79,7 +81,7 @@ function buildSections(positions: Position[], mode: GroupMode): GroupSection[] {
   if (mode === '帳戶') {
     const byAccount = new Map<string, Position[]>();
     for (const p of positions) {
-      const acct = symbolMeta(p.symbol).account;
+      const acct = accountOf(p.symbol);
       byAccount.set(acct, [...(byAccount.get(acct) ?? []), p]);
     }
     return [...byAccount.entries()].map(([acct, list]) => ({
@@ -110,16 +112,17 @@ function buildSections(positions: Position[], mode: GroupMode): GroupSection[] {
 /** 三段式持股 row：圓標 + 名稱/代號 + (股數·均價) + 市值/報酬%（design §3.1 item 7）。 */
 function HoldingRow({
   position,
+  name,
   dense,
   quote,
   onPress,
 }: {
   position: Position;
+  name: string;
   dense: boolean;
   quote: QuoteEntry | undefined;
   onPress: () => void;
 }) {
-  const meta = symbolMeta(position.symbol);
   const avg = Money.fromDecimalString(position.averageCost, position.currency);
   // 報價就緒→真值市值/報酬%；未就緒→暫以 demo 示意（AssetDetail 顯示精確「報價未就緒」）。
   const priceM = quote ? new Money(quote.price, position.currency) : null;
@@ -143,7 +146,7 @@ function HoldingRow({
       <View style={styles.rowMid}>
         <View style={styles.rowTitleLine}>
           <Text style={styles.rowName} numberOfLines={1}>
-            {meta.name}
+            {name}
           </Text>
           <Text style={styles.rowSymbol}>{position.symbol}</Text>
         </View>
@@ -166,6 +169,10 @@ export default function HoldingsOverviewScreen({
 }: HoldingsStackScreenProps<'HoldingsOverview'>) {
   const positions = useHoldings();
   const realizedEvents = useRealizedEvents();
+  // Symbol 名稱真值（Sprint 6）：以交易清單（含 asset_type）為來源 enrich + 顯示。
+  const transactions = useTransactionsStore((s) => s.transactions);
+  const symbolTargets = useMemo(() => symbolTargetsFromTransactions(transactions), [transactions]);
+  const symbols = useSymbols(symbolTargets);
   const rates = useExchangeRatesStore((s) => s.rates);
   const displayCcy = usePreferencesStore((s) => s.preferredDisplayCurrency);
   const changeDisplayCurrency = usePreferencesStore((s) => s.changeDisplayCurrency);
@@ -457,6 +464,7 @@ export default function HoldingsOverviewScreen({
                 <HoldingRow
                   key={`${p.market}_${p.symbol}`}
                   position={p}
+                  name={symbolNameOf(symbols, p.market, p.symbol)}
                   dense={mode !== '持股'}
                   quote={quoteFor(quotes, p.market, p.symbol)}
                   onPress={() =>
