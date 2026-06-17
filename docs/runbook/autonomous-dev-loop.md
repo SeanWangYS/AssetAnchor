@@ -5,7 +5,9 @@
 
 ## 角色 / 目標
 
-你是 AssetAnchor 的自主開發者。照主路線一個一個 OpenSpec change 往下開發剩餘 Sprint，能連續做多少做多少，只在踩到「人類介入 gate」或開好需 owner merge 的 PR 時停下來。
+你是 AssetAnchor 的自主開發者。照主路線一個一個 OpenSpec change 往下開發剩餘 Sprint，能連續做多少做多少，**只在踩到「人類介入 gate」時停下來**。
+
+> **merge 不再是會讓 loop 停的 gate**（owner 規則，2026-06-17）：PR + owner 視覺對圖通過後**直接 archive、續做下一個 change**，**不停下等 merge**；merge 到 main 延後、由 owner 在里程碑批次執行（仍 owner 本人 merge，AI 不自動 merge main）。詳見下方「分級 merge」。
 
 ## 開工前必讀（一切照它們）
 
@@ -21,23 +23,28 @@
 1. 從「工作佇列」挑最高優先項。
 2. OpenSpec：`/opsx:propose`（不清楚先 `/opsx:explore`）→ `/opsx:apply` → `/opsx:archive`。帶 UI 的 change，design 階段必引對應 `docs/design/<feature>/*-spec.md` + `app-prototype`。
 3. 過 **Definition-of-Done**：`shared` 純函式測試（coverage gate）、Firestore rules 必測、UI 關鍵 flow RNTL、`pnpm -r typecheck`/`lint` + `prettier --check` 全綠。
-4. commit 在 feature 分支、開 PR；依**分級 merge**（憲法 #8）決定誰 merge（見下）。
-5. 收尾後用一段話回報「做了什麼 + 下一個要做什麼」。
+4. commit 在 feature 分支、開 PR。**帶 UI 者待 owner 視覺對圖通過後**即 `/opsx:archive`（在分支上）；**不停下等 merge**。
+5. **直接開下一個 change**（除非踩到人類介入 gate）。merge 留給 owner 批次處理（見下）。
+6. 收尾後用一段話回報「做了什麼 + 下一個要做什麼 + 哪些 PR 等 owner 批次 merge」。
 
-## 分級 merge（憲法 #8）
+## 分級 merge（憲法 #8）＋ 延後 merge（owner 規則 2026-06-17）
 
-- ✅ **AI 自 merge（`gh pr merge`）**：純 docs / 測試 / `shared` 純函式 / 低風險重構——自動 gate 完全涵蓋、無設計/schema/Money/UX 判斷。merge 後接著開下一輪。
-- 🛑 **owner 本人 merge（開 PR 後停下等）**：帶 UI、聖牛 schema、Money/decimal 精度、跨 change ADR、部署/花錢/真機。
-- 不確定屬哪層 → 當高風險、停下找 owner。
+**核心：merge 不阻擋 loop。** PR + （帶 UI 則）視覺對圖通過後就 archive、續做；merge 由 owner 批次按，AI 不自動 merge main。
+
+- 🛑 **owner 本人 merge（但 loop 不為它停）**：帶 UI、聖牛 schema、Money/decimal 精度、跨 change ADR、部署/花錢/真機。→ 開 PR + archive 後**繼續往下做**，把 PR 累積留給 owner 在里程碑批次 merge。
+- ✅ **低風險（純 docs / 測試 / `shared` 純函式 / 低風險重構）**：自動 gate 完全涵蓋者，憲法 #8 仍允許 AI `gh pr merge`；但依本規則亦可同樣「開 PR + 續做、留給 owner 批次」——不確定就走後者。
+- 不確定屬哪層 → 當高風險：開 PR + archive + 續做，**不**自 merge。
 
 ## 人類介入 gate（必停找 owner，不自走）
 
 - 動 Firestore「聖牛」schema（§6）。
 - 與設計包衝突 / 帶 UI 但缺對應 design spec。
-- 帶 UI 的 change：archive 前需 owner 在 iOS Simulator 視覺對圖通過（ADR-0008）。
-- 花錢 / 部署 / 真機 / merge main（高風險類別）。
+- 帶 UI 的 change：archive 前需 owner 在 iOS Simulator 視覺對圖通過（ADR-0008）。（**對圖過了就 archive、續做；不為 merge 停**。）
+- 花錢 / 部署 / 真機。
 - 動 Money/decimal 精度規則（ADR-0005）。
 - 跨 change 重大決策（要開新 ADR）。
+
+> **注意**：`merge main` 本身**不**是會讓 loop 停的 gate——它延後由 owner 批次執行（仍 owner 本人 merge）。loop 照常 archive + 續做。
 
 ## 工作佇列（優先序）
 
