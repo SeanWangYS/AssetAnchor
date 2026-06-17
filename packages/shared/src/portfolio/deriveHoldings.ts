@@ -1,4 +1,4 @@
-import { Money } from '../money/index.js';
+import { Money, toSafeDecimalString } from '../money/index.js';
 import type { Currency } from '../enums/currencies.js';
 import type { Market } from '../enums/markets.js';
 import type { TransactionDocument } from '../types/transaction.js';
@@ -74,7 +74,9 @@ function scan(transactions: TransactionDocument[]): ScanResult {
 
     const currency = tx.currency;
     const key = `${tx.market}_${tx.symbol}`;
-    const qty = Money.fromDecimalString(tx.quantity, currency);
+    // 缺欄位 fail-soft（pre-ADR-0005 舊 doc 可能缺值）：缺/非法視為 0，不丟 DecimalError。
+    const safeQty = toSafeDecimalString(tx.quantity);
+    const qty = Money.fromDecimalString(safeQty, currency);
 
     let lot = lots.get(key);
     if (!lot) {
@@ -92,9 +94,9 @@ function scan(transactions: TransactionDocument[]): ScanResult {
     lot.txCount += 1;
 
     if (tx.transaction_type === 'BUY') {
-      const cost = Money.fromDecimalString(tx.total, currency)
-        .add(Money.fromDecimalString(tx.fee, currency))
-        .add(Money.fromDecimalString(tx.tax, currency));
+      const cost = Money.fromDecimalString(toSafeDecimalString(tx.total), currency)
+        .add(Money.fromDecimalString(toSafeDecimalString(tx.fee), currency))
+        .add(Money.fromDecimalString(toSafeDecimalString(tx.tax), currency));
       lot.quantity = lot.quantity.add(qty);
       lot.totalCost = lot.totalCost.add(cost);
     } else {
@@ -107,10 +109,10 @@ function scan(transactions: TransactionDocument[]): ScanResult {
       const avgCost = lot.quantity.isZero()
         ? Money.zero(currency)
         : lot.totalCost.divide(lot.quantity.toDecimalString());
-      const proceeds = Money.fromDecimalString(tx.total, currency)
-        .subtract(Money.fromDecimalString(tx.fee, currency))
-        .subtract(Money.fromDecimalString(tx.tax, currency));
-      const costOfSold = avgCost.multiply(tx.quantity);
+      const proceeds = Money.fromDecimalString(toSafeDecimalString(tx.total), currency)
+        .subtract(Money.fromDecimalString(toSafeDecimalString(tx.fee), currency))
+        .subtract(Money.fromDecimalString(toSafeDecimalString(tx.tax), currency));
+      const costOfSold = avgCost.multiply(safeQty);
       const realized = proceeds.subtract(costOfSold);
 
       lot.realized = lot.realized.add(realized);

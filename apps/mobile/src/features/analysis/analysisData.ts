@@ -1,33 +1,31 @@
 import {
-  Money,
+  aggregateHoldings,
   convertMoney,
-  type AssetType,
+  type AnalysisAggregate,
+  type AnalysisRawHolding,
   type Currency,
+  type Money,
   type RateMap,
 } from '@assetanchor/shared';
 
 /**
- * 分析頁的本地聚合資料層（features/analysis 私有）。
+ * 分析頁的本地資料層（features/analysis 私有）——**僅保留 mock 輸入 + 顯示格式化**；
+ * 聚合數學已抽到 `@assetanchor/shared` 的 `aggregateHoldings`（純函式、單元測試覆蓋）。
  *
- * 為什麼是「本地」而非讀真實持倉：
- * - 衍生持倉（deriveHoldings）只在 features/holdings 的 `useHoldings` 取用，且其資料來源
- *   `transactionsStore` 屬 features/transactions。features 之間禁止互相 import（planning §12），
- *   故分析頁不可 import useHoldings / transactionsStore。
+ * 為什麼是「本地 mock」而非讀真實持倉：
+ * - 衍生持倉（deriveHoldings）只在 features/holdings 取用、資料源 transactionsStore 屬 features/transactions；
+ *   features 之間禁止互相 import（planning §12）。
  * - 分析頁需要「市值」，而市值需要報價（quotes 尚未串接 → Non-goals）。
- * 因此本檔以設計原型（aa-analysis-charts.jsx `AHOLD`）的 mock 為基礎，
- * 僅消費 `@assetanchor/shared`（Money / convertMoney / 型別）。金額一律走 Money，禁 native float
- * 做金錢運算；toNumber() 只在最後出圖（charts 吃 number）時當逃生門。
+ * 因此以原型（aa-analysis-charts.jsx `AHOLD`）mock 為輸入；資料真實化屬後續。
  *
- * 內部基準幣別＝TWD（與原型「內部值一律 TWD，顯示時換算」一致）；跨幣別合計、
- * 損益、軸刻度於顯示時以最新 exchange_rates 即時換算（ADR-0005 / design §5），不落地。
+ * 內部基準幣別＝TWD；跨幣別合計/損益/軸刻度於顯示時以最新 exchange_rates 即時換算（ADR-0005 / design §5）。
  */
 
 const BASE: Currency = 'TWD';
 
 /**
  * Demo 匯率（design §5：1 USD = 30.95 TWD「mock 寫死處」）。
- * 實際換算優先讀最新 exchange_rates；store 尚未就緒（rates=null）時退回此值，
- * 讓分析頁在 Simulator / demo 仍可運作。雙向皆備（convertMoney 需 {FROM}_{TO} key）。
+ * 實際換算優先讀最新 exchange_rates；store 尚未就緒（rates=null）時退回此值。
  */
 export const DEMO_RATES: RateMap = {
   USD_TWD: '30.95',
@@ -37,29 +35,22 @@ export const DEMO_RATES: RateMap = {
 /** 顯示幣別（全頁 Segmented）。 */
 export type DisplayCurrency = 'TWD' | 'USD';
 
-/** 資產類別維度（圓餅）：個股 / ETF（design D3 / D7）。 */
-export type AssetClass = '個股' | 'ETF';
+/** 分析顯示類別（個股 / ETF）。型別權威在 shared（`AnalysisClass`），此處別名維持既有命名。 */
+export type { AnalysisClass as AssetClass } from '@assetanchor/shared';
 
-/**
- * 單一持倉的市場原幣別 mock（cost = 成本基礎、value = 目前市值）。
- * 對齊原型 AHOLD：00878 市值微調成小幅虧損，讓正負分色有示範案例。
- */
-interface RawHolding {
-  symbol: string;
-  name: string;
-  assetType: AssetType;
-  currency: Currency;
-  /** 市場原幣別成本基礎（avg × shares）。 */
-  cost: string;
-  /** 市場原幣別目前市值（mock，待 quotes 串接後改真值）。 */
-  value: string;
-}
+/** 聚合結果型別 re-export（消費端 import 不變）。 */
+export type {
+  AnalysisAggregate,
+  AnalysisHolding,
+  AnalysisTotals,
+  ClassRollup,
+} from '@assetanchor/shared';
 
 /**
  * Mock 持倉（市場原幣別）。數字對齊 design spec §5 衍生結果
  * （市值 455,935 / 成本 377,181 / 未實現 +78,754；個股 44.1% vs ETF 55.9%）。
  */
-const RAW_HOLDINGS: readonly RawHolding[] = [
+const RAW_HOLDINGS: readonly AnalysisRawHolding[] = [
   {
     symbol: '2330',
     name: '台積電',
@@ -118,102 +109,12 @@ const RAW_HOLDINGS: readonly RawHolding[] = [
   },
 ];
 
-/** assetType → 顯示類別（個股 / ETF）。 */
-function classOf(assetType: AssetType): AssetClass {
-  return assetType === 'ETF' ? 'ETF' : '個股';
-}
-
-/** 單一持倉，成本/市值/損益皆以 TWD Money 表示（內部基準）。 */
-export interface AnalysisHolding {
-  symbol: string;
-  name: string;
-  cls: AssetClass;
-  /** 成本（TWD）。 */
-  cost: Money;
-  /** 市值（TWD）。 */
-  value: Money;
-  /** 未實現損益（TWD）= 市值 − 成本。 */
-  pnl: Money;
-  /** 報酬率（幣別無關）= (市值 − 成本) / 成本。 */
-  returnPct: number;
-}
-
-/** 整體彙總（TWD）。 */
-export interface AnalysisTotals {
-  value: Money;
-  cost: Money;
-  pnl: Money;
-  returnPct: number;
-}
-
-/** 單一類別彙總（圓餅 / 圖例）。 */
-export interface ClassRollup {
-  cls: AssetClass;
-  count: number;
-  /** 類別市值（TWD）。 */
-  value: Money;
-  /** 佔總市值百分比（幣別無關）。 */
-  sharePct: number;
-}
-
-/** 完整聚合結果（全 TWD 基準）。 */
-export interface AnalysisAggregate {
-  holdings: readonly AnalysisHolding[];
-  totals: AnalysisTotals;
-  byClass: readonly ClassRollup[];
-}
-
-/** 報酬率 %（幣別無關）：toNumber 僅用於 UI/charting（百分比，非金錢）。 */
-function returnPercent(value: Money, cost: Money): number {
-  if (cost.isZero()) return 0;
-  return value.subtract(cost).divide(cost.toDecimalString()).multiply(100).toNumber();
-}
-
 /**
- * 由 mock 原幣別持倉聚合出分析資料（TWD 基準）。
- * 跨幣別合計用 convertMoney（USD→TWD）以最新匯率即時換算；rates 缺失時 fail loud
- * （convertMoney 丟錯），由呼叫端 try/catch 後優雅降級。純函式、deterministic。
+ * 由 mock 原幣別持倉聚合出分析資料（TWD 基準）。委派 shared `aggregateHoldings`（純函式）。
+ * rates 缺對應 key 時 fail loud（convertMoney 丟錯），由呼叫端 try/catch 後優雅降級。
  */
 export function aggregateAnalysis(rates: RateMap): AnalysisAggregate {
-  const holdings: AnalysisHolding[] = RAW_HOLDINGS.map((h) => {
-    const cost = convertMoney(Money.fromDecimalString(h.cost, h.currency), rates, BASE);
-    const value = convertMoney(Money.fromDecimalString(h.value, h.currency), rates, BASE);
-    const pnl = value.subtract(cost);
-    return {
-      symbol: h.symbol,
-      name: h.name,
-      cls: classOf(h.assetType),
-      cost,
-      value,
-      pnl,
-      returnPct: returnPercent(value, cost),
-    };
-  });
-
-  let totalValue = Money.zero(BASE);
-  let totalCost = Money.zero(BASE);
-  for (const h of holdings) {
-    totalValue = totalValue.add(h.value);
-    totalCost = totalCost.add(h.cost);
-  }
-  const totals: AnalysisTotals = {
-    value: totalValue,
-    cost: totalCost,
-    pnl: totalValue.subtract(totalCost),
-    returnPct: returnPercent(totalValue, totalCost),
-  };
-
-  const byClass: ClassRollup[] = (['個股', 'ETF'] as const).map((cls) => {
-    const list = holdings.filter((h) => h.cls === cls);
-    let value = Money.zero(BASE);
-    for (const h of list) value = value.add(h.value);
-    const sharePct = totalValue.isZero()
-      ? 0
-      : value.divide(totalValue.toDecimalString()).multiply(100).toNumber();
-    return { cls, count: list.length, value, sharePct };
-  });
-
-  return { holdings, totals, byClass };
+  return aggregateHoldings(RAW_HOLDINGS, rates, BASE);
 }
 
 /** 把 TWD 基準的 Money 換算成顯示幣別（TWD 原值返回 / USD 以匯率換算）。 */
