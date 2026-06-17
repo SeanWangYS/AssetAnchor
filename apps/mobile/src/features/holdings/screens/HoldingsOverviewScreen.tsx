@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   DISPLAY_CURRENCIES,
   Money,
@@ -13,6 +13,7 @@ import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../co
 import { useHoldings, useRealizedEvents } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { usePreferencesStore } from '../../../services/preferences';
+import { quoteFor, useQuotes, useQuotesStore, type QuoteEntry } from '../../../services/quotes';
 import { useCountUp } from '../useCountUp';
 import {
   DEMO_SERIES,
@@ -111,16 +112,23 @@ function buildSections(positions: Position[], mode: GroupMode): GroupSection[] {
 function HoldingRow({
   position,
   dense,
+  quote,
   onPress,
 }: {
   position: Position;
   dense: boolean;
+  quote: QuoteEntry | undefined;
   onPress: () => void;
 }) {
   const meta = symbolMeta(position.symbol);
-  const mv = mockMarketValue(position);
-  const retPct = mockReturnPct(position.symbol);
   const avg = Money.fromDecimalString(position.averageCost, position.currency);
+  // 報價就緒→真值市值/報酬%；未就緒→暫以 demo 示意（AssetDetail 顯示精確「報價未就緒」）。
+  const priceM = quote ? new Money(quote.price, position.currency) : null;
+  const mv = priceM ? priceM.multiply(position.quantity) : mockMarketValue(position);
+  const retPct =
+    priceM && !avg.isZero()
+      ? priceM.subtract(avg).divide(position.averageCost).multiply('100').toNumber()
+      : mockReturnPct(position.symbol);
 
   return (
     <Pressable
@@ -165,6 +173,23 @@ export default function HoldingsOverviewScreen({
   const [mode, setMode] = useState<GroupMode>('持股');
   const [tf, setTf] = useState<Timeframe>('1Y');
   const [ccyToast, setCcyToast] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // 報價（ADR-0006 雙層 cache）：為目前持倉 on-demand 載入；pull-to-refresh 強制刷新。
+  const quoteTargets = positions.map((p) => ({
+    market: p.market,
+    symbol: p.symbol,
+    currency: p.currency,
+  }));
+  const quotes = useQuotes(quoteTargets);
+  async function onRefresh() {
+    setRefreshing(true);
+    try {
+      await useQuotesStore.getState().loadFor(quoteTargets, { force: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   // 顯示幣別切換＝全 app 偏好控制：樂觀更新 + 持久化（失敗 store 自動還原，這裡提示）。
   async function onChangeCurrency(next: DisplayCurrency) {
@@ -250,7 +275,13 @@ export default function HoldingsOverviewScreen({
 
   return (
     <>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+        }
+      >
         {/* 總資產 Hero */}
         <View style={styles.hero}>
           <Text style={styles.heroLabel}>總資產（{displayCcy}）</Text>
@@ -374,6 +405,7 @@ export default function HoldingsOverviewScreen({
                   key={`${p.market}_${p.symbol}`}
                   position={p}
                   dense={mode !== '持股'}
+                  quote={quoteFor(quotes, p.market, p.symbol)}
                   onPress={() =>
                     navigation.navigate('AssetDetail', { market: p.market, symbol: p.symbol })
                   }

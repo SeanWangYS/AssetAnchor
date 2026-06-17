@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onRequest } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -17,25 +17,28 @@ interface FetchQuoteInput {
   currency: Currency;
 }
 
-/** 驗證 callable 輸入（擋亂打）。 */
-function parseInput(data: unknown): FetchQuoteInput {
-  const d = (data ?? {}) as Record<string, unknown>;
-  const market = String(d.market ?? '');
-  const symbol = String(d.symbol ?? '').trim();
-  const currency = String(d.currency ?? '');
+type ParseResult = { ok: true; input: FetchQuoteInput } | { ok: false; msg: string };
+
+/** 驗證 query 參數（擋亂打）。 */
+function parseInput(q: Record<string, unknown>): ParseResult {
+  const market = String(q.market ?? '');
+  const symbol = String(q.symbol ?? '')
+    .trim()
+    .toUpperCase();
+  const currency = String(q.currency ?? '');
   if (!(MARKETS as readonly string[]).includes(market) || !symbol) {
-    throw new HttpsError('invalid-argument', 'market/symbol 必填且需合法');
+    return { ok: false, msg: 'market/symbol 必填且需合法' };
   }
   if (!(CURRENCIES as readonly string[]).includes(currency)) {
-    throw new HttpsError('invalid-argument', 'currency 需合法');
+    return { ok: false, msg: 'currency 需合法' };
   }
-  return { market, symbol, currency: currency as Currency };
+  return { ok: true, input: { market, symbol, currency: currency as Currency } };
 }
 
 /**
  * 取得報價：cache 新鮮（<15min）直接回；否則經 provider 抓 → sanitize → 寫 quotes/{symbolId}。
  * 報價 schema 見 planning §6；金額以 Money 10 位小數 string（sanitizeQuote 已正規化）。
- * 髒資料（sanitize 失敗）fail loud（HttpsError）——不寫半套、不放行（ADR-0007 §5b）。
+ * 髒資料（sanitize 失敗）fail loud（擲錯）——不寫半套、不放行（ADR-0007 §5b）。純 I/O 核心，可 emulator 測。
  */
 export async function getOrFetchQuote(
   input: FetchQuoteInput,
@@ -59,9 +62,7 @@ export async function getOrFetchQuote(
 
   const raw = await provider.fetch(market, symbol);
   const sane = sanitizeQuote(raw, currency);
-  if (!sane.ok) {
-    throw new HttpsError('internal', `報價未通過 sanity（${sane.reason}）：${symbolId}`);
-  }
+  if (!sane.ok) throw new Error(`報價未通過 sanity（${sane.reason}）：${symbolId}`);
   const srcMs = raw.sourceTimestampSec ? raw.sourceTimestampSec * 1000 : nowMs;
 
   await ref.set({
@@ -86,16 +87,21 @@ export async function getOrFetchQuote(
 }
 
 /**
- * Callable `fetchQuote`：mobile 於 cache miss/過期時呼叫，觸發後端抓取並寫入共用 quotes cache。
- * 僅寫公開的 `quotes`（rules：登入可讀、只有後端可寫），不碰使用者資料。
+ * HTTP `fetchQuote`（GET ?market=&symbol=&currency=）：mobile 於 cache miss/過期時以 `fetch()`
+ * 觸發，後端抓取並寫入共用 quotes cache。採 onRequest（非 onCall）以免 mobile 需 RNFirebase
+ * functions 原生模組——對齊既有 seedUsdRate 模式。僅寫公開 `quotes`（rules：登入可讀、後端可寫）。
  */
-export const fetchQuote = onCall({ region: REGION }, async (request) => {
-  const input = parseInput(request.data);
+export const fetchQuote = onRequest({ region: REGION, cors: true }, async (req, res) => {
+  const parsed = parseInput(req.query as Record<string, unknown>);
+  if (!parsed.ok) {
+    res.status(400).json({ ok: false, error: parsed.msg });
+    return;
+  }
   try {
-    return await getOrFetchQuote(input, yahooProvider, Date.now());
+    const r = await getOrFetchQuote(parsed.input, yahooProvider, Date.now());
+    res.json({ ok: true, ...r });
   } catch (e) {
-    if (e instanceof HttpsError) throw e;
-    logger.error('fetchQuote failed', { input, error: String(e) });
-    throw new HttpsError('unavailable', '報價暫時無法取得');
+    logger.error('fetchQuote failed', { input: parsed.input, error: String(e) });
+    res.status(502).json({ ok: false, error: '報價暫時無法取得' });
   }
 });
