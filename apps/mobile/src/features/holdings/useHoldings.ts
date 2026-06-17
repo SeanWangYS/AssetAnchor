@@ -1,5 +1,10 @@
 import { useMemo } from 'react';
-import { deriveHoldings, type Position } from '@assetanchor/shared';
+import {
+  deriveHoldings,
+  deriveRealizedEvents,
+  type Position,
+  type RealizedEvent,
+} from '@assetanchor/shared';
 import { useTransactionsStore } from '../transactions/transactionsStore';
 
 /**
@@ -9,4 +14,10 @@ import { useTransactionsStore } from '../transactions/transactionsStore';
 export function useHoldings(): Position[] {
   const transactions = useTransactionsStore((s) => s.transactions);
   return useMemo(() => deriveHoldings(transactions), [transactions]);
+}
+
+/** 已實現損益事件（時序，§4）；供持倉「本月已實現」等彙總。同樣零新增 I/O。 */
+export function useRealizedEvents(): RealizedEvent[] {
+  const transactions = useTransactionsStore((s) => s.transactions);
+  return useMemo(() => deriveRealizedEvents(transactions), [transactions]);
 }

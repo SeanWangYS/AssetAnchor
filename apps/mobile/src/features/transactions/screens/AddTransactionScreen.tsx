@@ -47,9 +47,12 @@ export default function AddTransactionScreen({
 
   const isEdit = route.name === 'EditTransaction';
   const editId = isEdit ? (route.params as { transactionId: string }).transactionId : null;
-  const existing = useTransactionsStore((s) =>
-    editId ? s.transactions.find((t) => t.transaction_id === editId) : undefined,
-  );
+  const allTransactions = useTransactionsStore((s) => s.transactions);
+  const existing = editId ? allTransactions.find((t) => t.transaction_id === editId) : undefined;
+  // SELL 可賣股數推導：編輯時排除被編輯的該筆，避免自身重複計入。
+  const transactionsForSellable = editId
+    ? allTransactions.filter((t) => t.transaction_id !== editId)
+    : allTransactions;
 
   function onSubmit(input: TransactionInput) {
     if (!uid) return;
@@ -90,6 +93,7 @@ export default function AddTransactionScreen({
     >
       <TransactionForm
         accounts={activeAccounts}
+        transactions={transactionsForSellable}
         {...(existing ? { initialValues: toFormDefaults(existing) } : {})}
         submitLabel={isEdit ? '儲存變更' : '記錄交易'}
         onSubmit={onSubmit}
