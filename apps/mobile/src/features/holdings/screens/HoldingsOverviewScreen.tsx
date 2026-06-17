@@ -1,18 +1,25 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Money, type Market, type Position } from '@assetanchor/shared';
+import {
+  DISPLAY_CURRENCIES,
+  Money,
+  type DisplayCurrency,
+  type Market,
+  type Position,
+} from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
-import { Avatar, Card, Chart, Icon, Pnl, Segmented, TimeTabs } from '../../../core/ui';
+import { Avatar, Card, Chart, Icon, Pnl, Segmented, TimeTabs, Toast } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
 import { useHoldings } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
+import { usePreferencesStore } from '../../../services/preferences';
 import { useCountUp } from '../useCountUp';
 import {
   DEMO_SERIES,
   DEMO_SUMMARY,
-  DISPLAY_CURRENCY,
   avatarColor,
   currencyPrefix,
+  displayDecimals,
   fmtAmount,
   fmtMoney,
   fmtShares,
@@ -30,6 +37,9 @@ const GROUP_OPTIONS: readonly { value: GroupMode }[] = [
   { value: '帳戶' },
   { value: '類別' },
 ];
+
+/** 顯示幣別切換選項（label = value）。此切換＝全 app 顯示幣別偏好控制（持久化）。 */
+const CCY_OPTIONS = DISPLAY_CURRENCIES.map((value) => ({ value }));
 
 /** 持倉走勢 timeframe（design §3.1 item 5）。 */
 type Timeframe = '1M' | '3M' | 'YTD' | '1Y' | 'ALL';
@@ -149,8 +159,17 @@ export default function HoldingsOverviewScreen({
 }: HoldingsStackScreenProps<'HoldingsOverview'>) {
   const positions = useHoldings();
   const rates = useExchangeRatesStore((s) => s.rates);
+  const displayCcy = usePreferencesStore((s) => s.preferredDisplayCurrency);
+  const changeDisplayCurrency = usePreferencesStore((s) => s.changeDisplayCurrency);
   const [mode, setMode] = useState<GroupMode>('持股');
   const [tf, setTf] = useState<Timeframe>('1Y');
+  const [ccyToast, setCcyToast] = useState<string | null>(null);
+
+  // 顯示幣別切換＝全 app 偏好控制：樂觀更新 + 持久化（失敗 store 自動還原，這裡提示）。
+  async function onChangeCurrency(next: DisplayCurrency) {
+    const ok = await changeDisplayCurrency(next);
+    if (!ok) setCcyToast('更新失敗，已還原');
+  }
 
   // 持倉是唯一保留 header ＋ 的 tab（design §1）：新增交易 → Root modal AddTransaction。
   // 同時放通知圓鈕（design §3.1 item 2）。
@@ -176,163 +195,187 @@ export default function HoldingsOverviewScreen({
 
   const sections = useMemo(() => buildSections(positions, mode), [positions, mode]);
 
-  // 總資產 Hero（mock 摘要；需報價，故 count-up 跑 demo 值）。
-  const totalAssets = useCountUp(DEMO_SUMMARY.totalAssets);
+  // Hero / bento 的金額類 mock 摘要（TWD 示意值）一律以顯示幣別偏好呈現：用 rates（或 demo
+  // 匯率退回）換算；百分比（報酬率 / 今日%）為幣別無關，不換算。真實「總成本」另計（grandCost）。
+  const demo = useMemo(() => {
+    const conv = (twd: number): number => {
+      const m = toDisplay(new Money(String(twd), 'TWD'), rates, displayCcy);
+      return m ? m.toNumber() : twd;
+    };
+    return {
+      totalAssets: conv(DEMO_SUMMARY.totalAssets),
+      unrealized: conv(DEMO_SUMMARY.unrealized),
+      today: conv(DEMO_SUMMARY.today),
+      realizedThisMonth: conv(DEMO_SUMMARY.realizedThisMonth),
+    };
+  }, [rates, displayCcy]);
 
-  // 真實跨幣別「總成本（TWD）」：以 rates（或 demo 匯率退回）即時換算加總。
+  // 總資產 Hero（mock 摘要；需報價，故 count-up 跑 demo 值）。
+  const totalAssets = useCountUp(demo.totalAssets);
+
+  // 真實跨幣別「總成本」：以使用者顯示幣別偏好為基準，rates（或 demo 匯率退回）即時換算加總。
   const grandCost = useMemo(() => {
-    let sum = Money.zero(DISPLAY_CURRENCY);
+    let sum = Money.zero(displayCcy);
     for (const p of positions) {
-      const conv = toDisplay(
-        Money.fromDecimalString(p.totalCost, p.currency),
-        rates,
-        DISPLAY_CURRENCY,
-      );
+      const conv = toDisplay(Money.fromDecimalString(p.totalCost, p.currency), rates, displayCcy);
       if (conv === null) return null;
       sum = sum.add(conv);
     }
     return sum;
-  }, [positions, rates]);
+  }, [positions, rates, displayCcy]);
+
+  // 顯示幣別的金額格式（前綴 + 小數位）；Pnl display 取絕對值（正負由 Pnl 自行呈現）。
+  const dp = displayDecimals(displayCcy);
+  const fmtCcy = (n: number): string =>
+    `${currencyPrefix(displayCcy)} ${Math.abs(n).toLocaleString('en-US', {
+      minimumFractionDigits: dp,
+      maximumFractionDigits: dp,
+    })}`;
 
   const series = DEMO_SERIES[tf] ?? [];
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {/* 總資產 Hero */}
-      <View style={styles.hero}>
-        <Text style={styles.heroLabel}>總資產（TWD）</Text>
-        <Text style={styles.heroValue} numberOfLines={1}>
-          NT$ {Math.round(totalAssets).toLocaleString('en-US')}
-        </Text>
-        <View style={styles.heroChange}>
-          <Pnl
-            value={DEMO_SUMMARY.unrealized}
-            display={`NT$ ${Math.abs(DEMO_SUMMARY.unrealized).toLocaleString('en-US')}`}
-            size={14}
-          />
-          <Pnl
-            value={DEMO_SUMMARY.totalReturnPct}
-            display={`${Math.abs(DEMO_SUMMARY.totalReturnPct).toFixed(2)}%`}
-            signMode="plusminus"
-            size={13}
-          />
-          <Text style={styles.heroPeriod}>全期</Text>
-        </View>
-        <Text style={styles.demoNote}>
-          市值與今日數據為示意（報價接入為後續），成本來自實際交易
-        </Text>
-      </View>
-
-      {/* 2×2 摘要 Bento */}
-      <View style={styles.bento}>
-        <Card glow padding={spacing.cardInner} style={styles.bentoCell}>
-          <Text style={styles.bentoLabel}>總報酬率</Text>
-          <View style={styles.bentoVal}>
+    <>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        {/* 總資產 Hero */}
+        <View style={styles.hero}>
+          <Text style={styles.heroLabel}>總資產（{displayCcy}）</Text>
+          <Text style={styles.heroValue} numberOfLines={1}>
+            {currencyPrefix(displayCcy)}{' '}
+            {totalAssets.toLocaleString('en-US', {
+              minimumFractionDigits: dp,
+              maximumFractionDigits: dp,
+            })}
+          </Text>
+          <View style={styles.heroChange}>
+            <Pnl value={DEMO_SUMMARY.unrealized} display={fmtCcy(demo.unrealized)} size={14} />
             <Pnl
               value={DEMO_SUMMARY.totalReturnPct}
               display={`${Math.abs(DEMO_SUMMARY.totalReturnPct).toFixed(2)}%`}
-              size={21}
-              weight="extrabold"
-            />
-          </View>
-        </Card>
-        <Card padding={spacing.cardInner} style={styles.bentoCell}>
-          <Text style={styles.bentoLabel}>總未實現損益</Text>
-          <View style={styles.bentoVal}>
-            <Pnl
-              value={DEMO_SUMMARY.unrealized}
-              display={`NT$ ${Math.abs(DEMO_SUMMARY.unrealized).toLocaleString('en-US')}`}
-              size={18}
-            />
-          </View>
-        </Card>
-        <Card padding={spacing.cardInner} style={styles.bentoCell}>
-          <Text style={styles.bentoLabel}>今日損益</Text>
-          <View style={styles.bentoVal}>
-            <Pnl
-              value={DEMO_SUMMARY.today}
-              display={`NT$ ${Math.abs(DEMO_SUMMARY.today).toLocaleString('en-US')}`}
-              size={16}
-            />
-          </View>
-          <View style={styles.bentoSub}>
-            <Pnl
-              value={DEMO_SUMMARY.todayPct}
-              display={`${Math.abs(DEMO_SUMMARY.todayPct).toFixed(2)}%`}
               signMode="plusminus"
-              size={12}
+              size={13}
             />
+            <Text style={styles.heroPeriod}>全期</Text>
           </View>
-        </Card>
-        <Card padding={spacing.cardInner} style={styles.bentoCell}>
-          <Text style={styles.bentoLabel}>本月已實現損益</Text>
-          <View style={styles.bentoVal}>
-            <Pnl
-              value={DEMO_SUMMARY.realizedThisMonth}
-              display={`NT$ ${Math.abs(DEMO_SUMMARY.realizedThisMonth).toLocaleString('en-US')}`}
-              size={18}
-            />
-          </View>
-        </Card>
-      </View>
-
-      {/* 走勢圖卡 */}
-      <Card style={styles.trendCard} padding={spacing.lg - 2}>
-        <View style={styles.trendHead}>
-          <Text style={styles.trendTitle}>資產走勢</Text>
-          <Text style={styles.trendTf}>{tf}</Text>
+          <Text style={styles.demoNote}>
+            市值與今日數據為示意（報價接入為後續），成本來自實際交易
+          </Text>
         </View>
-        <View style={styles.trendChart}>
-          <Chart data={series} height={108} />
-        </View>
-        <TimeTabs items={TIMEFRAMES} value={tf} onChange={setTf} />
-      </Card>
 
-      {/* 分組切換 */}
-      <View style={styles.segmentedWrap}>
-        <Segmented options={GROUP_OPTIONS} value={mode} onChange={setMode} />
-      </View>
-
-      {/* 真實「總成本（TWD）」快照 */}
-      <View style={styles.costRow}>
-        <Text style={styles.costLabel}>總成本（TWD）</Text>
-        <Text style={styles.costValue}>
-          {grandCost === null
-            ? '匯率未就緒'
-            : `NT$ ${grandCost.toNumber().toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
-        </Text>
-      </View>
-
-      {/* 清單 */}
-      {positions.length === 0 ? (
-        <Text style={styles.empty}>尚無持倉，先到「交易」分頁記錄一筆買入</Text>
-      ) : (
-        sections.map((section) => (
-          <View key={section.key}>
-            {section.label !== '' ? (
-              <View style={styles.groupHeader}>
-                <Text style={styles.groupLabel}>{section.label}</Text>
-                <Text style={styles.groupCount}>{section.count} 檔</Text>
-                <Text style={styles.groupSubtotal} numberOfLines={1}>
-                  {section.subtotal}
-                </Text>
-              </View>
-            ) : null}
-            {section.positions.map((p) => (
-              <HoldingRow
-                key={`${p.market}_${p.symbol}`}
-                position={p}
-                dense={mode !== '持股'}
-                onPress={() =>
-                  navigation.navigate('AssetDetail', { market: p.market, symbol: p.symbol })
-                }
+        {/* 2×2 摘要 Bento */}
+        <View style={styles.bento}>
+          <Card glow padding={spacing.cardInner} style={styles.bentoCell}>
+            <Text style={styles.bentoLabel}>總報酬率</Text>
+            <View style={styles.bentoVal}>
+              <Pnl
+                value={DEMO_SUMMARY.totalReturnPct}
+                display={`${Math.abs(DEMO_SUMMARY.totalReturnPct).toFixed(2)}%`}
+                size={21}
+                weight="extrabold"
               />
-            ))}
+            </View>
+          </Card>
+          <Card padding={spacing.cardInner} style={styles.bentoCell}>
+            <Text style={styles.bentoLabel}>總未實現損益</Text>
+            <View style={styles.bentoVal}>
+              <Pnl value={DEMO_SUMMARY.unrealized} display={fmtCcy(demo.unrealized)} size={18} />
+            </View>
+          </Card>
+          <Card padding={spacing.cardInner} style={styles.bentoCell}>
+            <Text style={styles.bentoLabel}>今日損益</Text>
+            <View style={styles.bentoVal}>
+              <Pnl value={DEMO_SUMMARY.today} display={fmtCcy(demo.today)} size={16} />
+            </View>
+            <View style={styles.bentoSub}>
+              <Pnl
+                value={DEMO_SUMMARY.todayPct}
+                display={`${Math.abs(DEMO_SUMMARY.todayPct).toFixed(2)}%`}
+                signMode="plusminus"
+                size={12}
+              />
+            </View>
+          </Card>
+          <Card padding={spacing.cardInner} style={styles.bentoCell}>
+            <Text style={styles.bentoLabel}>本月已實現損益</Text>
+            <View style={styles.bentoVal}>
+              <Pnl
+                value={DEMO_SUMMARY.realizedThisMonth}
+                display={fmtCcy(demo.realizedThisMonth)}
+                size={18}
+              />
+            </View>
+          </Card>
+        </View>
+
+        {/* 顯示幣別切換（全 app 偏好控制；置於走勢圖之上）*/}
+        <View style={styles.ccyRow}>
+          <Text style={styles.ccyLabel}>顯示幣別</Text>
+          <Segmented options={CCY_OPTIONS} value={displayCcy} onChange={onChangeCurrency} />
+        </View>
+
+        {/* 走勢圖卡 */}
+        <Card style={styles.trendCard} padding={spacing.lg - 2}>
+          <View style={styles.trendHead}>
+            <Text style={styles.trendTitle}>資產走勢</Text>
+            <Text style={styles.trendTf}>{tf}</Text>
           </View>
-        ))
-      )}
-      <View style={styles.bottomSpacer} />
-    </ScrollView>
+          <View style={styles.trendChart}>
+            <Chart data={series} height={108} />
+          </View>
+          <TimeTabs items={TIMEFRAMES} value={tf} onChange={setTf} />
+        </Card>
+
+        {/* 分組切換 */}
+        <View style={styles.segmentedWrap}>
+          <Segmented options={GROUP_OPTIONS} value={mode} onChange={setMode} />
+        </View>
+
+        {/* 真實「總成本」快照（以顯示幣別偏好呈現） */}
+        <View style={styles.costRow}>
+          <Text style={styles.costLabel}>總成本（{displayCcy}）</Text>
+          <Text style={styles.costValue}>
+            {grandCost === null
+              ? '匯率未就緒'
+              : `${currencyPrefix(displayCcy)} ${fmtAmount(grandCost, displayCcy)}`}
+          </Text>
+        </View>
+
+        {/* 清單 */}
+        {positions.length === 0 ? (
+          <Text style={styles.empty}>尚無持倉，先到「交易」分頁記錄一筆買入</Text>
+        ) : (
+          sections.map((section) => (
+            <View key={section.key}>
+              {section.label !== '' ? (
+                <View style={styles.groupHeader}>
+                  <Text style={styles.groupLabel}>{section.label}</Text>
+                  <Text style={styles.groupCount}>{section.count} 檔</Text>
+                  <Text style={styles.groupSubtotal} numberOfLines={1}>
+                    {section.subtotal}
+                  </Text>
+                </View>
+              ) : null}
+              {section.positions.map((p) => (
+                <HoldingRow
+                  key={`${p.market}_${p.symbol}`}
+                  position={p}
+                  dense={mode !== '持股'}
+                  onPress={() =>
+                    navigation.navigate('AssetDetail', { market: p.market, symbol: p.symbol })
+                  }
+                />
+              ))}
+            </View>
+          ))
+        )}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+      <Toast
+        visible={ccyToast !== null}
+        message={ccyToast ?? ''}
+        onHide={() => setCcyToast(null)}
+      />
+    </>
   );
 }
 
@@ -373,6 +416,14 @@ const styles = StyleSheet.create({
   bentoLabel: { fontFamily: fontFamily.text.medium, fontSize: 11.5, color: colors.textWeak },
   bentoVal: { marginTop: 7 },
   bentoSub: { marginTop: 3 },
+
+  // 顯示幣別切換（走勢圖之上）
+  ccyRow: { marginTop: spacing.lg, gap: spacing.sm },
+  ccyLabel: {
+    fontFamily: fontFamily.text.semibold,
+    fontSize: fontSize.label,
+    color: colors.textWeak,
+  },
 
   // 走勢圖卡
   trendCard: { marginTop: spacing.md },

@@ -6,3 +6,4 @@ export * from './transactions/index.js';
 export * from './portfolio/index.js';
 export * from './fx/index.js';
 export * from './charts/index.js';
+export * from './preferences/index.js';

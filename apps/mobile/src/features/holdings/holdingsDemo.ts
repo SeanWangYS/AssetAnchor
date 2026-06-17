@@ -21,9 +21,6 @@ import {
 /** demo 匯率 fallback：1 USD = 30.95 TWD（design §5；rates 未就緒時用）。 */
 export const DEMO_USD_TWD = '30.95';
 
-/** 跨幣別合計的顯示幣別（MVP 預設 TWD；Settings 切換為 Sprint 6）。 */
-export const DISPLAY_CURRENCY: Currency = 'TWD';
-
 /** 標的中文名 / 英文名（prototype HOLD 對照；未知標的回退代號本身）。 */
 interface SymbolMeta {
   name: string;
