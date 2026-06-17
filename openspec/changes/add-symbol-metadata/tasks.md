@@ -29,5 +29,5 @@
 
 - [x] 5.1 `pnpm -r typecheck`、`pnpm -r lint`、`pnpm format:check` 全綠；shared 203 + functions 18 + rules 17 tests 綠
 - [x] 5.2 emulator 端到端（後端鏈）：`fetchSymbolMeta` create+enrich+idempotent 驗證如 2.4。🛑 全 app iOS Simulator 視覺對圖（持倉/詳情顯示真名）= owner gate
-- [ ] 5.3 更新進度記憶（Sprint 6 起跑、本 change 狀態）
-- [ ] 5.4 commit（Conventional Commits, scope: shared/functions/firebase/mobile）+ 開 PR；🛑 留 owner：iOS Simulator 視覺對圖（ADR-0008）+ production functions 部署（延後 gate）
+- [x] 5.3 更新進度記憶（project_sprint6_progress：Sprint 6 起跑、本 change 狀態 + 剩餘佇列 + gate）
+- [x] 5.4 commit（feat 多 scope）+ push + 開 PR #18；🛑 留 owner：iOS Simulator 視覺對圖（ADR-0008）+ production functions 部署（延後 gate）。**未 archive**（帶 UI，待視覺對圖）
