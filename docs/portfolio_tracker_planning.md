@@ -122,13 +122,15 @@
 
 1. 動到 Firestore「聖牛」schema（§6）—— 三端影響，先對照再動。
 2. 與設計包衝突 / 帶 UI 但缺對應 `docs/design/<feature>/*-spec.md`（ADR-0008）。
-3. 花錢 / 部署 / push main / merge PR / 真機 / 任何外部不可逆動作。
+3. 花錢 / 部署 / push main / 真機 / 任何外部不可逆動作。
 4. 動到 Money/decimal 精度規則（ADR-0005）。
 5. 需要跨 change 的重大決策（開新 ADR）。
 
+> **merge PR 不是會讓 loop 停的 gate**（owner 規則 2026-06-17）：merge 到 main 延後、由 owner 在里程碑批次執行（仍 owner 本人按，AI 不自動 merge main）。loop 在 PR + 視覺對圖後照常 archive + 續做。
+
 ### 自動化開發循環
 
-每個 Sprint = 一或多個 OpenSpec change，走 explore →（propose → apply → archive）。可一次推進多個 change，直到觸發上面的 gate 才停下找 owner；否則收尾（archive）才回報。
+每個 Sprint = 一或多個 OpenSpec change，走 explore →（propose → apply → archive）。**PR + （帶 UI 則）owner 視覺對圖通過後就 archive、續做下一個 change，不停下等 merge**；merge 延後由 owner 批次處理。可一次推進多個 change，直到觸發上面的人類介入 gate 才停下找 owner；否則收尾（archive）後續做、並回報「哪些 PR 等 owner 批次 merge」。
 
 ---
 
