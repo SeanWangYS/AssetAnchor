@@ -72,7 +72,6 @@ export type SettingsStackParamList = {
   SettingsHome: undefined;
   /** 帳戶管理子頁 —— 掛載整個 AccountsStack（巢狀 navigator 作為一個 screen）。 */
   Accounts: undefined;
-  DisplayPrefs: undefined;
   Profile: undefined;
   About: undefined;
 };
