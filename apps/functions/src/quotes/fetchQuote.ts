@@ -44,7 +44,13 @@ export async function getOrFetchQuote(
   input: FetchQuoteInput,
   provider: QuoteProvider,
   nowMs: number,
-): Promise<{ symbolId: string; price: string; fetchedAtMs: number; cached: boolean }> {
+): Promise<{
+  symbolId: string;
+  price: string;
+  prevClose: string | null;
+  fetchedAtMs: number;
+  cached: boolean;
+}> {
   ensureApp();
   const { market, symbol, currency } = input;
   const symbolId = `${market}_${symbol}`;
@@ -56,7 +62,13 @@ export async function getOrFetchQuote(
     const fetchedAtMs: number =
       typeof data?.fetched_at?.toMillis === 'function' ? data.fetched_at.toMillis() : 0;
     if (isFresh(fetchedAtMs, nowMs)) {
-      return { symbolId, price: String(data?.price ?? ''), fetchedAtMs, cached: true };
+      return {
+        symbolId,
+        price: String(data?.price ?? ''),
+        prevClose: data?.prev_close != null ? String(data.prev_close) : null,
+        fetchedAtMs,
+        cached: true,
+      };
     }
   }
 
@@ -83,7 +95,13 @@ export async function getOrFetchQuote(
     volume: sane.value.volume,
   });
 
-  return { symbolId, price: sane.value.price, fetchedAtMs: nowMs, cached: false };
+  return {
+    symbolId,
+    price: sane.value.price,
+    prevClose: sane.value.prevClose,
+    fetchedAtMs: nowMs,
+    cached: false,
+  };
 }
 
 /**

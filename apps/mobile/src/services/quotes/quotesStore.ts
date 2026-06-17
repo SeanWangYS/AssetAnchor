@@ -12,6 +12,8 @@ import { db, functionsBaseUrl } from '../firebase';
  */
 export interface QuoteEntry {
   price: string; // Money 10 位小數 string（原幣別）
+  /** 前一交易日收盤（算今日漲跌；缺值 null）。 */
+  prevClose: string | null;
   currency: Currency;
   fetchedAtMs: number;
 }
@@ -33,9 +35,15 @@ async function readFirestoreCache(
   try {
     const snap = await getDoc(doc(db, 'quotes', symbolId));
     if (!snap.exists()) return null;
-    const data = snap.data() as { price?: string; fetched_at?: { toMillis?: () => number } };
+    const data = snap.data() as {
+      price?: string;
+      prev_close?: string | null;
+      fetched_at?: { toMillis?: () => number };
+    };
     const fetchedAtMs = data.fetched_at?.toMillis?.() ?? 0;
-    return data.price ? { price: data.price, currency, fetchedAtMs } : null;
+    return data.price
+      ? { price: data.price, prevClose: data.prev_close ?? null, currency, fetchedAtMs }
+      : null;
   } catch {
     return null;
   }
@@ -47,9 +55,19 @@ async function triggerFetchQuote(t: QuoteTarget): Promise<QuoteEntry | null> {
       `${functionsBaseUrl}/fetchQuote?market=${t.market}` +
       `&symbol=${encodeURIComponent(t.symbol)}&currency=${t.currency}`;
     const res = await fetch(url);
-    const json = (await res.json()) as { ok?: boolean; price?: string; fetchedAtMs?: number };
+    const json = (await res.json()) as {
+      ok?: boolean;
+      price?: string;
+      prevClose?: string | null;
+      fetchedAtMs?: number;
+    };
     if (!json.ok || !json.price) return null;
-    return { price: json.price, currency: t.currency, fetchedAtMs: json.fetchedAtMs ?? Date.now() };
+    return {
+      price: json.price,
+      prevClose: json.prevClose ?? null,
+      currency: t.currency,
+      fetchedAtMs: json.fetchedAtMs ?? Date.now(),
+    };
   } catch {
     return null;
   }

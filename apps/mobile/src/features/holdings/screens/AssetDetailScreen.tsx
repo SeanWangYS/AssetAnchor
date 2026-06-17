@@ -13,7 +13,6 @@ import {
   displayDecimals,
   fmtShares,
   marketLabel,
-  mockTodayPct,
   symbolMeta,
   toDisplay,
 } from '../holdingsDemo';
@@ -93,9 +92,13 @@ export default function AssetDetailScreen({
       ? priceM.subtract(avgCostM).divide(position.averageCost).multiply('100').toNumber()
       : null;
   const realized = Money.fromDecimalString(position.realizedPnl, position.currency);
-  // 今日漲跌仍示意（需 prevClose plumbing；flag 為後續）。
-  const todayPct = mockTodayPct(symbol);
-  const todayDelta = priceM ? priceM.multiply((todayPct / 100).toFixed(6)) : null;
+  // 今日漲跌（每股）：現價 − 前收（報價真值）。缺 prevClose 則不顯示今日列。
+  const prevCloseM = quote?.prevClose ? new Money(quote.prevClose, position.currency) : null;
+  const todayDelta = priceM && prevCloseM ? priceM.subtract(prevCloseM) : null;
+  const todayPct =
+    priceM && prevCloseM && !prevCloseM.isZero()
+      ? priceM.subtract(prevCloseM).divide(prevCloseM.toDecimalString()).multiply('100').toNumber()
+      : null;
 
   const series = DEMO_SERIES[tf] ?? [];
   const priceCcyPrefix = currencyPrefix(position.currency);
@@ -117,7 +120,7 @@ export default function AssetDetailScreen({
           報價未就緒
         </Text>
       )}
-      {priceM && todayDelta ? (
+      {priceM && todayDelta && todayPct !== null ? (
         <View style={styles.todayLine}>
           <Pnl
             value={todayPct}
@@ -133,7 +136,7 @@ export default function AssetDetailScreen({
             signMode="plusminus"
             size={13}
           />
-          <Text style={styles.todayWord}>今日（示意）</Text>
+          <Text style={styles.todayWord}>今日</Text>
         </View>
       ) : null}
       <Text style={styles.delayNote}>資料延遲 15 分鐘 · Yahoo Finance</Text>
