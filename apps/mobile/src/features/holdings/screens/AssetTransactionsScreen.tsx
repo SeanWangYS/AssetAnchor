@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Money,
+  deriveHoldings,
   type Currency,
   type TransactionDocument,
   type TransactionType,
@@ -81,30 +82,22 @@ export default function AssetTransactionsScreen({
     [allTx, market, symbol],
   );
 
-  // 目前彙總：BUY 累積股數 / 總成本（與 deriveHoldings 同口徑：含 fee+tax）。
+  // 目前彙總：與全 app 單一事實來源 deriveHoldings 同口徑——BUY/SELL 時序淨額、加權平均、
+  // 賣出減量（不可只加買入；否則賣出後股數對不上，見修復記錄）。全數賣出（qty=0）時
+  // deriveHoldings 不回該 position → 視為持有 0、成本 0（交易歷史仍照常顯示明細）。
   const summary = useMemo(() => {
-    const buys = timeline.filter((t) => t.transaction_type === 'BUY');
-    const sells = timeline.filter((t) => t.transaction_type === 'SELL');
     const ccy: Currency = timeline[0]?.currency ?? 'TWD';
-    let qty = Money.zero(ccy);
-    let cost = Money.zero(ccy);
-    for (const t of buys) {
-      qty = qty.add(Money.fromDecimalString(t.quantity, ccy));
-      cost = cost
-        .add(Money.fromDecimalString(t.total, ccy))
-        .add(Money.fromDecimalString(t.fee, ccy))
-        .add(Money.fromDecimalString(t.tax, ccy));
-    }
-    const avg = qty.isZero() ? Money.zero(ccy) : cost.divide(qty.toDecimalString());
+    const zero = Money.zero(ccy).toDecimalString();
+    const pos = deriveHoldings(timeline).find((p) => p.market === market && p.symbol === symbol);
     return {
       ccy,
-      qty: qty.toDecimalString(),
-      cost: cost.toDecimalString(),
-      avg: avg.toDecimalString(),
-      buyCount: buys.length,
-      sellCount: sells.length,
+      qty: pos?.quantity ?? zero,
+      cost: pos?.totalCost ?? zero,
+      avg: pos?.averageCost ?? zero,
+      buyCount: timeline.filter((t) => t.transaction_type === 'BUY').length,
+      sellCount: timeline.filter((t) => t.transaction_type === 'SELL').length,
     };
-  }, [timeline]);
+  }, [timeline, market, symbol]);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
