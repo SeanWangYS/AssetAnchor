@@ -92,7 +92,7 @@ export default function AccountDetailScreen({
   if (!account || !uid) {
     return (
       <View style={styles.center}>
-        <Text style={styles.muted}>找不到帳戶</Text>
+        <EmptyState title="找不到帳戶" subtitle="可能已被刪除或停用" />
       </View>
     );
   }

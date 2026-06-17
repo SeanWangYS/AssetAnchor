@@ -2,8 +2,8 @@ import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Money, type Currency } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
-import { Button, Card, Chart, Pnl, Segmented, TimeTabs } from '../../../core/ui';
-import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
+import { Button, Card, Chart, EmptyState, Pnl, Segmented, TimeTabs } from '../../../core/ui';
+import { colors, fontFamily, numericStyle, spacing } from '../../../core/theme';
 import { useHoldings } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { quoteFor, useQuotes } from '../../../services/quotes';
@@ -79,7 +79,7 @@ export default function AssetDetailScreen({
   if (!position) {
     return (
       <View style={styles.notFoundWrap}>
-        <Text style={styles.notFound}>找不到持倉</Text>
+        <EmptyState title="找不到持倉" subtitle="此標的目前無持倉" />
       </View>
     );
   }
@@ -251,11 +251,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.screen,
-  },
-  notFound: {
-    fontFamily: fontFamily.text.regular,
-    fontSize: fontSize.text,
-    color: colors.textSecondary,
   },
 
   // 現價 hero

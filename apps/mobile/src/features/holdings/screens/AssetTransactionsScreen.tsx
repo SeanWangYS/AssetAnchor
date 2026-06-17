@@ -9,11 +9,10 @@ import {
   type TransactionType,
 } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
-import { Card } from '../../../core/ui';
+import { Card, EmptyState } from '../../../core/ui';
 import {
   colors,
   fontFamily,
-  fontSize,
   gradientDirection,
   gradients,
   numericStyle,
@@ -98,7 +97,7 @@ export default function AssetTransactionsScreen({
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {timeline.length === 0 ? (
-        <Text style={styles.empty}>此標的尚無交易紀錄</Text>
+        <EmptyState title="此標的尚無交易紀錄" />
       ) : (
         <>
           {/* 目前彙總 */}
@@ -157,14 +156,6 @@ function Kv({ k, v, last }: { k: string; v: string; last?: boolean }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.screen },
   content: { paddingHorizontal: spacing.page, paddingVertical: spacing.lg },
-
-  empty: {
-    fontFamily: fontFamily.text.regular,
-    fontSize: fontSize.text,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    paddingVertical: spacing.xxl,
-  },
 
   summaryCard: { marginBottom: spacing.lg },
   summaryTitle: {

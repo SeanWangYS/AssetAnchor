@@ -8,7 +8,19 @@ import {
   type Position,
 } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
-import { Avatar, Card, Chart, Icon, Pnl, Segmented, TimeTabs, Toast } from '../../../core/ui';
+import {
+  Avatar,
+  Card,
+  Chart,
+  EmptyState,
+  ErrorState,
+  Icon,
+  LoadingView,
+  Pnl,
+  Segmented,
+  TimeTabs,
+  Toast,
+} from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
 import { useHoldings, useRealizedEvents } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
@@ -171,6 +183,8 @@ export default function HoldingsOverviewScreen({
   const realizedEvents = useRealizedEvents();
   // Symbol 名稱真值（Sprint 6）：以交易清單（含 asset_type）為來源 enrich + 顯示。
   const transactions = useTransactionsStore((s) => s.transactions);
+  const txLoading = useTransactionsStore((s) => s.loading);
+  const txError = useTransactionsStore((s) => s.error);
   const symbolTargets = useMemo(() => symbolTargetsFromTransactions(transactions), [transactions]);
   const symbols = useSymbols(symbolTargets);
   const rates = useExchangeRatesStore((s) => s.rates);
@@ -445,9 +459,17 @@ export default function HoldingsOverviewScreen({
           </Text>
         </View>
 
-        {/* 清單 */}
-        {positions.length === 0 ? (
-          <Text style={styles.empty}>尚無持倉，先到「交易」分頁記錄一筆買入</Text>
+        {/* 清單（cold start：error → loading → empty → content） */}
+        {transactions.length === 0 && txError ? (
+          <ErrorState message="載入失敗" subtitle="請下拉重新整理" />
+        ) : transactions.length === 0 && txLoading ? (
+          <LoadingView label="載入持倉中…" />
+        ) : positions.length === 0 ? (
+          <EmptyState
+            title="尚無持倉"
+            subtitle="先到「交易」分頁記錄一筆買入"
+            icon={<Icon name="txn" size={26} color={colors.accent} />}
+          />
         ) : (
           sections.map((section) => (
             <View key={section.key}>
@@ -630,12 +652,5 @@ const styles = StyleSheet.create({
     ...numericStyle,
   },
 
-  empty: {
-    fontFamily: fontFamily.text.regular,
-    fontSize: fontSize.text,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    paddingVertical: spacing.xxl,
-  },
   bottomSpacer: { height: spacing.lg },
 });
