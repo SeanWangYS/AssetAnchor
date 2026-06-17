@@ -3,6 +3,7 @@ import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import type { Money, RateMap } from '@assetanchor/shared';
 import type { AnalysisStackScreenProps } from '../../../core/navigation/types';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
+import { usePreferencesStore } from '../../../services/preferences';
 import {
   Card,
   Donut,
@@ -52,7 +53,9 @@ export default function AnalysisOverviewScreen({
   navigation,
 }: AnalysisStackScreenProps<'AnalysisOverview'>) {
   const storeRates = useExchangeRatesStore((s) => s.rates);
-  const [display, setDisplay] = useState<DisplayCurrency>('TWD');
+  // 切換預設值＝使用者顯示幣別偏好（登入時灌入 store）；之後使用者可在本頁自行切換。
+  const preferredDisplayCurrency = usePreferencesStore((s) => s.preferredDisplayCurrency);
+  const [display, setDisplay] = useState<DisplayCurrency>(preferredDisplayCurrency);
   const [toastVisible, setToastVisible] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 

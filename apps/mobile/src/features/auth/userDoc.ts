@@ -1,4 +1,5 @@
-import { doc, getDoc, setDoc, serverTimestamp } from '@react-native-firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from '@react-native-firebase/firestore';
+import { updateProfile } from '@react-native-firebase/auth';
 import type { UserDocument } from '@assetanchor/shared';
 import { auth, db } from '../../services/firebase';
 
@@ -27,4 +28,20 @@ export async function getUserDoc(): Promise<UserDocument | null> {
   if (!current) return null;
   const snap = await getDoc(doc(db, 'users', current.uid));
   return snap.exists() ? (snap.data() as UserDocument) : null;
+}
+
+/**
+ * 寫回顯示名稱：先更新 users/{uid}.display_name（app source of truth）+ updated_at，
+ * 再同步 Auth profile displayName（部分既有畫面讀 Auth displayName，保持一致）。
+ * 任一步驟拋錯即整體失敗（無跨服務交易，MVP 以錯誤回饋讓使用者重試）。未登入則 no-op。
+ * 呼叫端負責先以 shared 的 validateDisplayName gate（本函式僅負責寫入）。
+ */
+export async function updateUserProfile(fields: { display_name: string }): Promise<void> {
+  const current = auth.currentUser;
+  if (!current) return;
+  await updateDoc(doc(db, 'users', current.uid), {
+    display_name: fields.display_name,
+    updated_at: serverTimestamp(),
+  });
+  await updateProfile(current, { displayName: fields.display_name });
 }
