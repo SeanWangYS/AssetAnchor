@@ -48,10 +48,19 @@ describe('transactionInputSchema', () => {
     expect(transactionInputSchema.safeParse({ ...valid, asset_type: 'NFT' }).success).toBe(false);
   });
 
-  it('rejects a non-BUY transaction_type (MVP scope is BUY only)', () => {
-    expect(transactionInputSchema.safeParse({ ...valid, transaction_type: 'SELL' }).success).toBe(
-      false,
+  it('accepts BUY and SELL (Sprint 5)', () => {
+    expect(transactionInputSchema.safeParse({ ...valid, transaction_type: 'BUY' }).success).toBe(
+      true,
     );
+    expect(transactionInputSchema.safeParse({ ...valid, transaction_type: 'SELL' }).success).toBe(
+      true,
+    );
+  });
+
+  it('rejects non-BUY/SELL transaction types (corporate actions out of scope)', () => {
+    expect(
+      transactionInputSchema.safeParse({ ...valid, transaction_type: 'DIVIDEND_CASH' }).success,
+    ).toBe(false);
   });
 
   it('accepts both MVP currencies USD and TWD', () => {

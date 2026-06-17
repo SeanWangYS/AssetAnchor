@@ -13,6 +13,7 @@ function pos(currency: 'USD' | 'TWD', totalCost: string): Position {
     totalCost,
     averageCost: totalCost,
     txCount: 1,
+    realizedPnl: '0.0000000000',
   };
 }
 
