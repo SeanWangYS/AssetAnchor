@@ -175,3 +175,91 @@ export function sellableQuantity(
   const pos = deriveHoldings(transactions).find((p) => p.market === market && p.symbol === symbol);
   return pos ? pos.quantity : '0.0000000000';
 }
+
+/**
+ * 某**帳戶**（account_id）之 (market, symbol) 當下可賣股數。
+ * 券商帳戶為真實帳戶：你只能賣「在該帳戶」持有的股，同 symbol 於他帳戶的持倉不計入。
+ * 內部以 account_id 過濾交易子集後沿用 `deriveHoldings`（同一事實來源），無持倉回 "0.0000000000"。
+ * 供 SELL 表單做「帳戶層級不可超賣」驗證。
+ */
+export function sellableQuantityForAccount(
+  transactions: TransactionDocument[],
+  accountId: string,
+  market: Market,
+  symbol: string,
+): string {
+  return sellableQuantity(
+    transactions.filter((t) => t.account_id === accountId),
+    market,
+    symbol,
+  );
+}
+
+/** `deriveHoldingsForAccountSafe` 跳過的 (market, symbol)（因歷史爛資料致 throw）。 */
+export interface SkippedSymbol {
+  market: Market;
+  symbol: string;
+}
+
+/** `deriveHoldingsForAccountSafe` 回傳：合法持倉 + 被跳過（資料異常）的 symbol 清單。 */
+export interface SafeHoldingsResult {
+  positions: Position[];
+  skipped: SkippedSymbol[];
+}
+
+/**
+ * 某帳戶持倉的**逐-symbol 容錯**衍生（顯示層用）。
+ *
+ * 先以 account_id 過濾，再依 (market, symbol) 分組、逐組各自 `deriveHoldings`；
+ * 單組 throw（如歷史爛資料造成的帳戶層級超賣 / orphan SELL / 混幣別）SHALL 只跳過該 symbol
+ * 並收集到 `skipped` + log，其餘可正常推導的持股照常回傳——不得因單一 symbol 失敗整包消失。
+ *
+ * 無爛資料時，`positions` 與「整體 `deriveHoldings(該帳戶交易子集)`」一致且同序
+ * （逐組結果合併後沿用 deriveHoldings 的 market asc / symbol asc 排序）。
+ *
+ * 注意：全域總覽（HoldingsOverview）仍呼叫原 `deriveHoldings`（fail-loud，ADR-0007）；
+ * 本函式僅治理「帳戶層級」顯示容錯，不放寬全域語意。純函式。
+ */
+export function deriveHoldingsForAccountSafe(
+  transactions: TransactionDocument[],
+  accountId: string,
+): SafeHoldingsResult {
+  const accountTxs = transactions.filter((t) => t.account_id === accountId);
+
+  // 依 (market, symbol) 分組，保留各組首見順序（最終結果由 deriveHoldings 重新排序）。
+  const groups = new Map<string, { market: Market; symbol: string; txs: TransactionDocument[] }>();
+  for (const tx of accountTxs) {
+    const key = `${tx.market}_${tx.symbol}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { market: tx.market, symbol: tx.symbol, txs: [] };
+      groups.set(key, group);
+    }
+    group.txs.push(tx);
+  }
+
+  const positions: Position[] = [];
+  const skipped: SkippedSymbol[] = [];
+
+  for (const group of groups.values()) {
+    try {
+      // 單組 derive：合法者貢獻 0 或 1 個 Position（全數賣出→0）。
+      positions.push(...deriveHoldings(group.txs));
+    } catch (err) {
+      skipped.push({ market: group.market, symbol: group.symbol });
+      console.warn(
+        `[holdings] account ${accountId} 之 ${group.market}_${group.symbol} 推導失敗，已跳過該 symbol：`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
+  // 合併後沿用 deriveHoldings 的排序規則（market asc, then symbol asc），確保與整體推導同序。
+  positions.sort((p1, p2) =>
+    p1.market === p2.market
+      ? p1.symbol.localeCompare(p2.symbol)
+      : p1.market.localeCompare(p2.market),
+  );
+
+  return { positions, skipped };
+}

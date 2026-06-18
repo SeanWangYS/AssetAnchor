@@ -64,8 +64,8 @@ export default function AccountDetailScreen({
   const [formOpen, setFormOpen] = useState(false); // 編輯帳戶 sheet
   const [confirm, setConfirm] = useState<null | 'deactivate' | 'reactivate' | 'delete'>(null);
 
-  const positions = useMemo(
-    () => (account ? holdingsForAccount(transactions, accountId) : []),
+  const { positions, skipped } = useMemo(
+    () => (account ? holdingsForAccount(transactions, accountId) : { positions: [], skipped: [] }),
     [account, transactions, accountId],
   );
   const hasTxns = useMemo(
@@ -255,7 +255,7 @@ export default function AccountDetailScreen({
 
         {/* —— 該帳戶持股 —— */}
         <Text style={styles.sectionTitle}>持股</Text>
-        {positions.length === 0 ? (
+        {positions.length === 0 && skipped.length === 0 ? (
           <EmptyState
             icon={<PlusIcon size={26} color={colors.accent} />}
             title="此帳戶尚無持股"
@@ -271,6 +271,16 @@ export default function AccountDetailScreen({
                 right={
                   <Text style={styles.holdingValue}>{formatMoney(p.totalCost, p.currency)}</Text>
                 }
+              />
+            ))}
+            {/* 逐-symbol 容錯：資料異常的標的標示為「資料異常」，不顯示錯誤數字、不 blank 整頁。 */}
+            {skipped.map((s, i) => (
+              <ListItem
+                key={`skip_${s.market}_${s.symbol}`}
+                title={s.symbol}
+                subtitle="資料異常，已暫不計入"
+                divider={i < skipped.length - 1}
+                right={<Text style={styles.skippedTag}>資料異常</Text>}
               />
             ))}
           </View>
@@ -500,6 +510,17 @@ const styles = StyleSheet.create({
     fontSize: fontSize.text,
     color: colors.textPrimary,
     ...numericStyle,
+  },
+  skippedTag: {
+    fontFamily: fontFamily.text.semibold,
+    fontSize: fontSize.label,
+    color: colors.textWeak,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    overflow: 'hidden',
   },
 
   // danger
