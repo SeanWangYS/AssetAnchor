@@ -6,6 +6,11 @@
 
 - **資產走勢圖接真實資料（不可是假折線）** — 來源：持倉總覽 §3.1-5 / AssetDetail §3.2-3 走勢圖；owner 於 2026-06-19 change 1 視覺對圖時標為**高優先**。現況 `holdingsDemo.ts` 的 `DEMO_SERIES` 為寫死假折線（planning §3 原將圖表延後第二階段）。**「資產走勢不可以是假資料」**——需接真實歷史/淨值序列（持倉市值 over time 或標的歷史價）。觸發：排為下一波重點。範圍待評估：歷史價來源（Yahoo chart 已有 range/interval、或自建每日 snapshot）、持倉市值時間序列計算（跨幣別、成本基礎）、圖表元件接真資料。**注意這比報價更重，因需歷史序列而非單點報價。**
 
+## 報價 / 資料真值（Quotes / real data）
+
+- **分析頁接真實報價** — 來源：2026-06-18 視覺驗證發現。分析頁市值仍用寫死 mock `RAW_HOLDINGS`（`apps/mobile/src/features/analysis/analysisData.ts`），未接真實 holdings/quotes，故無法對真資料驗證、永遠顯示假數字。觸發：報價/持倉真值已就緒（`resilient-quote-display` + `add-quote-batch-discovery` 已 ship；聚合純函式已在 `shared`，`harden-shared-logic`），可把分析頁聚合改吃真實 holdings + quotes。
+- **MMKV 本機持久層（報價 cache 終局，roadmap 層 3）** — 來源：報價架構 roadmap，owner 2026-06-19 延後（動原生 build）。已備：OpenSpec change `add-mmkv-quote-cache`（proposal/design/specs/tasks）+ 純 codec `quoteCache.ts`（serialize/deserialize，100% cov），在分支 `feature/add-mmkv-quote-cache`（**無 PR**）。剩：裝 `react-native-mmkv` + `expo prebuild` + rebuild + `quotesStore` hydrate/write-through + 冷啟動/離線 dogfood。完成後冷啟動/離線即顯示最後已知報價（完成 ADR-0006 三層 cache）。
+
 ## 帳戶（Accounts）
 
 - **帳戶手動重排 UI（拖曳 / 上下移）** — 來源：Sprint 2（`add-account-management`）。MVP 先以建立順序自動指派 `display_order`、列表照此排序；帳戶數量少時影響不大。待帳戶成長或有明確需求，再做拖曳重排 + 批次更新 `display_order`。
