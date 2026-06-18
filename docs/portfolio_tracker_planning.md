@@ -981,6 +981,23 @@ docs(adr): add ADR-003 navigation structure decision
 
 > **重要**：依 global 規則，永遠不直接 push `main`，永遠開 PR、merge 按鈕由使用者本人按。
 
+#### 12.6.1 開新分支的基準（branch base）— 延後 merge 下的實況
+
+Trunk-based 的「永遠從剛 pull 的 `main` 拉短命分支」是教科書黃金標準，**前提是頻繁 merge**。但本專案實務上採 **延後 merge / owner 批次**（CLAUDE.md §8）：loop 不停下等 merge，PR 累積成一條 **stacked 分支鏈**，`main` 因此通常落後實際進度（例：曾出現 `HEAD` 領先 local `main` 12 個 commit、且 local `main` 還落後 `origin/main` 的情形）。在這個模式下「從 `main` 拉」會掉光未 merge 的工作，故規則如下：
+
+- **不要**從 `main`、也**不要**從「最後被 merge 的分支」拉新分支。`git branch --merged main` 在本 repo 幾乎只回遠古的 `sprint-0`，因為下游分支都還沒 merge。
+- 開工前先 `git fetch --all`，再用
+  ```bash
+  git for-each-ref --sort=-committerdate refs/heads --format='%(committerdate:short)  %(refname:short)'
+  ```
+  找出「**目前這條開發線的 stack 頂端**」（最新的 `feature/*`／`fix/*`）。
+- **延續型開發**（新工作依賴前一條分支的 code）：從 stack 頂端拉新分支，沿用既有 stacked-PR 流程。
+- **平行型開發**（多個 agent 做彼此不相干的功能）：各工作從**同一個約定 base**（通常即現在的 stack 頂端）開分支，並用 `git worktree` 隔離（Claude Code 原生 `--worktree`／`superpowers:using-git-worktrees`），**彼此不互相 stack**（互相 stack 會製造假依賴、把平行序列化掉）；完成後進一個 integration 分支收斂、跑測試解衝突，再一起交 owner。
+- **回歸 trunk-based 的時機**：一旦 owner 在里程碑批次把整條 stack merge 進 `main`，新的 base 就回到 `main`，回到「從 main 拉」。
+- 「最新」一律以「**我要延伸的那條工作線**」為準，**不是純 commit 時間排序**——平行時，時間最新的分支未必含你要的依賴。依賴關係不確定 → 停下問 owner（§2.5 人類介入 gate）。
+
+> **延後-merge stack 的已知代價**（業界共識）：stack 養越長，owner 批次 merge（尤其 squash-merge）時整條鏈的 restack/rebase 與 cascade 衝突越痛。長 stack 是「先衝開發速度、把整合成本延後」的取捨，owner 批次 merge 時要預期這筆帳。
+
 ### 12.7 CI 規劃（MVP 階段）
 
 `.github/workflows/ci.yml`，PR 觸發：
