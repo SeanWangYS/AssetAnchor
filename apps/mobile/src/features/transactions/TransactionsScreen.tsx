@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { TransactionsStackScreenProps } from '../../core/navigation/types';
 import { useTransactionsStore } from './transactionsStore';
-import { EmptyState, Fab, Icon } from '../../core/ui';
+import { EmptyState, ErrorState, Fab, Icon, LoadingView } from '../../core/ui';
 import { colors, fontFamily, fontSize, spacing } from '../../core/theme';
 import TransactionList from './components/TransactionList';
 import { PRESET_LABEL, filterByPreset, useDateRangeStore } from './dateRangeStore';
@@ -20,6 +20,8 @@ export default function TransactionsScreen({
   navigation,
 }: TransactionsStackScreenProps<'TransactionList'>) {
   const transactions = useTransactionsStore((s) => s.transactions);
+  const loading = useTransactionsStore((s) => s.loading);
+  const error = useTransactionsStore((s) => s.error);
   const preset = useDateRangeStore((s) => s.preset);
   const reset = useDateRangeStore((s) => s.reset);
 
@@ -53,7 +55,11 @@ export default function TransactionsScreen({
       </Pressable>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {!hasAny ? (
+        {!hasAny && error ? (
+          <ErrorState message="載入失敗" subtitle="請稍後再試" />
+        ) : !hasAny && loading ? (
+          <LoadingView label="載入交易中…" />
+        ) : !hasAny ? (
           <EmptyState
             icon={<Icon name="txn" size={26} color={colors.accent} />}
             title="尚無交易"

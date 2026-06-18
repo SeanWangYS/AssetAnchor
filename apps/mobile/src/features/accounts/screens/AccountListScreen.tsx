@@ -4,7 +4,7 @@ import type { AccountDocument, Currency } from '@assetanchor/shared';
 import type { AccountsStackScreenProps } from '../../../core/navigation/types';
 import { useAccountsStore } from '../accountsStore';
 import { useTransactionsStore } from '../../transactions/transactionsStore';
-import { Avatar, EmptyState, Fab, Icon, ListItem } from '../../../core/ui';
+import { Avatar, EmptyState, ErrorState, Fab, Icon, ListItem, LoadingView } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
 import {
   accountMonogram,
@@ -22,6 +22,8 @@ import { PlusIcon } from '../components/AccountIcons';
  */
 export default function AccountListScreen({ navigation }: AccountsStackScreenProps<'AccountList'>) {
   const accounts = useAccountsStore((s) => s.accounts);
+  const loading = useAccountsStore((s) => s.loading);
+  const error = useAccountsStore((s) => s.error);
   const transactions = useTransactionsStore((s) => s.transactions);
 
   useLayoutEffect(() => {
@@ -79,7 +81,15 @@ export default function AccountListScreen({ navigation }: AccountsStackScreenPro
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        {accounts.length === 0 ? (
+        {accounts.length === 0 && error ? (
+          <View style={styles.emptyWrap}>
+            <ErrorState message="載入失敗" subtitle="請稍後再試" />
+          </View>
+        ) : accounts.length === 0 && loading ? (
+          <View style={styles.emptyWrap}>
+            <LoadingView label="載入帳戶中…" />
+          </View>
+        ) : accounts.length === 0 ? (
           <View style={styles.emptyWrap}>
             <EmptyState
               icon={<PlusIcon size={26} color={colors.accent} />}

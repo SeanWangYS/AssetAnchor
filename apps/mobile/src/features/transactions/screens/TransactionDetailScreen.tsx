@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Market, TransactionDocument } from '@assetanchor/shared';
 import type { TransactionsStackScreenProps } from '../../../core/navigation/types';
-import { Avatar, Card, ConfirmDialog, Pnl } from '../../../core/ui';
+import { Avatar, Card, ConfirmDialog, EmptyState, Pnl } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, radius, spacing } from '../../../core/theme';
 import { useAuthStore } from '../../auth/authStore';
 import { useAccountsStore } from '../../accounts/accountsStore';
@@ -52,7 +52,7 @@ export default function TransactionDetailScreen({
   if (!transaction) {
     return (
       <View style={styles.missing}>
-        <Text style={styles.missingText}>找不到這筆交易</Text>
+        <EmptyState title="找不到這筆交易" subtitle="可能已被刪除" />
       </View>
     );
   }
