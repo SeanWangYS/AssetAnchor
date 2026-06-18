@@ -77,6 +77,37 @@ function trimShares(s: string): string {
   return s.includes('.') ? s.replace(/\.?0+$/, '') : s;
 }
 
+/** 代號自動補完候選：由歷史交易推導的去重 (market, symbol)。 */
+interface SymbolSuggestion {
+  symbol: string;
+  market: string;
+  asset_type: string;
+  currency: string;
+}
+
+/**
+ * 由歷史交易推導去重的 (market, symbol) 候選；每個候選的 asset_type / currency
+ * 取「該代號最近一筆交易」之值（transactions 不保證已排序，以 transaction_date 最大者為準）。
+ * 純函式。
+ */
+function deriveSymbolSuggestions(transactions: TransactionDocument[]): SymbolSuggestion[] {
+  const latest = new Map<string, TransactionDocument>();
+  for (const t of transactions) {
+    if (!t.symbol) continue;
+    const key = `${t.market}::${t.symbol}`;
+    const prev = latest.get(key);
+    if (!prev || t.transaction_date > prev.transaction_date) {
+      latest.set(key, t);
+    }
+  }
+  return Array.from(latest.values()).map((t) => ({
+    symbol: t.symbol,
+    market: t.market,
+    asset_type: t.asset_type,
+    currency: t.currency,
+  }));
+}
+
 /** YYYY-MM-DD（本機今天），交易日預設值。 */
 function today(): string {
   const now = new Date();
@@ -96,6 +127,7 @@ export default function TransactionForm({
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { isSubmitting },
   } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionInputSchema) as unknown as Resolver<TransactionFormValues>,
@@ -129,6 +161,17 @@ export default function TransactionForm({
     () => computeTotal(qty, price, fee, currency, isBuy),
     [qty, price, fee, currency, isBuy],
   );
+
+  // 代號自動補完：由歷史交易去重推導候選，以目前輸入做前綴比對（最多 5 筆）。
+  const symbolSuggestionsAll = useMemo(() => deriveSymbolSuggestions(transactions), [transactions]);
+  const symbolQuery = symbolRaw.trim();
+  const symbolSuggestions = useMemo(() => {
+    if (!symbolQuery) return [];
+    const upper = symbolQuery.toUpperCase();
+    // 已精確命中某候選代號時不再顯示（避免選取後殘留下拉）。
+    if (symbolSuggestionsAll.some((s) => s.symbol.toUpperCase() === upper)) return [];
+    return symbolSuggestionsAll.filter((s) => s.symbol.toUpperCase().startsWith(upper)).slice(0, 5);
+  }, [symbolSuggestionsAll, symbolQuery]);
 
   // SELL 不可超賣：可賣股數＝該 (market, symbol) 衍生持倉（shared 單一事實來源）。
   const sellable = useMemo(() => {
@@ -177,14 +220,36 @@ export default function TransactionForm({
         control={control}
         name="symbol"
         render={({ field, fieldState }) => (
-          <Input
-            label="股票代號"
-            value={field.value}
-            onChangeText={field.onChange}
-            placeholder="輸入或搜尋（例：2330, AAPL）"
-            autoCapitalize="characters"
-            error={fieldState.error?.message ?? null}
-          />
+          <View>
+            <Input
+              label="股票代號"
+              value={field.value}
+              onChangeText={field.onChange}
+              placeholder="輸入或搜尋（例：2330, AAPL）"
+              autoCapitalize="characters"
+              error={fieldState.error?.message ?? null}
+            />
+            {symbolSuggestions.length > 0 ? (
+              <View style={styles.suggestList}>
+                {symbolSuggestions.map((s) => (
+                  <Pressable
+                    key={`${s.market}::${s.symbol}`}
+                    accessibilityRole="button"
+                    style={styles.suggestRow}
+                    onPress={() => {
+                      setValue('symbol', s.symbol, { shouldValidate: true });
+                      setValue('market', s.market, { shouldValidate: true });
+                      setValue('asset_type', s.asset_type, { shouldValidate: true });
+                      setValue('currency', s.currency, { shouldValidate: true });
+                    }}
+                  >
+                    <Text style={styles.suggestSymbol}>{s.symbol}</Text>
+                    <Text style={styles.suggestMarket}>{MARKET_LABEL[s.market] ?? s.market}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+          </View>
         )}
       />
 
@@ -591,6 +656,36 @@ const styles = StyleSheet.create({
     fontSize: fontSize.label,
     color: colors.textWeak,
     marginTop: spacing.xs,
+  },
+
+  // —— 代號自動補完（inline 下拉，靜態樣式，無焦點切換陰影） ——
+  suggestList: {
+    marginTop: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  suggestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.divider,
+  },
+  suggestSymbol: {
+    fontFamily: fontFamily.text.semibold,
+    fontSize: fontSize.text,
+    color: colors.textPrimary,
+  },
+  suggestMarket: {
+    fontFamily: fontFamily.text.regular,
+    fontSize: fontSize.label,
+    color: colors.textWeak,
   },
 
   // —— Sheet 選項 ——

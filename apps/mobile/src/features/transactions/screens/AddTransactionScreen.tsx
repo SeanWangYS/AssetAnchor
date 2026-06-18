@@ -1,4 +1,5 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Money, type TransactionDocument, type TransactionInput } from '@assetanchor/shared';
 import type { RootStackScreenProps } from '../../../core/navigation/types';
 import { useAuthStore } from '../../auth/authStore';
@@ -7,7 +8,23 @@ import { useTransactionsStore } from '../transactionsStore';
 import { updateTransaction, writeTransaction } from '../transactionService';
 import { ensureSymbol } from '../../../services/symbols';
 import TransactionForm, { type TransactionFormDefaults } from '../components/TransactionForm';
-import { colors, fontFamily, fontSize, spacing } from '../../../core/theme';
+import { colors, fontFamily, fontSize, radius, spacing } from '../../../core/theme';
+
+/** YYYY-MM-DD（本機今天）。複製上一筆時交易日改回今天。 */
+function todayLocal(): string {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${mm}-${dd}`;
+}
+
+/** 取 transaction_date 最大者（不假設已排序）。 */
+function mostRecent(transactions: TransactionDocument[]): TransactionDocument | undefined {
+  return transactions.reduce<TransactionDocument | undefined>(
+    (best, t) => (!best || t.transaction_date > best.transaction_date ? t : best),
+    undefined,
+  );
+}
 
 /** TransactionDocument → 表單字串初值（編輯帶值；金額以 display 精度回填，去尾零）。 */
 function toFormDefaults(t: TransactionDocument): TransactionFormDefaults {
@@ -55,6 +72,23 @@ export default function AddTransactionScreen({
     ? allTransactions.filter((t) => t.transaction_id !== editId)
     : allTransactions;
 
+  // 複製上一筆：將最近一筆映射成表單初值，覆寫交易日為今天、清空股數/備註；
+  // 以遞增 key 強制 TransactionForm 重新掛載，套用新初值。
+  const [copyDefaults, setCopyDefaults] = useState<TransactionFormDefaults | null>(null);
+  const [copyKey, setCopyKey] = useState(0);
+  const lastTransaction = mostRecent(allTransactions);
+
+  function onCopyLast() {
+    if (!lastTransaction) return;
+    setCopyDefaults({
+      ...toFormDefaults(lastTransaction),
+      transaction_date: todayLocal(),
+      quantity: '',
+      notes: '',
+    });
+    setCopyKey((k) => k + 1);
+  }
+
   function onSubmit(input: TransactionInput) {
     if (!uid) return;
     navigation.goBack();
@@ -99,10 +133,20 @@ export default function AddTransactionScreen({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
+      {!isEdit && lastTransaction ? (
+        <Pressable accessibilityRole="button" style={styles.copyChip} onPress={onCopyLast}>
+          <Text style={styles.copyChipText}>複製上一筆（{lastTransaction.symbol}）</Text>
+        </Pressable>
+      ) : null}
       <TransactionForm
+        key={copyKey}
         accounts={activeAccounts}
         transactions={transactionsForSellable}
-        {...(existing ? { initialValues: toFormDefaults(existing) } : {})}
+        {...(existing
+          ? { initialValues: toFormDefaults(existing) }
+          : copyDefaults
+            ? { initialValues: copyDefaults }
+            : {})}
         submitLabel={isEdit ? '儲存變更' : '記錄交易'}
         onSubmit={onSubmit}
       />
@@ -112,6 +156,21 @@ export default function AddTransactionScreen({
 
 const styles = StyleSheet.create({
   content: { padding: spacing.page, paddingBottom: spacing.xxl },
+  copyChip: {
+    alignSelf: 'flex-start',
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+  },
+  copyChipText: {
+    fontFamily: fontFamily.text.semibold,
+    fontSize: fontSize.label,
+    color: colors.textPrimary,
+  },
   center: {
     flex: 1,
     backgroundColor: colors.screen,
