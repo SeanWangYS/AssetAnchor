@@ -50,7 +50,7 @@ export default function AccountListScreen({ navigation }: AccountsStackScreenPro
 
   /** 右側市值（原幣別）。持股可能多幣別 → 各幣別一列；無持股顯示 — 。 */
   function valueText(accountId: string): string {
-    const positions = holdingsForAccount(transactions, accountId);
+    const { positions } = holdingsForAccount(transactions, accountId);
     const sums = holdingsValueByCurrency(positions);
     const parts: string[] = [];
     for (const [ccy, money] of Object.entries(sums)) {

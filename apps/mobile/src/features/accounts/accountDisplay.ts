@@ -1,11 +1,16 @@
-import { Money, deriveHoldings } from '@assetanchor/shared';
+import { Money, deriveHoldingsForAccountSafe } from '@assetanchor/shared';
 import type {
+  AccountDocument,
   AccountType,
   Broker,
   Currency,
   Position,
+  SafeHoldingsResult,
   TransactionDocument,
 } from '@assetanchor/shared';
+
+/** 跨帳戶現金總覽顯示時的幣別順序（TWD 先、USD 次；其餘依插入序）。 */
+const CASH_CURRENCY_ORDER: Currency[] = ['TWD', 'USD'];
 
 /**
  * 帳戶顯示層純函式 —— enum→繁中標籤、貨幣前綴、金額格式、該帳戶持股推導。
@@ -72,34 +77,38 @@ export function currencyPrefix(currency: Currency): string {
   return currency === 'TWD' ? 'NT$' : currency === 'USD' ? 'US$' : `${currency} `;
 }
 
-/** 以 Money 格式化（2 位小數顯示）+ 幣別前綴。 */
+/** 顯示用小數位：USD 2 位、其餘（TWD 等）0 位（對齊 holdings displayDecimals / 設計 mock）。 */
+function displayDecimalsFor(currency: Currency): number {
+  return currency === 'USD' ? 2 : 0;
+}
+
+/** 帶千分位的金額字串（toNumber 為顯示逃生門，對齊 app 其他畫面的 toLocaleString 慣例）。 */
+function formatAmount(money: Money, currency: Currency): string {
+  const dp = displayDecimalsFor(currency);
+  return money.toNumber().toLocaleString('en-US', {
+    minimumFractionDigits: dp,
+    maximumFractionDigits: dp,
+  });
+}
+
+/** 以 Money 格式化（千分位；USD 2 位 / TWD 0 位）+ 幣別前綴。 */
 export function formatMoney(value: string, currency: Currency): string {
-  return `${currencyPrefix(currency)} ${Money.fromDecimalString(value, currency).toDisplayString()}`;
+  return `${currencyPrefix(currency)} ${formatAmount(Money.fromDecimalString(value, currency), currency)}`;
 }
 
 /**
- * 該帳戶持股 —— 先以 account_id 過濾交易再推導（deriveHoldings 本身跨帳戶聚合，
- * 故需先過濾；跨 feature 讀 transactions 為 codebase 既有慣例，見 useHoldings）。
+ * 該帳戶持股（逐-symbol 容錯）—— 委派 shared `deriveHoldingsForAccountSafe`：以 account_id 過濾後
+ * 依 (market, symbol) 分組逐組推導，單一 symbol 因歷史爛資料（帳戶層級超賣 / orphan SELL / 混幣別）
+ * throw 時只跳過該檔（收進 `skipped`、log），**其餘持股照常回傳**——不再因單檔失敗整包回 `[]` 白屏。
  *
- * deriveHoldings 對「超賣」等資料不一致採 fail-loud（ADR-0007 §5b，刻意保留）；
- * 但 per-account 過濾後，某帳戶可能只看得到不成對的 SELL（例：BUY 記在 A 帳戶、SELL 誤記在 B 帳戶），
- * 觸發 oversell throw。此 throw 若冒泡進 render 會白屏整個畫面（帳戶清單/詳情皆 render 時呼叫此函式）。
- * 故在此 mobile 消費邊界 fail-soft：捕捉、warn、回空持倉，讓畫面降級而非崩潰；
- * 不更動 shared 的 throw 行為（資料完整性哲學仍歸 owner）。
+ * 全域 `deriveHoldings` 的 fail-loud 語意維持不變（ADR-0007）；本邊界只做帳戶層級顯示容錯。
+ * 回傳 `{ positions, skipped }`：合法持倉 + 資料異常被跳過的 (market, symbol) 清單（供畫面標示）。
  */
 export function holdingsForAccount(
   transactions: TransactionDocument[],
   accountId: string,
-): Position[] {
-  try {
-    return deriveHoldings(transactions.filter((t) => t.account_id === accountId));
-  } catch (err) {
-    console.warn(
-      `[accounts] holdingsForAccount(${accountId}) 推導失敗，降級為空持倉：`,
-      err instanceof Error ? err.message : err,
-    );
-    return [];
-  }
+): SafeHoldingsResult {
+  return deriveHoldingsForAccountSafe(transactions, accountId);
 }
 
 /** 該帳戶持股市值（原幣別）合計 —— MVP 無即時報價，以總成本為市值代理（對齊 HoldingsOverview）。 */
@@ -110,6 +119,45 @@ export function holdingsValueByCurrency(positions: Position[]): Partial<Record<C
     sums[p.currency] = prev.add(Money.fromDecimalString(p.totalCost, p.currency));
   }
   return sums;
+}
+
+/**
+ * 跨（啟用）帳戶現金總計，依幣別以 `Money` 加總（ADR-0005，不用 native float）。
+ * 僅納入 `is_active` 帳戶；缺/空餘額視為 0；回傳僅含有非零餘額的幣別。
+ */
+export function cashTotalsByCurrency(accounts: AccountDocument[]): Map<Currency, Money> {
+  const sums = new Map<Currency, Money>();
+  for (const acc of accounts) {
+    if (!acc.is_active) continue;
+    for (const [ccy, str] of Object.entries(acc.cash_balances)) {
+      if (!str) continue;
+      const c = ccy as Currency;
+      const amount = Money.fromDecimalString(str, c);
+      const prev = sums.get(c) ?? Money.zero(c);
+      sums.set(c, prev.add(amount));
+    }
+  }
+  // 僅保留有餘額（非零）的幣別。
+  for (const [c, money] of [...sums.entries()]) {
+    if (money.isZero()) sums.delete(c);
+  }
+  return sums;
+}
+
+/**
+ * 跨帳戶現金總計顯示字串，如「NT$ 222,200 · US$ 3,130.42」（對齊設定頁 mock；千分位、USD 2 位 / TWD 0 位）。
+ * 僅顯示有餘額幣別；全無餘額回 "NT$ 0"（設定頁不留空白列）。TWD 先、USD 次、其餘依插入序。
+ */
+export function formatCashTotals(accounts: AccountDocument[]): string {
+  const sums = cashTotalsByCurrency(accounts);
+  if (sums.size === 0) return `${currencyPrefix('TWD')} ${formatAmount(Money.zero('TWD'), 'TWD')}`;
+  const ordered: Currency[] = [
+    ...CASH_CURRENCY_ORDER.filter((c) => sums.has(c)),
+    ...[...sums.keys()].filter((c) => !CASH_CURRENCY_ORDER.includes(c)),
+  ];
+  return ordered
+    .map((c) => `${currencyPrefix(c)} ${formatAmount(sums.get(c) ?? Money.zero(c), c)}`)
+    .join(' · ');
 }
 
 /** 把 Firestore timestamp（或可被 Date 解析的值）格式化為「YYYY/MM/DD HH:mm」快照字串。 */

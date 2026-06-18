@@ -7,7 +7,7 @@ import {
   ASSET_TYPES,
   MARKETS,
   Money,
-  sellableQuantity,
+  sellableQuantityForAccount,
   transactionInputSchema,
   type AccountDocument,
   type Currency,
@@ -154,6 +154,7 @@ export default function TransactionForm({
   const fee = watch('fee');
   const market = watch('market');
   const symbolRaw = watch('symbol');
+  const accountId = watch('account_id');
   const currency = (watch('currency') || 'TWD') as Currency;
   const isBuy = txType !== 'SELL';
 
@@ -173,11 +174,17 @@ export default function TransactionForm({
     return symbolSuggestionsAll.filter((s) => s.symbol.toUpperCase().startsWith(upper)).slice(0, 5);
   }, [symbolSuggestionsAll, symbolQuery]);
 
-  // SELL 不可超賣：可賣股數＝該 (market, symbol) 衍生持倉（shared 單一事實來源）。
+  // SELL 不可超賣：可賣股數＝**所選帳戶**之 (market, symbol) 衍生持倉（帳戶層級，shared 單一事實來源）。
+  // 只能賣該帳戶實際持有的股；同 symbol 於他帳戶的持倉不計入。切帳戶即重算（deps 含 accountId）。
   const sellable = useMemo(() => {
-    if (isBuy || !market || !symbolRaw.trim()) return null;
-    return sellableQuantity(transactions, market as Market, symbolRaw.trim().toUpperCase());
-  }, [isBuy, market, symbolRaw, transactions]);
+    if (isBuy || !accountId || !market || !symbolRaw.trim()) return null;
+    return sellableQuantityForAccount(
+      transactions,
+      accountId,
+      market as Market,
+      symbolRaw.trim().toUpperCase(),
+    );
+  }, [isBuy, accountId, market, symbolRaw, transactions]);
   const noHolding = sellable !== null && new Money(sellable, currency).isZero();
   const oversell = useMemo(() => {
     if (sellable === null) return false;
@@ -206,7 +213,7 @@ export default function TransactionForm({
             {!isBuy && sellable !== null ? (
               <Text style={noHolding || oversell ? styles.fieldErr : styles.sellHint}>
                 {noHolding
-                  ? '此標的目前無持倉可賣'
+                  ? '此帳戶目前無此標的持倉可賣'
                   : oversell
                     ? `賣出股數超過可賣（${trimShares(sellable)} 股）`
                     : `可賣 ${trimShares(sellable)} 股`}
