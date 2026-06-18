@@ -35,3 +35,13 @@ Sprint 5 需讓持倉顯示**現價**與**未實現損益**。報價有兩層風
 - **moomoo / futu OpenAPI**：需在使用者電腦常駐 **OpenD gateway** + 登入券商帳號，走 socket、非雲端 REST，手機/serverless 無法直接呼叫。**否決**（架構不通）。
 - **排程批次抓所有持有 symbol**：定時抓全部。**否決**：MVP on-demand 足夠、省額度，避免排程維運。
 - **Alpha Vantage 免費層**（25 calls/天）：額度過低。**否決**為主來源（可列備援）。
+
+## 增補（2026-06，change `add-quote-batch-discovery`）
+
+架構 A 不變，於其上加兩個後端能力（仍 **on-demand / 事件驅動、非排程**，不違反上方「排程否決」）：
+
+1. **批次讀 `fetchQuotes`（onRequest）**：mobile 開持倉頁時以**單次呼叫**取多檔（N→1），handler 重用 `getOrFetchQuote`（沿用 15min 新鮮度 + sanitize + 寫 `quotes/`），逐筆錯誤隔離。取代逐檔 `fetchQuote`（單檔端點保留）。降延遲與 function 調用數；成本不變（server 端 15min cache 仍去重，與使用者數無關）。
+2. **事件驅動發現 `onSymbolCreatedFetchQuote`（`onDocumentCreated('symbols/{symbolId}')`）**：新標的首次進場（symbol 建立，多由 `fetchSymbolMeta` 寫入）即自動抓首筆報價寫 `quotes/`，使該持倉首次檢視即有現價；抓取失敗 fail-soft（log 不擲，避免重試風暴）。
+
+**未變**：`quotes`/`symbols` schema 與 rules、報價來源（`QuoteProvider`/Yahoo）、`sanitizeQuote`、15min TTL、雙層 cache 讀取流（本機層 MMKV 仍延後，見 change `add-mmkv-quote-cache`）。**部署**：新增 function 經 `firebase deploy --only functions` 才在 production 生效＝部署 gate（owner）；dev 對 Functions 模擬器。
+
