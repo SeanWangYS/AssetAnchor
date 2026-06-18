@@ -8,3 +8,4 @@ export * from './fx/index.js';
 export * from './charts/index.js';
 export * from './preferences/index.js';
 export * from './quotes/index.js';
+export * from './symbols/index.js';

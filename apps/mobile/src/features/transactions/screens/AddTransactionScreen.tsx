@@ -5,6 +5,7 @@ import { useAuthStore } from '../../auth/authStore';
 import { useAccountsStore } from '../../accounts/accountsStore';
 import { useTransactionsStore } from '../transactionsStore';
 import { updateTransaction, writeTransaction } from '../transactionService';
+import { ensureSymbol } from '../../../services/symbols';
 import TransactionForm, { type TransactionFormDefaults } from '../components/TransactionForm';
 import { colors, fontFamily, fontSize, spacing } from '../../../core/theme';
 
@@ -66,6 +67,13 @@ export default function AddTransactionScreen({
         Alert.alert('交易記錄失敗', '請稍後再試。');
       });
     }
+    // Sprint 6：確保該代號有 symbols 文件並補 metadata（fire-and-forget；失敗不影響交易）。
+    void ensureSymbol({
+      market: input.market,
+      symbol: input.symbol,
+      assetType: input.asset_type,
+      currency: input.currency,
+    });
   }
 
   // 編輯但找不到該交易（已被刪 / 尚未同步）。

@@ -1,6 +1,10 @@
 /**
  * Dark-first 設計 tokens —— 單一事實來源（align-to-design-package `design.md` §3）。
  *
+ * **MVP = 單一 dark 主題（owner 2026-06-17 拍板）**：不做 light/dark/auto 切換；
+ * 聖牛 schema 的 `settings.theme` 欄位保留為 reserved（不消費）。整個 App 只套用本檔的 dark palette。
+ * （`ACCENT_OPTIONS` 為 holdings-overview-spec 引用的 accent tweak 預留，非「另一個主題」，故保留。）
+ *
  * 設計包是產品最高權威（ADR-0008）；本檔把 §3 的精確 hex 編碼成 token，所有畫面只消費這裡的值。
  * reskin / Tweaks（accent 切換、關光暈）時只換這裡，不動使用 token 的元件。
  *

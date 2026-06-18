@@ -6,7 +6,7 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 let testEnv: RulesTestEnvironment;
 
@@ -72,10 +72,19 @@ describe('全域 collection（§7）', () => {
     await assertFails(getDoc(doc(anon, 'exchange_rates/2026-06-12')));
   });
 
-  it('登入者可讀+建立 symbols、不能更新', async () => {
+  it('登入者可讀+建立 symbols、不能更新或刪除（client；後端 Admin SDK enrich 不受 rules 限）', async () => {
     const alice = testEnv.authenticatedContext('alice').firestore();
-    await assertSucceeds(setDoc(doc(alice, 'symbols/AAPL'), { symbol: 'AAPL' }));
-    await assertFails(setDoc(doc(alice, 'symbols/AAPL'), { symbol: 'AAPL2' }));
+    await assertSucceeds(setDoc(doc(alice, 'symbols/US_AAPL'), { symbol: 'AAPL' }));
+    await assertSucceeds(getDoc(doc(alice, 'symbols/US_AAPL')));
+    // client 不可 update（含 merge 補 metadata）→ 由後端 Admin SDK 做
+    await assertFails(setDoc(doc(alice, 'symbols/US_AAPL'), { name: 'Apple Inc.' }));
+    await assertFails(deleteDoc(doc(alice, 'symbols/US_AAPL')));
+  });
+
+  it('未登入不能讀或建立 symbols', async () => {
+    const anon = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(anon, 'symbols/US_AAPL')));
+    await assertFails(setDoc(doc(anon, 'symbols/US_AAPL'), { symbol: 'AAPL' }));
   });
 
   it('登入者可讀 quotes、不能寫', async () => {
