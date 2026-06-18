@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { create } from 'zustand';
 import { doc, getDoc } from '@react-native-firebase/firestore';
 import { isFresh, type Currency, type Market } from '@assetanchor/shared';
@@ -88,13 +90,21 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
       targets.map(async (t): Promise<readonly [string, QuoteEntry] | null> => {
         const id = keyOf(t.market, t.symbol);
         const inMem = get().quotes[id];
+        // in-memory 已新鮮（且非強制刷新）→ 無事可做。
         if (!force && inMem && isFresh(inMem.fetchedAtMs, now)) return null;
-        if (!force) {
-          const cached = await readFirestoreCache(id, t.currency);
-          if (cached && isFresh(cached.fetchedAtMs, now)) return [id, cached] as const;
-        }
+        // 讀 Firestore cache（任何新鮮度都讀回，作為降級候選）。
+        const cached = await readFirestoreCache(id, t.currency);
+        if (!force && cached && isFresh(cached.fetchedAtMs, now)) return [id, cached] as const;
+        // 過期 / 缺 / 強制刷新 → 觸發後端抓取。
         const fetched = await triggerFetchQuote(t);
-        return fetched ? ([id, fetched] as const) : null;
+        if (fetched) return [id, fetched] as const;
+        // 刷新失敗（來源 / 函式不可用）→ 降級：保留「最後已知值」。
+        // 以 Firestore 過期報價回填（若比 in-memory 新），讓畫面顯示 stale 值 + asOf，
+        // 而非永久卡「報價載入中…」。in-memory 既有值由下方 merge 只增不刪保住。
+        if (cached && (!inMem || cached.fetchedAtMs > inMem.fetchedAtMs)) {
+          return [id, cached] as const;
+        }
+        return null;
       }),
     );
     const updates: Record<string, QuoteEntry> = {};
@@ -127,4 +137,42 @@ export function useQuotes(targets: QuoteTarget[]): Record<string, QuoteEntry> {
     if (targets.length > 0) void loadFor(targets);
   }, [depKey, loadFor]);
   return quotes;
+}
+
+/** 兩次觸發的最小間隔（ms）：去抖快速切分頁 / 前景跳動。實際外呼仍受 15min TTL 把關。 */
+const FOCUS_REFRESH_THROTTLE_MS = 5_000;
+
+/**
+ * Hook：「每次打開都檢查新鮮度」——畫面 focus（切回分頁）與 App 自背景回前景（AppState 'active'）
+ * 時觸發 `loadFor`（非 force，靠 15min TTL + 共用 cache 去抖；過期才真的打 fetchQuote）。
+ * 與 `useQuotes` 互補：useQuotes 管 targets 變動 / 訂閱 map，本 hook 管「打開」這個時機。
+ */
+export function useRefreshQuotesOnFocus(targets: QuoteTarget[]): void {
+  const loadFor = useQuotesStore((s) => s.loadFor);
+  const depKey = targets.map((t) => keyOf(t.market, t.symbol)).join(',');
+  // targets 每次 render 為新陣列；用 ref 取最新值，hook deps 只放 depKey（穩定）。
+  const targetsRef = useRef(targets);
+  targetsRef.current = targets;
+  const lastRunRef = useRef(0);
+
+  const refresh = useCallback(() => {
+    const list = targetsRef.current;
+    if (list.length === 0) return;
+    const now = Date.now();
+    if (now - lastRunRef.current < FOCUS_REFRESH_THROTTLE_MS) return;
+    lastRunRef.current = now;
+    void loadFor(list);
+    // depKey 代表 targets 內容（market_symbol 串接）；targets 由 ref 取最新值。
+  }, [depKey, loadFor]);
+
+  // 畫面 focus（含首次 mount 與切回分頁）。
+  useFocusEffect(refresh);
+
+  // App 自背景回前景。
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+    return () => sub.remove();
+  }, [refresh]);
 }

@@ -25,7 +25,13 @@ import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../co
 import { useHoldings, useRealizedEvents } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { usePreferencesStore } from '../../../services/preferences';
-import { quoteFor, useQuotes, useQuotesStore, type QuoteEntry } from '../../../services/quotes';
+import {
+  quoteFor,
+  useQuotes,
+  useQuotesStore,
+  useRefreshQuotesOnFocus,
+  type QuoteEntry,
+} from '../../../services/quotes';
 import { useSymbols, symbolNameOf, symbolTargetsFromTransactions } from '../../../services/symbols';
 import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { useCountUp } from '../useCountUp';
@@ -43,6 +49,7 @@ import {
   mockReturnPct,
   toDisplay,
 } from '../holdingsDemo';
+import { computeHoldingsHero } from '../holdingsHero';
 
 /** 清單分組模式（持股 / 帳戶 / 類別）。 */
 type GroupMode = '持股' | '帳戶' | '類別';
@@ -202,6 +209,8 @@ export default function HoldingsOverviewScreen({
     currency: p.currency,
   }));
   const quotes = useQuotes(quoteTargets);
+  // 「每次打開」都檢查新鮮度：切回分頁 focus + App 回前景（非 force、TTL 去抖）。
+  useRefreshQuotesOnFocus(quoteTargets);
   async function onRefresh() {
     setRefreshing(true);
     try {
@@ -241,51 +250,20 @@ export default function HoldingsOverviewScreen({
 
   const sections = useMemo(() => buildSections(positions, mode), [positions, mode]);
 
-  // Hero / bento 真值彙總（報價）：總市值 / 未實現 / 報酬率 / 今日損益，皆以顯示幣別偏好換算。
-  // **全部持倉皆有報價且匯率就緒**才回值；否則回 null → 畫面顯示「報價載入中…」（不混 demo）。
-  // 今日損益需 prevClose，缺者 today=null。本月已實現另計（realizedThisMonth，不需報價）。
-  const hero = useMemo(() => {
-    if (positions.length === 0 || rates === null) return null;
-    let value = Money.zero(displayCcy);
-    let cost = Money.zero(displayCcy);
-    let today = Money.zero(displayCcy);
-    let todayKnown = true;
-    for (const p of positions) {
-      const q = quoteFor(quotes, p.market, p.symbol);
-      if (!q) return null;
-      const price = new Money(q.price, p.currency);
-      const mv = toDisplay(price.multiply(p.quantity), rates, displayCcy);
-      const c = toDisplay(Money.fromDecimalString(p.totalCost, p.currency), rates, displayCcy);
-      if (mv === null || c === null) return null;
-      value = value.add(mv);
-      cost = cost.add(c);
-      if (q.prevClose) {
-        const ch = toDisplay(
-          price.subtract(new Money(q.prevClose, p.currency)).multiply(p.quantity),
-          rates,
-          displayCcy,
-        );
-        if (ch) today = today.add(ch);
-        else todayKnown = false;
-      } else todayKnown = false;
-    }
-    const unrealized = value.subtract(cost);
-    const returnPct = cost.isZero()
-      ? 0
-      : unrealized.divide(cost.toDecimalString()).multiply('100').toNumber();
-    const prevValue = value.subtract(today);
-    const todayPct =
-      !todayKnown || prevValue.isZero()
-        ? null
-        : today.divide(prevValue.toDecimalString()).multiply('100').toNumber();
-    return {
-      value: value.toNumber(),
-      unrealized: unrealized.toNumber(),
-      returnPct,
-      today: todayKnown ? today.toNumber() : null,
-      todayPct,
-    };
-  }, [positions, quotes, rates, displayCcy]);
+  // Hero / bento 彙總（報價）：部分渲染——有報價（新鮮或過期）的持倉先加總，缺者標「更新中」。
+  // 純函式 computeHoldingsHero（已單元測試）；今日損益僅全數新鮮時呈現，否則 null。
+  // 僅當「可納入數 === 0」（或無持倉 / 匯率未就緒）才回 null → 畫面顯示「報價載入中…」。
+  const hero = useMemo(
+    () =>
+      computeHoldingsHero(
+        positions,
+        (market, symbol) => quoteFor(quotes, market, symbol),
+        rates,
+        displayCcy,
+        Date.now(),
+      ),
+    [positions, quotes, rates, displayCcy],
+  );
 
   // 「本月已實現損益」真值（§4）：當月 SELL 已實現，各原幣別以最新匯率換算成顯示幣別後加總。
   const realizedThisMonth = useMemo(() => {
@@ -305,11 +283,13 @@ export default function HoldingsOverviewScreen({
   const totalAssets = useCountUp(hero?.value ?? 0);
 
   // 真實跨幣別「總成本」：以使用者顯示幣別偏好為基準，rates（或 demo 匯率退回）即時換算加總。
+  // 部分渲染：單檔無法換算則跳過（不因一檔回 null 而整體不顯示）；rates 未就緒才回 null。
   const grandCost = useMemo(() => {
+    if (rates === null) return null;
     let sum = Money.zero(displayCcy);
     for (const p of positions) {
       const conv = toDisplay(Money.fromDecimalString(p.totalCost, p.currency), rates, displayCcy);
-      if (conv === null) return null;
+      if (conv === null) continue;
       sum = sum.add(conv);
     }
     return sum;
@@ -362,6 +342,24 @@ export default function HoldingsOverviewScreen({
               報價載入中…
             </Text>
           )}
+          {/* 降級揭露：部分缺報價（更新中）/ 含過期值（顯示最後已知）+ 重試。 */}
+          {hero && (hero.pendingCount > 0 || hero.anyStale) ? (
+            <View style={styles.heroStaleRow}>
+              <Text style={styles.heroStaleText} numberOfLines={1}>
+                {hero.pendingCount > 0 ? `${hero.pendingCount} 檔報價更新中` : ''}
+                {hero.pendingCount > 0 && hero.anyStale ? ' · ' : ''}
+                {hero.anyStale ? '部分為最後已知報價（延遲）' : ''}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="重試報價"
+                hitSlop={6}
+                onPress={onRefresh}
+              >
+                <Text style={styles.heroRetry}>重試</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <Text style={styles.demoNote}>
             市值/今日為報價即時計算（延遲 15 分鐘）；成本與已實現來自實際交易
           </Text>
@@ -526,6 +524,14 @@ const styles = StyleSheet.create({
   },
   heroChange: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 5 },
   heroPeriod: { fontFamily: fontFamily.text.regular, fontSize: 12, color: colors.textWeak },
+  heroStaleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 6,
+  },
+  heroStaleText: { fontFamily: fontFamily.text.regular, fontSize: 11, color: colors.textSecondary },
+  heroRetry: { fontFamily: fontFamily.text.bold, fontSize: 11, color: colors.accent },
   demoNote: {
     fontFamily: fontFamily.text.regular,
     fontSize: 10.5,
