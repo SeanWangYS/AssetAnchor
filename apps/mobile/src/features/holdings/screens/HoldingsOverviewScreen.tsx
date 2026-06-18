@@ -45,8 +45,6 @@ import {
   fmtMoney,
   fmtShares,
   marketLabel,
-  mockMarketValue,
-  mockReturnPct,
   toDisplay,
 } from '../holdingsDemo';
 import { computeHoldingsHero } from '../holdingsHero';
@@ -75,17 +73,29 @@ interface GroupSection {
   positions: Position[];
 }
 
-/** 該組原幣別市值小計（混幣別時各幣別分列）。 */
-function subtotalText(positions: Position[]): string {
+/** 該組原幣別市值小計（混幣別時各幣別分列）；以真實報價計，缺報價者排除並標「N 檔更新中」。 */
+function subtotalText(positions: Position[], quotes: Record<string, QuoteEntry>): string {
   const byCcy = new Map<Position['currency'], Money>();
+  let pending = 0;
   for (const p of positions) {
-    const mv = mockMarketValue(p);
+    const q = quoteFor(quotes, p.market, p.symbol);
+    if (!q) {
+      pending += 1;
+      continue;
+    }
+    const mv = new Money(q.price, p.currency).multiply(p.quantity);
     byCcy.set(p.currency, (byCcy.get(p.currency) ?? Money.zero(p.currency)).add(mv));
   }
-  return [...byCcy.entries()].map(([ccy, sum]) => fmtMoney(sum, ccy)).join(' · ');
+  const parts = [...byCcy.entries()].map(([ccy, sum]) => fmtMoney(sum, ccy));
+  if (pending > 0) parts.push(`${pending} 檔更新中`);
+  return parts.join(' · ');
 }
 
-function buildSections(positions: Position[], mode: GroupMode): GroupSection[] {
+function buildSections(
+  positions: Position[],
+  mode: GroupMode,
+  quotes: Record<string, QuoteEntry>,
+): GroupSection[] {
   if (mode === '持股') {
     return [
       {
@@ -107,7 +117,7 @@ function buildSections(positions: Position[], mode: GroupMode): GroupSection[] {
       key: acct,
       label: acct,
       count: list.length,
-      subtotal: subtotalText(list),
+      subtotal: subtotalText(list, quotes),
       positions: list,
     }));
   }
@@ -122,7 +132,7 @@ function buildSections(positions: Position[], mode: GroupMode): GroupSection[] {
       key: market,
       label: `${marketLabel(market)} · ${ccy}`,
       count: list.length,
-      subtotal: subtotalText(list),
+      subtotal: subtotalText(list, quotes),
       positions: list,
     };
   });
@@ -143,13 +153,13 @@ function HoldingRow({
   onPress: () => void;
 }) {
   const avg = Money.fromDecimalString(position.averageCost, position.currency);
-  // 報價就緒→真值市值/報酬%；未就緒→暫以 demo 示意（AssetDetail 顯示精確「報價未就緒」）。
+  // 報價就緒→真值市值/報酬%；未就緒→「更新中…」（與 Hero/AssetDetail 一致，不顯示 demo 假值）。
   const priceM = quote ? new Money(quote.price, position.currency) : null;
-  const mv = priceM ? priceM.multiply(position.quantity) : mockMarketValue(position);
+  const mv = priceM ? priceM.multiply(position.quantity) : null;
   const retPct =
     priceM && !avg.isZero()
       ? priceM.subtract(avg).divide(position.averageCost).multiply('100').toNumber()
-      : mockReturnPct(position.symbol);
+      : null;
 
   return (
     <Pressable
@@ -176,8 +186,18 @@ function HoldingRow({
         </Text>
       </View>
       <View style={styles.rowRight}>
-        <Text style={styles.rowValue}>{fmtMoney(mv, position.currency)}</Text>
-        <Pnl value={retPct} display={`${Math.abs(retPct).toFixed(2)}%`} size={12} />
+        {mv !== null ? (
+          <>
+            <Text style={styles.rowValue}>{fmtMoney(mv, position.currency)}</Text>
+            {retPct !== null ? (
+              <Pnl value={retPct} display={`${Math.abs(retPct).toFixed(2)}%`} size={12} />
+            ) : (
+              <Text style={styles.rowPending}>—</Text>
+            )}
+          </>
+        ) : (
+          <Text style={styles.rowPending}>更新中…</Text>
+        )}
       </View>
     </Pressable>
   );
@@ -248,7 +268,7 @@ export default function HoldingsOverviewScreen({
     });
   }, [navigation]);
 
-  const sections = useMemo(() => buildSections(positions, mode), [positions, mode]);
+  const sections = useMemo(() => buildSections(positions, mode, quotes), [positions, mode, quotes]);
 
   // Hero / bento 彙總（報價）：部分渲染——有報價（新鮮或過期）的持倉先加總，缺者標「更新中」。
   // 純函式 computeHoldingsHero（已單元測試）；今日損益僅全數新鮮時呈現，否則 null。
@@ -657,6 +677,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     ...numericStyle,
   },
+  rowPending: { fontFamily: fontFamily.text.regular, fontSize: 13, color: colors.textFaint },
 
   bottomSpacer: { height: spacing.lg },
 });
