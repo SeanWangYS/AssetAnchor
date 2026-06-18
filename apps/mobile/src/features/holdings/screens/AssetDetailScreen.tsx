@@ -1,12 +1,12 @@
 import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Money, type Currency } from '@assetanchor/shared';
+import { Money, isFresh, type Currency } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
 import { Button, Card, Chart, EmptyState, Pnl, Segmented, TimeTabs } from '../../../core/ui';
 import { colors, fontFamily, numericStyle, spacing } from '../../../core/theme';
 import { useHoldings } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
-import { quoteFor, useQuotes } from '../../../services/quotes';
+import { quoteFor, useQuotes, useRefreshQuotesOnFocus } from '../../../services/quotes';
 import { useSymbolMap, symbolNameOf, symbolEnglishOf } from '../../../services/symbols';
 import {
   DEMO_SERIES,
@@ -40,8 +40,10 @@ export default function AssetDetailScreen({
   const displayName = symbolNameOf(symbols, market, symbol);
   const enName = symbolEnglishOf(symbols, market, symbol);
 
-  // 報價（ADR-0006 雙層 cache）：on-demand 載入本 symbol。
-  const quotes = useQuotes(position ? [{ market, symbol, currency: position.currency }] : []);
+  // 報價（ADR-0006 雙層 cache）：on-demand 載入本 symbol；focus / 回前景時再檢查新鮮度。
+  const quoteTargets = position ? [{ market, symbol, currency: position.currency }] : [];
+  const quotes = useQuotes(quoteTargets);
+  useRefreshQuotesOnFocus(quoteTargets);
 
   const [tf, setTf] = useState<Timeframe>('1M');
   const [displayCcy, setDisplayCcy] = useState<Currency>(position?.currency ?? 'TWD');
@@ -84,7 +86,7 @@ export default function AssetDetailScreen({
     );
   }
 
-  // 現價/市值/未實現損益：報價真值（ADR-0006）。報價未就緒 → null（畫面降級為「報價未就緒」/「—」）。
+  // 現價/市值/未實現損益：報價真值（ADR-0006）。無報價 → null（降級顯示「更新中…」）；過期仍顯示最後已知值。
   const quote = quoteFor(quotes, market, symbol);
   const priceM = quote ? new Money(quote.price, position.currency) : null;
   const marketValue = priceM ? priceM.multiply(position.quantity) : null;
@@ -96,8 +98,20 @@ export default function AssetDetailScreen({
       ? priceM.subtract(avgCostM).divide(position.averageCost).multiply('100').toNumber()
       : null;
   const realized = Money.fromDecimalString(position.realizedPnl, position.currency);
-  // 今日漲跌（每股）：現價 − 前收（報價真值）。缺 prevClose 則不顯示今日列。
-  const prevCloseM = quote?.prevClose ? new Money(quote.prevClose, position.currency) : null;
+  // 報價新鮮度（15min TTL）：過期報價仍顯示現價/市值（最後已知值），但今日漲跌只用新鮮報價。
+  const quoteFresh = quote ? isFresh(quote.fetchedAtMs, Date.now()) : false;
+  const asOfLabel =
+    quote && !quoteFresh
+      ? `最後更新 ${new Date(quote.fetchedAtMs).getHours().toString().padStart(2, '0')}:${new Date(
+          quote.fetchedAtMs,
+        )
+          .getMinutes()
+          .toString()
+          .padStart(2, '0')} · 延遲`
+      : null;
+  // 今日漲跌（每股）：現價 − 前收（僅新鮮報價）。缺 prevClose 或過期則不顯示今日列。
+  const prevCloseM =
+    quoteFresh && quote?.prevClose ? new Money(quote.prevClose, position.currency) : null;
   const todayDelta = priceM && prevCloseM ? priceM.subtract(prevCloseM) : null;
   const todayPct =
     priceM && prevCloseM && !prevCloseM.isZero()
@@ -121,7 +135,7 @@ export default function AssetDetailScreen({
         </Text>
       ) : (
         <Text style={styles.priceValue} numberOfLines={1}>
-          報價未就緒
+          更新中…
         </Text>
       )}
       {priceM && todayDelta && todayPct !== null ? (
@@ -143,7 +157,7 @@ export default function AssetDetailScreen({
           <Text style={styles.todayWord}>今日</Text>
         </View>
       ) : null}
-      <Text style={styles.delayNote}>資料延遲 15 分鐘 · Yahoo Finance</Text>
+      <Text style={styles.delayNote}>{asOfLabel ?? '資料延遲 15 分鐘 · Yahoo Finance'}</Text>
 
       {/* 走勢圖 + 時間 tabs */}
       <View style={styles.chart}>
@@ -166,7 +180,7 @@ export default function AssetDetailScreen({
           k="平均成本"
           v={show(Money.fromDecimalString(position.averageCost, position.currency))}
         />
-        <Kv k="市值" v={marketValue ? show(marketValue) : '報價未就緒'} />
+        <Kv k="市值" v={marketValue ? show(marketValue) : '更新中…'} />
         <Kv
           k="未實現損益"
           v={
@@ -185,7 +199,7 @@ export default function AssetDetailScreen({
                 />
               </View>
             ) : (
-              '報價未就緒'
+              '更新中…'
             )
           }
         />

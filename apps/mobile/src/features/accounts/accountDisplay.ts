@@ -80,12 +80,26 @@ export function formatMoney(value: string, currency: Currency): string {
 /**
  * 該帳戶持股 —— 先以 account_id 過濾交易再推導（deriveHoldings 本身跨帳戶聚合，
  * 故需先過濾；跨 feature 讀 transactions 為 codebase 既有慣例，見 useHoldings）。
+ *
+ * deriveHoldings 對「超賣」等資料不一致採 fail-loud（ADR-0007 §5b，刻意保留）；
+ * 但 per-account 過濾後，某帳戶可能只看得到不成對的 SELL（例：BUY 記在 A 帳戶、SELL 誤記在 B 帳戶），
+ * 觸發 oversell throw。此 throw 若冒泡進 render 會白屏整個畫面（帳戶清單/詳情皆 render 時呼叫此函式）。
+ * 故在此 mobile 消費邊界 fail-soft：捕捉、warn、回空持倉，讓畫面降級而非崩潰；
+ * 不更動 shared 的 throw 行為（資料完整性哲學仍歸 owner）。
  */
 export function holdingsForAccount(
   transactions: TransactionDocument[],
   accountId: string,
 ): Position[] {
-  return deriveHoldings(transactions.filter((t) => t.account_id === accountId));
+  try {
+    return deriveHoldings(transactions.filter((t) => t.account_id === accountId));
+  } catch (err) {
+    console.warn(
+      `[accounts] holdingsForAccount(${accountId}) 推導失敗，降級為空持倉：`,
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
 }
 
 /** 該帳戶持股市值（原幣別）合計 —— MVP 無即時報價，以總成本為市值代理（對齊 HoldingsOverview）。 */

@@ -428,3 +428,48 @@ describe('sellableQuantity', () => {
     expect(sellableQuantity(txs, 'TW', '2330')).toBe('0.0000000000');
   });
 });
+
+describe('deriveHoldings — 缺欄位 fail-soft（pre-ADR-0005 舊 doc）', () => {
+  it('缺 total/fee/tax 的舊 doc 不丟 DecimalError，缺值視為 0', () => {
+    const good = buy({
+      symbol: 'AAPL',
+      market: 'US',
+      currency: 'USD',
+      quantity: '10',
+      price: '100',
+    });
+    const legacy = buy({
+      symbol: 'AAPL',
+      market: 'US',
+      currency: 'USD',
+      quantity: '5',
+      price: '100',
+    });
+    const broken = { ...legacy } as Record<string, unknown>;
+    delete broken.total;
+    delete broken.fee;
+    delete broken.tax;
+
+    const input = [good, broken as unknown as TransactionDocument];
+    expect(() => deriveHoldings(input)).not.toThrow();
+    const pos = deriveHoldings(input).find((p) => p.symbol === 'AAPL');
+    // good 貢獻 10 股 / 成本 1000；broken 缺金額視為 0 成本但仍 +5 股。
+    expect(pos?.quantity).toBe('15.0000000000');
+    expect(pos?.totalCost).toBe('1000.0000000000');
+  });
+
+  it('缺 quantity 也視為 0（該筆不增量、不丟）', () => {
+    const legacy = buy({
+      symbol: 'QQQ',
+      market: 'US',
+      currency: 'USD',
+      quantity: '3',
+      price: '50',
+    });
+    const broken = { ...legacy } as Record<string, unknown>;
+    delete broken.quantity;
+    expect(() => deriveHoldings([broken as unknown as TransactionDocument])).not.toThrow();
+    // 缺 quantity → 0 股 → qty=0 不列入持倉。
+    expect(deriveHoldings([broken as unknown as TransactionDocument])).toHaveLength(0);
+  });
+});
