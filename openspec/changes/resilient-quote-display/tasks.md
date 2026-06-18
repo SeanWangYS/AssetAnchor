@@ -29,6 +29,6 @@
 ## 5. 驗證與收尾
 
 - [x] 5.1 `pnpm --filter @assetanchor/mobile typecheck` + `lint` 通過；`test:coverage` 13 passed、全域 92.7% stmts / 92.5% branch（>90% gate）
-- [~] 5.2 本機 dogfood（Emulator）：**已驗** 全部 quotes 改過期 + functions 模擬器關 → 持倉總覽顯示最後已知值 + 「部分為最後已知報價（延遲）」+ 今日損益「—」（不卡載入中，見 /tmp/aa-holdings-stale.png）。**待 owner 補驗**：切分頁/回前景觸發刷新、刪某檔 quote → 「N 檔更新中」部分渲染
-- [ ] 5.3 iOS Simulator 逐畫面視覺對圖（持倉總覽 Hero/bento + 個股詳情）對照 `docs/design/holdings-overview/holdings-overview-spec.md` —— **owner gate**
-- [ ] 5.4 Conventional Commits 分批 commit（scope: mobile）；開 PR；（帶 UI）archive 後續做下一個 change，merge 延後由 owner 批次執行
+- [x] 5.2 本機 dogfood（Emulator）✅ owner 2026-06-19 全驗：① 過期降級（hero 顯示最後已知值 +「部分為最後已知報價（延遲）」+ 重試，不卡載入中）pass；② focus/前景刷新 pass（functions 模擬器起來後 retry/切分頁真的更新）；③ 部分渲染「N 檔更新中」pass。發現並修 C6（清單列殘留 mock 假值 → commit 56cd1bd）
+- [x] 5.3 iOS Simulator 逐畫面視覺對圖對照 `holdings-overview-spec.md` —— **owner gate ✅ PASS（2026-06-19）**。owner 未提項目全通過；A1–A8（除 A4）/ B1–B5 / C1–C6 pass。例外處理：A4 走勢圖假資料＝**移 backlog 高優先**（非 change-1 阻擋，commit 73851e4）；B3/B4/B5「沒更新」根因＝functions 模擬器未起（環境，程式正確），起 `emulators:fn` 後 retry/focus 正常；C6 矛盾＝清單 mock 漏出，已修
+- [x] 5.4 commit + PR **#20**（branch `feature/resilient-quote-display`）；視覺對圖已通過 → 可 archive；merge 延後 owner 批次。註：C6 收尾修 commit `56cd1bd` 落在 stacked 鏈頂（非 #20 本身），批次 merge 整條鏈時納入
