@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { SettingsStackScreenProps } from '../../core/navigation/types';
 import { useAuthStore } from '../auth/authStore';
 import { signOut } from '../auth/authService';
+import { useAccountsStore } from '../accounts/accountsStore';
+import { formatCashTotals } from '../accounts/accountDisplay';
 import { AABrandLockup, Card, ConfirmDialog, Icon, ListItem } from '../../core/ui';
 import { colors, fontFamily, fontSize, radius, spacing } from '../../core/theme';
 
@@ -22,12 +24,17 @@ function rowChevron() {
  *
  * 登出採既有跨切面模式：authService.signOut()（Firebase）→ onAuthStateChanged 翻 authStore.user=null
  * → RootNavigator 換回 AuthStack（authStore 本身不持有 logout action）。
- * 「帳戶管理 / 現金餘額」皆 navigate 到本 stack 既有的 Accounts 子頁（現金餘額於帳戶詳情內以
- * CashBalanceCard 編輯；尚無獨立現金頁）。
+ * 「帳戶管理」navigate 到本 stack 既有的 Accounts 子頁；「現金餘額」為唯讀展示列，右側顯示
+ * 跨帳戶現金總計（由 accountsStore 各啟用帳戶 cash_balances 依幣別 Money 加總），不可點、不導航
+ * （現金的逐帳戶編輯仍於帳戶詳情 CashBalanceCard，對齊 analysis-page-spec §3.2 設定頁 mock）。
  */
 export default function SettingsScreen({ navigation }: SettingsStackScreenProps<'SettingsHome'>) {
   const email = useAuthStore((s) => s.user?.email);
+  const accounts = useAccountsStore((s) => s.accounts);
   const [confirmLogout, setConfirmLogout] = useState(false);
+
+  // 跨（啟用）帳戶現金總計（依幣別以 Money 加總；僅顯示有餘額幣別），如「NT$ X · US$ Y」。
+  const cashTotal = useMemo(() => formatCashTotals(accounts), [accounts]);
 
   return (
     <>
@@ -51,11 +58,11 @@ export default function SettingsScreen({ navigation }: SettingsStackScreenProps<
             right={rowChevron()}
             onPress={() => navigation.navigate('Accounts')}
           />
+          {/* 現金餘額：唯讀展示列（不可點、無 chevron），右側為跨帳戶現金總計（對齊原型 mock）。 */}
           <ListItem
             title="現金餘額"
-            right={rowChevron()}
+            right={<Text style={styles.cashTotal}>{cashTotal}</Text>}
             divider={false}
-            onPress={() => navigation.navigate('Accounts')}
           />
         </View>
 
@@ -123,6 +130,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.text.medium,
     fontSize: fontSize.text,
     color: colors.textPrimary,
+  },
+  // 現金餘額唯讀總計（數字字體、弱色，右對齊；對齊 mock 的次標數值樣式）。
+  cashTotal: {
+    fontFamily: fontFamily.num.medium,
+    fontSize: fontSize.footnote,
+    color: colors.textSecondary,
   },
 
   groupLabel: {
