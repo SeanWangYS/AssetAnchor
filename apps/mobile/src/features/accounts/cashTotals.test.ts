@@ -49,20 +49,19 @@ describe('cashTotalsByCurrency', () => {
 });
 
 describe('formatCashTotals', () => {
-  // 排版（前綴、分隔、千分位）以 Money.toDisplayString（canonical 2 位小數、無千分位）為準；
-  // 確切千分位/排版屬 owner 視覺對圖時對齊 mock 的決定（spec 不綁死）。
-  it('formats per-currency totals, TWD first then USD', () => {
+  // 排版：千分位 + 幣別前綴；USD 2 位小數、TWD（等）0 位（對齊 app toLocaleString 慣例 + 設定頁 mock）。
+  it('formats per-currency totals with thousands separators, TWD first then USD', () => {
     expect(formatCashTotals([account({ TWD: '222200.0000000000', USD: '3130.4200000000' })])).toBe(
-      'NT$ 222200.00 · US$ 3130.42',
+      'NT$ 222,200 · US$ 3,130.42',
     );
   });
 
   it('shows only currencies with a balance', () => {
-    expect(formatCashTotals([account({ TWD: '50000.0000000000' })])).toBe('NT$ 50000.00');
+    expect(formatCashTotals([account({ TWD: '50000.0000000000' })])).toBe('NT$ 50,000');
   });
 
-  it('falls back to NT$ 0.00 when no account has cash', () => {
-    expect(formatCashTotals([account({})])).toBe('NT$ 0.00');
-    expect(formatCashTotals([])).toBe('NT$ 0.00');
+  it('falls back to NT$ 0 when no account has cash', () => {
+    expect(formatCashTotals([account({})])).toBe('NT$ 0');
+    expect(formatCashTotals([])).toBe('NT$ 0');
   });
 });

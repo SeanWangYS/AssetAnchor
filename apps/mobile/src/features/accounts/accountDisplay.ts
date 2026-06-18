@@ -77,9 +77,23 @@ export function currencyPrefix(currency: Currency): string {
   return currency === 'TWD' ? 'NT$' : currency === 'USD' ? 'US$' : `${currency} `;
 }
 
-/** 以 Money 格式化（2 位小數顯示）+ 幣別前綴。 */
+/** 顯示用小數位：USD 2 位、其餘（TWD 等）0 位（對齊 holdings displayDecimals / 設計 mock）。 */
+function displayDecimalsFor(currency: Currency): number {
+  return currency === 'USD' ? 2 : 0;
+}
+
+/** 帶千分位的金額字串（toNumber 為顯示逃生門，對齊 app 其他畫面的 toLocaleString 慣例）。 */
+function formatAmount(money: Money, currency: Currency): string {
+  const dp = displayDecimalsFor(currency);
+  return money.toNumber().toLocaleString('en-US', {
+    minimumFractionDigits: dp,
+    maximumFractionDigits: dp,
+  });
+}
+
+/** 以 Money 格式化（千分位；USD 2 位 / TWD 0 位）+ 幣別前綴。 */
 export function formatMoney(value: string, currency: Currency): string {
-  return `${currencyPrefix(currency)} ${Money.fromDecimalString(value, currency).toDisplayString()}`;
+  return `${currencyPrefix(currency)} ${formatAmount(Money.fromDecimalString(value, currency), currency)}`;
 }
 
 /**
@@ -131,18 +145,18 @@ export function cashTotalsByCurrency(accounts: AccountDocument[]): Map<Currency,
 }
 
 /**
- * 跨帳戶現金總計顯示字串，如「NT$ 222,200.00 · US$ 3,130.42」（對齊設定頁 mock）。
- * 僅顯示有餘額幣別；全無餘額回 "NT$ 0.00"（設定頁不留空白列）。TWD 先、USD 次、其餘依插入序。
+ * 跨帳戶現金總計顯示字串，如「NT$ 222,200 · US$ 3,130.42」（對齊設定頁 mock；千分位、USD 2 位 / TWD 0 位）。
+ * 僅顯示有餘額幣別；全無餘額回 "NT$ 0"（設定頁不留空白列）。TWD 先、USD 次、其餘依插入序。
  */
 export function formatCashTotals(accounts: AccountDocument[]): string {
   const sums = cashTotalsByCurrency(accounts);
-  if (sums.size === 0) return `${currencyPrefix('TWD')} ${Money.zero('TWD').toDisplayString()}`;
+  if (sums.size === 0) return `${currencyPrefix('TWD')} ${formatAmount(Money.zero('TWD'), 'TWD')}`;
   const ordered: Currency[] = [
     ...CASH_CURRENCY_ORDER.filter((c) => sums.has(c)),
     ...[...sums.keys()].filter((c) => !CASH_CURRENCY_ORDER.includes(c)),
   ];
   return ordered
-    .map((c) => `${currencyPrefix(c)} ${(sums.get(c) ?? Money.zero(c)).toDisplayString()}`)
+    .map((c) => `${currencyPrefix(c)} ${formatAmount(sums.get(c) ?? Money.zero(c), c)}`)
     .join(' · ');
 }
 
