@@ -16,7 +16,10 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'com.seanwangys.assetanchor',
-    googleServicesFile: './.secrets/GoogleService-Info.plist',
+    googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? './.secrets/GoogleService-Info.plist',
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
   },
   android: { package: 'com.seanwangys.assetanchor' },
   plugins: [
@@ -46,6 +49,11 @@ const config: ExpoConfig = {
     // 在 dev 走 runtime asset、prod build 由此 plugin 嵌入）。
     'expo-font',
   ],
+  extra: {
+    eas: {
+      projectId: '2d013228-6e12-435f-8a92-4cfac4542d5e',
+    },
+  },
 };
 
 export default config;
