@@ -114,14 +114,25 @@ export function useTrendSeries(
       const merged = closesOf(chunks, id);
       if (Object.keys(merged).length > 0) closesBySymbol[id] = merged;
     }
-    const points = buildPortfolioSeries({
-      transactions,
-      closesBySymbol,
-      fxUsdTwdCloses: closesOf(chunks, 'FX_USDTWD'),
-      displayCurrency,
-      from,
-      to: today,
-    });
+    // Mobile 消費邊界 fail-soft（同 useHoldings，ADR-0007）：壞資料（如同 key 混幣別的
+    // 交易——onSnapshot 部分更新的暫態也會出現）讓走勢圖降級為空，不可白屏整頁。
+    let points: ReturnType<typeof buildPortfolioSeries>;
+    try {
+      points = buildPortfolioSeries({
+        transactions,
+        closesBySymbol,
+        fxUsdTwdCloses: closesOf(chunks, 'FX_USDTWD'),
+        displayCurrency,
+        from,
+        to: today,
+      });
+    } catch (err) {
+      console.warn(
+        '[trend] buildPortfolioSeries 重建失敗，走勢圖降級為空：',
+        err instanceof Error ? err.message : err,
+      );
+      return { series: [], state: 'empty' as const };
+    }
 
     const series = points.map((p) => p.value.toNumber());
     const lastDate = points[points.length - 1]?.date;
@@ -186,14 +197,24 @@ export function useSymbolTrendSeries(
 
     if (from === null) return { series: [], state: 'empty' as const };
     const today = localToday();
-    const merged = closesOf(chunks, symbolId);
-    const points = buildSymbolSeries([{ year: 0, closes: merged }], {
-      from: timeframeStart(tf as DailyTimeframe, today, from),
-      to: today,
-    });
-    const series = points.map((p) => new Money(p.close, currency).toNumber());
-    const lastDate = points[points.length - 1]?.date;
-    if (livePrice !== null && lastDate !== undefined && lastDate < today) series.push(livePrice);
+    // 邊界 fail-soft（同上）：壞 close 字串等資料問題降級為空，不白屏。
+    let series: number[];
+    try {
+      const merged = closesOf(chunks, symbolId);
+      const points = buildSymbolSeries([{ year: 0, closes: merged }], {
+        from: timeframeStart(tf as DailyTimeframe, today, from),
+        to: today,
+      });
+      series = points.map((p) => new Money(p.close, currency).toNumber());
+      const lastDate = points[points.length - 1]?.date;
+      if (livePrice !== null && lastDate !== undefined && lastDate < today) series.push(livePrice);
+    } catch (err) {
+      console.warn(
+        '[trend] buildSymbolSeries 重建失敗，走勢圖降級為空：',
+        err instanceof Error ? err.message : err,
+      );
+      return { series: [], state: 'empty' as const };
+    }
     if (series.length >= 2) return { series, state: 'ready' as const };
     return {
       series,
