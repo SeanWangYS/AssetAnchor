@@ -10,11 +10,11 @@
 
 ## 2. Functions：歷史抓取與落地（TDD）
 
-- [ ] 2.1 先測後寫 `parseYahooHistory`（timestamp→YYYY-MM-DD 時區換算、null close 保留、dataGranularity 驗證、adjclose）
-- [ ] 2.2 `yahooProvider` 擴充 `fetchHistory(market, symbol, period1, period2)`（period1/period2、瀏覽器 UA；`toYahooSymbol` 支援 FX→`TWD=X`）
-- [ ] 2.3 先測後寫增量邏輯（`last_date` 判定 no-op、7 天回看視窗計算、年度分塊 upsert payload）
-- [ ] 2.4 `ensureHistory` onRequest 端點（items 解析、逐筆錯誤隔離、≥1s 節流 + 429 退避、回傳 `{symbolId, lastDate}`）
-- [ ] 2.5 `fetchIntraday` onRequest 端點（1D/1W 對應 range/interval、共用 parser、不落地）
+- [x] 2.1 先測後寫 `parseYahooHistory`（timestamp→YYYY-MM-DD 時區換算、null close 保留、dataGranularity 驗證、adjclose）
+- [x] 2.2 `yahooProvider` 擴充 `fetchHistory(market, symbol, period1, period2)`（period1/period2、瀏覽器 UA；`toYahooSymbol` 支援 FX→`TWD=X`）
+- [x] 2.3 先測後寫增量邏輯（`last_date` 判定 no-op、7 天回看視窗計算、年度分塊 upsert payload）
+- [x] 2.4 `ensureHistory` onRequest 端點（items 解析、逐筆錯誤隔離、≥1s 節流 + 429 退避、回傳 `{symbolId, lastDate}`）
+- [x] 2.5 `fetchIntraday` onRequest 端點（1D/1W 對應 range/interval、共用 parser、不落地）
 
 ## 3. Firestore rules
 

@@ -23,3 +23,8 @@ export { onSymbolCreatedFetchQuote } from './quotes/onSymbolCreated';
 
 // Sprint 6：symbol metadata enrich（Yahoo quoteSummary → symbols/{symbolId} upsert）。
 export { fetchSymbolMeta } from './symbols/fetchSymbolMeta';
+
+// 走勢圖真值（ADR-0010，add-real-trend-series）：
+// 歷史日線 lazy 增量落地 price_history + 盤中粒度即抓即回。
+export { ensureHistory } from './history/ensureHistory';
+export { fetchIntraday } from './history/fetchIntraday';
