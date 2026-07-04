@@ -4,7 +4,7 @@
 
 ### Requirement: Yahoo 歷史抓取以 period1/period2 並驗證粒度
 
-functions 的歷史抓取 SHALL 以 `period1`/`period2`（Unix 秒）+ `interval=1d` 呼叫 Yahoo v8 chart（禁用 `range=max`），並 SHALL 驗證回應 `meta.dataGranularity === '1d'`；不符者 SHALL fail loud（不寫入任何資料）。解析 SHALL 為純函式 `parseYahooHistory`（不打外網、可測），輸出 `{ date, close, adjclose }[]`，close 為 null 的 bar 保留 null 由消費端處理。
+functions 的歷史抓取 SHALL 以 `period1`/`period2`（Unix 秒）+ `interval=1d` 呼叫 Yahoo v8 chart 為首選；429 限流時 SHALL 依序 fallback：換主機（query1→query2，限流實測分開計）、改用**最小涵蓋的有界 range bucket**（5d…10y；一律禁用 `range=max`）。無論路徑 SHALL 驗證回應 `meta.dataGranularity === '1d'`；不符者 SHALL fail loud（不寫入任何資料）。解析 SHALL 為純函式 `parseYahooHistory`（不打外網、可測），輸出 `{ date, close, adjclose }[]`，close 為 null 的 bar 保留 null 由消費端處理。
 
 #### Scenario: 靜默降級月線被擋下
 
@@ -32,7 +32,7 @@ functions 的歷史抓取 SHALL 以 `period1`/`period2`（Unix 秒）+ `interval
 
 ### Requirement: ensureHistory lazy 增量與回補
 
-functions SHALL 提供 HTTP `ensureHistory`（onRequest，`?items=market:symbol:currency:from,...`）：每 item 查最新年度 doc 的 `last_date`——已涵蓋最近預期交易日則 no-op；否則自 `max(from, last_date − 7 天)` 抓到今日並 upsert（7 天回看，append 與缺洞修補冪等）。`last_date` 不存在時 SHALL 自 `from`（該 symbol 最早交易日）全段回補。逐 item 錯誤隔離（單檔失敗不拖垮整批）；對 Yahoo 的請求 SHALL 間隔 ≥1 秒、429 指數退避、帶瀏覽器 User-Agent。回傳各 item `{ symbolId, lastDate }` 或 `{ symbolId, error }`。
+functions SHALL 提供 HTTP `ensureHistory`（onRequest，`?items=market:symbol:currency:from,...`）：每 item 查最新年度 doc 的 `last_date`——已涵蓋最近預期交易日則 no-op；否則自 `max(from, last_date − 7 天)` 抓到今日並 upsert（7 天回看，append 與缺洞修補冪等）。`last_date` 不存在時 SHALL 自 `from`（該 symbol 最早交易日）全段回補。逐 item 錯誤隔離（單檔失敗不拖垮整批）；對 Yahoo 的請求 SHALL 間隔 ≥1 秒、429 退避重試，User-Agent SHALL 與 client TLS 指紋一致（平實 UA；不得假冒瀏覽器——實測會觸發 UA/TLS 不符偵測）。回傳各 item `{ symbolId, lastDate }` 或 `{ symbolId, error }`。
 
 #### Scenario: 已是最新則不打 Yahoo
 

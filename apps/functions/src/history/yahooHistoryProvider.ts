@@ -33,9 +33,14 @@ export function toYahooHistorySymbol(market: HistoryMarket, symbol: string): str
   return symbol;
 }
 
-/** 帶瀏覽器 UA（2025 起 Yahoo 對非瀏覽器 UA 更積極擋，ADR-0010 研究）。 */
-const UA =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
+/**
+ * 誠實 UA，與既有 quotes provider 一致。實測（2026-07-04）：假冒完整 Chrome UA 會與
+ * Node fetch 的 TLS 指紋不符、反而更容易被 Yahoo 429；平實 UA 穩定通過（ADR-0010）。
+ */
+const UA = 'Mozilla/5.0 (AssetAnchor)';
+
+/** Yahoo chart 主機：query1 被 429 時輪替 query2（實測兩者限流獨立；ADR-0010 風險緩解）。 */
+const YAHOO_HOSTS = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'] as const;
 
 /** 打 Yahoo chart 並解析；`expectGranularity` 提供時驗證粒度（fail loud，不回髒資料）。 */
 async function fetchChart(
@@ -43,11 +48,16 @@ async function fetchChart(
   params: string,
   expectGranularity?: string,
 ): Promise<HistoryBar[]> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySymbol)}?${params}`;
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
-  if (!res.ok) {
-    const err = new Error(`Yahoo history fetch 失敗：HTTP ${res.status}（${ySymbol}）`);
-    (err as Error & { status?: number }).status = res.status;
+  let res: Response | null = null;
+  for (const host of YAHOO_HOSTS) {
+    const url = `https://${host}/v8/finance/chart/${encodeURIComponent(ySymbol)}?${params}`;
+    res = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (res.status !== 429) break; // 只有限流才換主機；其他錯誤直接處理
+  }
+  if (res === null || !res.ok) {
+    const status = res?.status ?? 0;
+    const err = new Error(`Yahoo history fetch 失敗：HTTP ${status}（${ySymbol}）`);
+    (err as Error & { status?: number }).status = status;
     throw err;
   }
   const parsed = parseYahooHistory(await res.json());
@@ -61,14 +71,43 @@ async function fetchChart(
   return parsed.bars;
 }
 
+/** 有界 range bucket（禁 `max`——會被靜默降級月線）。 */
+const RANGE_BUCKETS = [
+  ['5d', 5],
+  ['1mo', 31],
+  ['3mo', 93],
+  ['6mo', 186],
+  ['1y', 366],
+  ['2y', 731],
+  ['5y', 1827],
+  ['10y', 3653],
+] as const;
+
+/** 需求天數 → 最小涵蓋的有界 range bucket（超過 10 年以 10y 為上限，MVP 邊界）。 */
+export function rangeBucketFor(days: number): string {
+  for (const [range, cap] of RANGE_BUCKETS) {
+    if (days <= cap) return range;
+  }
+  return '10y';
+}
+
 export const yahooHistoryProvider: HistoryProvider = {
   name: 'yahoo-finance',
-  fetchDaily(market, symbol, period1Sec, period2Sec) {
-    return fetchChart(
-      toYahooHistorySymbol(market, symbol),
-      `interval=1d&period1=${period1Sec}&period2=${period2Sec}`,
-      '1d',
-    );
+  async fetchDaily(market, symbol, period1Sec, period2Sec) {
+    const ySymbol = toYahooHistorySymbol(market, symbol);
+    try {
+      // 首選 period1/period2（精準視窗）；實測 429 限流對 period 型與 range 型分開計，
+      // 故 429 時 fallback 有界 range bucket（多抓的較早 bars 一併落地，冪等無害）。
+      return await fetchChart(
+        ySymbol,
+        `interval=1d&period1=${period1Sec}&period2=${period2Sec}`,
+        '1d',
+      );
+    } catch (e) {
+      if ((e as { status?: number }).status !== 429) throw e;
+      const days = Math.max(1, Math.ceil((period2Sec - period1Sec) / 86_400));
+      return fetchChart(ySymbol, `interval=1d&range=${rangeBucketFor(days)}`, '1d');
+    }
   },
   fetchIntraday(market, symbol, tf) {
     const { range, interval } = INTRADAY_PARAMS[tf];

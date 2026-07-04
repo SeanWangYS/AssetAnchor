@@ -31,8 +31,8 @@
 
 ## 5. 文件與收尾
 
-- [ ] 5.1 ADR-0010（歷史價資料架構：方案 B 決策、A/C 替代方案、Yahoo 風險與緩解、研究來源）
-- [ ] 5.2 backlog 更新（高優先項移除；記 fallback provider / 分割還原 / 快取持久化為候選）
-- [ ] 5.3 全套驗證：`pnpm -r typecheck`、`pnpm -r lint`、shared `test:coverage`、mobile test、rules 測試、`openspec validate`
-- [ ] 5.4 Emulator（functions + firestore）端到端手動驗證：首次回補 → 開圖 → 增量 no-op → 429 模擬降級
+- [x] 5.1 ADR-0010（歷史價資料架構：方案 B 決策、A/C 替代方案、Yahoo 風險與緩解、研究來源）
+- [x] 5.2 backlog 更新（高優先項移除；記 fallback provider / 分割還原 / 快取持久化為候選）
+- [x] 5.3 全套驗證：`pnpm -r typecheck`、`pnpm -r lint`、shared `test:coverage`、mobile test、rules 測試、`openspec validate`
+- [x] 5.4 Emulator（functions + firestore）端到端手動驗證：首次回補 → 開圖 → 增量 no-op → 429 模擬降級
 - [ ] 5.5 iOS Simulator 視覺對圖檢查點清單（留 owner 批次驗）；開 PR（base main，不 merge、不 archive）
