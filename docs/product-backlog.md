@@ -14,7 +14,7 @@
 
 ## 報價 / 資料真值（Quotes / real data）
 
-- **分析頁接真實報價** — 來源：2026-06-18 視覺驗證發現。分析頁市值仍用寫死 mock `RAW_HOLDINGS`（`apps/mobile/src/features/analysis/analysisData.ts`），未接真實 holdings/quotes，故無法對真資料驗證、永遠顯示假數字。觸發：報價/持倉真值已就緒（`resilient-quote-display` + `add-quote-batch-discovery` 已 ship；聚合純函式已在 `shared`，`harden-shared-logic`），可把分析頁聚合改吃真實 holdings + quotes。
+- ~~**分析頁接真實報價**~~ — **已交付**（2026-07-04，change `wire-analysis-real-data`，PR #31）：分析頁聚合改吃真實 holdings × quotes（`buildAnalysisInput` shared 純函式），mock `RAW_HOLDINGS` 移除；header 刷新鈕依 owner 視覺對圖拍板移除（focus TTL 自動刷新已涵蓋，降級態「重試」保留）。
 - **MMKV 本機持久層（報價 cache 終局，roadmap 層 3）** — 來源：報價架構 roadmap，owner 2026-06-19 延後（動原生 build）。已備：OpenSpec change `add-mmkv-quote-cache`（proposal/design/specs/tasks）+ 純 codec `quoteCache.ts`（serialize/deserialize，100% cov），在分支 `feature/add-mmkv-quote-cache`（**無 PR**）。剩：裝 `react-native-mmkv` + `expo prebuild` + rebuild + `quotesStore` hydrate/write-through + 冷啟動/離線 dogfood。完成後冷啟動/離線即顯示最後已知報價（完成 ADR-0006 三層 cache）。
 
 ## 帳戶（Accounts）
@@ -31,6 +31,7 @@
 
 ## UI 打磨（移出主路線）
 
+- **正式版 App icon** — 來源：2026-07-04 視覺對圖（PR #33）。現行 icon 為 AI 程式化產出的 v1（深色底＋accent 上升折線，CoreGraphics 腳本產 1024×1024）；owner 拍板先頂著用。觸發：上架前 branding 定稿時，換掉 `apps/mobile/assets/icon.png` 即可（`app.config.ts` 已接好 `icon` 欄位）。
 - **UI 過渡件升級** — 來源：align-to-design 過渡件（tasks 10.1 / 10.2）。目前為求快速對齊設計，以下皆是受控文字欄過渡版，待主路線完成後打磨：
   - 股票代號改為可搜尋 picker（目前是受控文字欄）。
   - 交易日期改為原生 `DatePicker`（目前是受控文字欄）。
@@ -39,4 +40,4 @@
 
 ## 重構（可測性）
 
-- **analysis 聚合邏輯重構為可測 shared 純函式** — 來源：align-to-design task 6.2。類別 / 幣別聚合目前放在 `apps/mobile/src/features/analysis/analysisData.ts`（feature-local、未測）。待重構進 `packages/shared`（純函式）並補單元測試，納入 coverage gate。觸發：analysis 邏輯要擴充（新增聚合維度 / 圖表），或要為其建立回歸保護時。
+- ~~**analysis 聚合邏輯重構為可測 shared 純函式**~~ — **已交付**（2026-07-04，`wire-analysis-real-data` PR #31 + 先前 `harden-shared-logic`）：聚合計算＝`aggregateHoldings` + `buildAnalysisInput`（皆在 `packages/shared`、有單元測試、入 coverage gate）；`analysisData.ts` 僅存顯示層 helper（`toDisplay`/format，D5 瘦身而非刪除）。
