@@ -23,11 +23,11 @@
 
 ## 4. Mobile：history store 與畫面接線
 
-- [ ] 4.1 `services/history/historyStore`（Firestore 年度 doc 直讀 → 立即可畫；背景 `ensureHistory` 比對 lastDate 再重讀；in-memory cache）
-- [ ] 4.2 `useTrendSeries(tf)` / `useSymbolSeries(market, symbol, tf)` hooks（含 earliestTxDate 計算、FX target 自動附加）
-- [ ] 4.3 `HoldingsOverviewScreen` 走勢圖接 `useTrendSeries`（載入/降級態、當日即時點、`toNumber()` 僅邊界）
-- [ ] 4.4 `AssetDetailScreen` 走勢圖接 `useSymbolSeries`（日線 tabs + `fetchIntraday` 盤中 tabs、記憶體 cache）
-- [ ] 4.5 移除 `DEMO_SERIES` 與相關 import
+- [x] 4.1 `services/history/historyStore`（Firestore 年度 doc 直讀 → 立即可畫；背景 `ensureHistory` 比對 lastDate 再重讀；in-memory cache）
+- [x] 4.2 `useTrendSeries(tf)` / `useSymbolSeries(market, symbol, tf)` hooks（含 earliestTxDate 計算、FX target 自動附加）
+- [x] 4.3 `HoldingsOverviewScreen` 走勢圖接 `useTrendSeries`（載入/降級態、當日即時點、`toNumber()` 僅邊界）
+- [x] 4.4 `AssetDetailScreen` 走勢圖接 `useSymbolSeries`（日線 tabs + `fetchIntraday` 盤中 tabs、記憶體 cache）
+- [x] 4.5 移除 `DEMO_SERIES` 與相關 import
 
 ## 5. 文件與收尾
 
