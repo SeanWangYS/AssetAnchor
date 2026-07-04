@@ -66,15 +66,15 @@ buildAnalysisInput(positions, resolveQuote, resolveMeta, nowMs): AnalysisInput
 
 ### D3：降級態的畫面策略（對齊持倉頁語彙）
 
-| 狀態 | 判定 | 畫面 |
-| --- | --- | --- |
-| 載入失敗 | `transactions.length===0 && txError` | `ErrorState`（同持倉頁） |
-| 交易載入中 | `transactions.length===0 && txLoading` | `LoadingView` |
-| 無持倉 | `positions.length===0` | `EmptyState`「尚無持倉」導去交易頁 |
-| 匯率換算失敗 | `aggregateHoldings` throw（rates 缺 key） | 既有空態文案「匯率尚未就緒…」（保留） |
-| 全部缺報價 | `includedCount===0 && pendingCount>0` | hero 位置「報價載入中…」+ 重試；不渲染圖卡（無資料可畫） |
-| 部分缺報價 | `pendingCount>0` | 正常渲染（僅含已納入者）+ hero 下揭露「N 檔報價更新中」+ 重試 |
-| 含過期報價 | `anyStale` | 正常渲染 + 揭露「部分為最後已知報價（延遲）」 |
+| 狀態         | 判定                                      | 畫面                                                          |
+| ------------ | ----------------------------------------- | ------------------------------------------------------------- |
+| 載入失敗     | `transactions.length===0 && txError`      | `ErrorState`（同持倉頁）                                      |
+| 交易載入中   | `transactions.length===0 && txLoading`    | `LoadingView`                                                 |
+| 無持倉       | `positions.length===0`                    | `EmptyState`「尚無持倉」導去交易頁                            |
+| 匯率換算失敗 | `aggregateHoldings` throw（rates 缺 key） | 既有空態文案「匯率尚未就緒…」（保留）                         |
+| 全部缺報價   | `includedCount===0 && pendingCount>0`     | hero 位置「報價載入中…」+ 重試；不渲染圖卡（無資料可畫）      |
+| 部分缺報價   | `pendingCount>0`                          | 正常渲染（僅含已納入者）+ hero 下揭露「N 檔報價更新中」+ 重試 |
+| 含過期報價   | `anyStale`                                | 正常渲染 + 揭露「部分為最後已知報價（延遲）」                 |
 
 匯率 fallback 維持現狀（`storeRates ?? DEMO_RATES`，design spec §5 的 1 USD = 30.95）；hero 註腳改顯示實際使用中的 USD_TWD 匯率值，不再寫死。
 
