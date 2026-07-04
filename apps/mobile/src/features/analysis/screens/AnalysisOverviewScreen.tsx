@@ -1,15 +1,34 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { Money, RateMap } from '@assetanchor/shared';
+import {
+  aggregateHoldings,
+  buildAnalysisInput,
+  deriveHoldings,
+  type AssetType,
+  type Money,
+  type Position,
+  type RateMap,
+} from '@assetanchor/shared';
 import type { AnalysisStackScreenProps } from '../../../core/navigation/types';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { usePreferencesStore } from '../../../services/preferences';
 import {
+  quoteFor,
+  useQuotes,
+  useQuotesStore,
+  useRefreshQuotesOnFocus,
+} from '../../../services/quotes';
+import { symbolNameOf, symbolTargetsFromTransactions, useSymbols } from '../../../services/symbols';
+import { useTransactionsStore } from '../../transactions/transactionsStore';
+import {
   Card,
   Donut,
   DualBar,
+  EmptyState,
+  ErrorState,
   HBar,
   Icon,
+  LoadingView,
   Pnl,
   Segmented,
   Toast,
@@ -19,10 +38,10 @@ import {
 import { chartCategory, colors, fontFamily, fontSize, radius, spacing } from '../../../core/theme';
 import {
   DEMO_RATES,
-  aggregateAnalysis,
   formatAmount,
   formatPercent,
   formatSignedAmount,
+  fxFootnoteRate,
   toDisplay,
   type AnalysisAggregate,
   type AssetClass,
@@ -32,12 +51,15 @@ import {
 /**
  * AnalysisOverviewScreen —— 分析頁（版型 A：單頁垂直捲動，hero + 5 圖表卡，靜態無 drill-down）。
  *
- * 對齊 design.md §1（分析 tab）/ analysis-page-spec.md §3。資料為本地 mock 聚合
- * （analysisData.ts；市值需報價、報價未串接 → Non-goals），跨幣別於顯示時以最新
- * exchange_rates 即時換算（rates 未就緒退回 DEMO_RATES 1 USD = 30.95，design §5）。
+ * 對齊 design.md §1（分析 tab）/ analysis-page-spec.md §3。資料為**真實持倉 × 報價**
+ * （wire-analysis-real-data）：持倉由 transactions 經 shared `deriveHoldings` 推導（零新增監聽），
+ * 市值 = 現價 × 股數（shared `buildAnalysisInput`），聚合走 shared `aggregateHoldings`（TWD 基準），
+ * 跨幣別於顯示時以最新 exchange_rates 即時換算（未就緒退 DEMO_RATES，design §5）。
+ * 報價降級對齊持倉頁（resilient-quote-display）：缺報價排除 + 揭露「N 檔報價更新中」、
+ * 全缺顯示「報價載入中…」、過期揭露「最後已知報價（延遲）」；不以假值充數。
  *
- * 邊界：本頁不 import 其他 feature（holdings/transactions）；只消費 core/ui + core/theme
- * + services/exchange-rates + @assetanchor/shared。
+ * 邊界：本頁不 import 其他 feature 的元件/衍生 hook；transactions 僅讀 zustand store
+ * （codebase 既有慣例，見 change design D1），其餘消費 core/ui + core/theme + services/* + shared。
  */
 
 const DONUT_SIZE = 168;
@@ -49,9 +71,12 @@ const CLASS_COLOR: Record<AssetClass, string> = {
   ETF: chartCategory.etf,
 };
 
-export default function AnalysisOverviewScreen({
-  navigation,
-}: AnalysisStackScreenProps<'AnalysisOverview'>) {
+export default function AnalysisOverviewScreen(
+  _props: AnalysisStackScreenProps<'AnalysisOverview'>,
+) {
+  const transactions = useTransactionsStore((s) => s.transactions);
+  const txLoading = useTransactionsStore((s) => s.loading);
+  const txError = useTransactionsStore((s) => s.error);
   const storeRates = useExchangeRatesStore((s) => s.rates);
   // 切換預設值＝使用者顯示幣別偏好（登入時灌入 store）；之後使用者可在本頁自行切換。
   const preferredDisplayCurrency = usePreferencesStore((s) => s.preferredDisplayCurrency);
@@ -59,50 +84,129 @@ export default function AnalysisOverviewScreen({
   const [toastVisible, setToastVisible] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // 持倉真值（design D1）：跨 feature 只讀 store，推導委派 shared 純函式；
+  // fail-soft 邊界同 features/holdings/useHoldings（資料不一致時降級空持倉，不白屏）。
+  const positions = useMemo<Position[]>(() => {
+    try {
+      return deriveHoldings(transactions);
+    } catch (err) {
+      console.warn(
+        '[analysis] deriveHoldings 推導失敗，降級為空持倉：',
+        err instanceof Error ? err.message : err,
+      );
+      return [];
+    }
+  }, [transactions]);
+
+  // Symbol metadata：名稱 enrich（services/symbols）+ asset_type（自交易推導，同持倉頁語意）。
+  const symbolTargets = useMemo(() => symbolTargetsFromTransactions(transactions), [transactions]);
+  const symbols = useSymbols(symbolTargets);
+  const assetTypes = useMemo(() => {
+    const m = new Map<string, AssetType>();
+    for (const t of symbolTargets) m.set(`${t.market}_${t.symbol}`, t.assetType);
+    return m;
+  }, [symbolTargets]);
+
+  // 報價（ADR-0006 雙層 cache，與持倉頁共用）：targets 變動載入 + focus/回前景檢查新鮮度。
+  const quoteTargets = positions.map((p) => ({
+    market: p.market,
+    symbol: p.symbol,
+    currency: p.currency,
+  }));
+  const quotes = useQuotes(quoteTargets);
+  useRefreshQuotesOnFocus(quoteTargets);
+  // targets 每次 render 為新陣列；refresh handler 由 ref 取最新值（同 useRefreshQuotesOnFocus 模式）。
+  const quoteTargetsRef = useRef(quoteTargets);
+  quoteTargetsRef.current = quoteTargets;
+
   // rates 未就緒 → 退回 demo 匯率（仍可在 Simulator demo），就緒則用最新牌告。
   const rates: RateMap = storeRates ?? DEMO_RATES;
 
-  // 聚合（全 TWD 基準）；匯率缺對應 key 時 convertMoney fail loud → 降級為空態。
+  // 聚合輸入（shared 純函式）：市值 = 現價 × 股數；缺報價排除 + pending/stale 計數。
+  const input = useMemo(
+    () =>
+      buildAnalysisInput(
+        positions,
+        (market, symbol) => {
+          const q = quoteFor(quotes, market, symbol);
+          return q ? { price: q.price, fetchedAtMs: q.fetchedAtMs } : undefined;
+        },
+        (market, symbol) => {
+          const name = symbolNameOf(symbols, market, symbol);
+          const assetType = assetTypes.get(`${market}_${symbol}`);
+          return assetType ? { name, assetType } : { name };
+        },
+        Date.now(),
+      ),
+    [positions, quotes, symbols, assetTypes],
+  );
+
+  // 聚合（全 TWD 基準）；匯率缺對應 key 時 convertMoney fail loud → 降級為匯率未就緒空態。
   const agg = useMemo<AnalysisAggregate | null>(() => {
+    if (input.rawHoldings.length === 0) return null;
     try {
-      return aggregateAnalysis(rates);
+      return aggregateHoldings(input.rawHoldings, rates, 'TWD');
     } catch {
       return null;
     }
-  }, [rates]);
+  }, [input, rates]);
 
-  // 刷新圓鈕（header right）→ toast + 重觸 count-up（資料為 mock，僅示意「報價已更新」）。
+  // 降級態「重試」→ 真實 force 刷新報價（略過 TTL）+ toast + 重觸 count-up。
+  // （header 刷新圓鈕已移除——focus 依 TTL 自動刷新已涵蓋，owner 2026-07-04 拍板）
   const handleRefresh = () => {
-    setToastVisible(true);
-    setRefreshKey((k) => k + 1);
+    void useQuotesStore
+      .getState()
+      .loadFor(quoteTargetsRef.current, { force: true })
+      .then(() => {
+        setToastVisible(true);
+        setRefreshKey((k) => k + 1);
+      });
   };
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="重新整理報價"
-          onPress={handleRefresh}
-          style={styles.refreshBtn}
-        >
-          <Icon name="refresh" color={colors.accent} size={20} />
-        </Pressable>
-      ),
-    });
-  }, [navigation]);
 
-  if (!agg) {
+  // —— 降級態（change design D3；語彙對齊持倉頁）——
+  if (transactions.length === 0 && txError) {
+    return <ErrorState message="載入失敗" subtitle="請檢查網路後重新開啟" />;
+  }
+  if (transactions.length === 0 && txLoading) {
+    return <LoadingView label="載入持倉中…" />;
+  }
+  if (positions.length === 0) {
+    return (
+      <EmptyState
+        title="尚無持倉"
+        subtitle="先到「交易」分頁記錄一筆買入"
+        icon={<Icon name="txn" size={26} color={colors.accent} />}
+      />
+    );
+  }
+  if (input.includedCount === 0 || !agg) {
+    // 全部缺報價（冷啟動尚未回填）或匯率換算失敗：無資料可畫，顯示載入/降級態 + 重試。
+    const pendingQuotes = input.includedCount === 0;
     return (
       <View style={styles.emptyWrap}>
-        <Text style={styles.emptyText}>匯率尚未就緒，暫時無法換算分析數據</Text>
+        <Text style={styles.emptyText}>
+          {pendingQuotes ? '報價載入中…' : '匯率尚未就緒，暫時無法換算分析數據'}
+        </Text>
+        {pendingQuotes ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="重試報價"
+            onPress={handleRefresh}
+            style={styles.retryBtn}
+          >
+            <Text style={styles.retryBtnText}>重試</Text>
+          </Pressable>
+        ) : null}
+        <Toast visible={toastVisible} message="報價已更新" onHide={() => setToastVisible(false)} />
       </View>
     );
   }
 
   const heroValue = toDisplay(agg.totals.value, display, rates);
 
-  // —— 圓餅資料（資產類別維度）——
-  const donutSegments = agg.byClass.map((c) => ({
+  // —— 圓餅資料（資產類別維度；單一類別時過濾 0 檔類別，避免空分段/空圖例列）——
+  const classRollups = agg.byClass.filter((c) => c.count > 0);
+  const donutSegments = classRollups.map((c) => ({
     value: c.sharePct,
     color: CLASS_COLOR[c.cls],
     label: c.cls,
@@ -167,6 +271,7 @@ export default function AnalysisOverviewScreen({
     });
 
   const prefix = display === 'USD' ? 'US$' : 'NT$';
+  const showDisclosure = input.pendingCount > 0 || input.anyStale;
 
   return (
     <View style={styles.screen}>
@@ -189,7 +294,27 @@ export default function AnalysisOverviewScreen({
             />
             <Text style={styles.heroSpan}>全期</Text>
           </View>
-          <Text style={styles.heroFootnote}>不含現金 · 匯率 1 USD = 30.95 · 資料延遲 15 分鐘</Text>
+          {/* 降級揭露（對齊持倉頁）：部分缺報價 / 含過期最後已知報價 + 重試。 */}
+          {showDisclosure ? (
+            <View style={styles.staleRow}>
+              <Text style={styles.staleText} numberOfLines={1}>
+                {input.pendingCount > 0 ? `${input.pendingCount} 檔報價更新中` : ''}
+                {input.pendingCount > 0 && input.anyStale ? ' · ' : ''}
+                {input.anyStale ? '部分為最後已知報價（延遲）' : ''}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="重試報價"
+                hitSlop={6}
+                onPress={handleRefresh}
+              >
+                <Text style={styles.staleRetry}>重試</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <Text style={styles.heroFootnote}>
+            不含現金 · 匯率 1 USD = {fxFootnoteRate(rates)} · 資料延遲 15 分鐘
+          </Text>
         </Card>
 
         {/* —— 全頁幣別切換 —— */}
@@ -223,7 +348,7 @@ export default function AnalysisOverviewScreen({
             }
           />
           <View style={styles.legend}>
-            {agg.byClass.map((c, i) => (
+            {classRollups.map((c, i) => (
               <View key={c.cls} style={[styles.legendRow, i > 0 && styles.legendRowDivider]}>
                 <View style={[styles.legendDot, { backgroundColor: CLASS_COLOR[c.cls] }]} />
                 <Text style={styles.legendName}>{c.cls}</Text>
@@ -258,11 +383,7 @@ export default function AnalysisOverviewScreen({
         </ChartCard>
       </ScrollView>
 
-      <Toast
-        visible={toastVisible}
-        message="報價已更新（demo）"
-        onHide={() => setToastVisible(false)}
-      />
+      <Toast visible={toastVisible} message="報價已更新" onHide={() => setToastVisible(false)} />
     </View>
   );
 }
@@ -327,23 +448,26 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.screen },
   content: { padding: spacing.page, paddingBottom: spacing.xxl, gap: spacing.lg },
 
-  refreshBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.round,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.divider,
-    backgroundColor: colors.surface,
-  },
-
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   emptyText: {
     fontFamily: fontFamily.text.regular,
     fontSize: fontSize.text,
     color: colors.textWeak,
     textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.round,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    backgroundColor: colors.surface,
+  },
+  retryBtnText: {
+    fontFamily: fontFamily.text.bold,
+    fontSize: fontSize.label,
+    color: colors.accent,
   },
 
   // —— Hero ——
@@ -376,6 +500,14 @@ const styles = StyleSheet.create({
     color: colors.textFaint,
     marginTop: spacing.xs,
   },
+  staleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 2,
+  },
+  staleText: { fontFamily: fontFamily.text.regular, fontSize: 11, color: colors.textSecondary },
+  staleRetry: { fontFamily: fontFamily.text.bold, fontSize: 11, color: colors.accent },
 
   segmentWrap: { marginTop: spacing.xs },
 
