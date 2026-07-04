@@ -18,8 +18,8 @@
 
 ## 3. Firestore rules
 
-- [ ] 3.1 `price_history/**` 規則（登入可讀、client 不可寫）+ rules 測試（讀成功/寫被拒）
-- [ ] 3.2 planning §6 增補 Collection 7（price_history 逐欄說明，對照 design.md）
+- [x] 3.1 `price_history/**` 規則（登入可讀、client 不可寫）+ rules 測試（讀成功/寫被拒）
+- [x] 3.2 planning §6 增補 Collection 7（price_history 逐欄說明，對照 design.md）
 
 ## 4. Mobile：history store 與畫面接線
 
