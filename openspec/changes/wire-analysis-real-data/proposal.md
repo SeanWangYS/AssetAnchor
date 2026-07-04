@@ -15,7 +15,7 @@
   - 缺報價的持倉排除於聚合並計入「N 檔報價更新中」揭露，不顯示假值。
   - 全部缺報價時 hero 顯示「報價載入中…」+ 重試。
   - 含過期報價時仍納入市值但揭露「部分為最後已知報價（延遲）」。
-- Header 刷新圓鈕由 demo toast 改為**真的 force 刷新報價**（`loadFor({force:true})`）+ toast「報價已更新」。
+- Header 刷新圓鈕**移除**（owner 2026-07-04 視覺對圖拍板：focus 依 TTL 自動刷新已涵蓋）；降級態「重試」保留真實 force 刷新（`loadFor({force:true})`）+ toast「報價已更新」。
 - Hero 註腳的匯率由寫死「1 USD = 30.95」改為顯示最新 `exchange_rates` 實際匯率（未就緒退 demo 值）。
 - 空／載入／錯誤態：無持倉顯示 EmptyState、交易載入中顯示 LoadingView、載入失敗顯示 ErrorState（沿用 core/ui 與持倉頁同款元件）。
 - 移除 `analysisData.ts` 的 `RAW_HOLDINGS` mock 與 mock-only 註解；保留顯示格式化 helpers 與 demo 匯率 fallback。

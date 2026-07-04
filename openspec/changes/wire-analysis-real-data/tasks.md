@@ -15,6 +15,7 @@
 - [x] 3.2 以 `buildAnalysisInput` + `aggregateHoldings` 計算聚合（try/catch 匯率降級維持）；donut/圖例過濾 `count===0` 類別
 - [x] 3.3 降級態（design D3）：ErrorState / LoadingView / EmptyState、全缺報價「報價載入中…」+ 重試、部分缺/過期揭露列 + 重試
 - [x] 3.4 header 刷新鈕改 `loadFor({force:true})` + toast「報價已更新」；hero 註腳改顯示實際 USD_TWD 匯率
+- [x] 3.5 移除 header 刷新鈕（owner 2026-07-04 視覺對圖拍板；降級態「重試」保留 force 刷新）＋同步設計 spec 與 spec delta
 
 ## 4. 驗證與收尾
 

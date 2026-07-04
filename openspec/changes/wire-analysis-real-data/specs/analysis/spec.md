@@ -51,11 +51,11 @@
 
 ### Requirement: 重新整理回饋
 
-分析頁 refresh 圓鈕 SHALL 觸發**真實報價強制刷新**（略過新鮮判定的批次 loadFor）並以 toast「報價已更新」回饋；刷新完成後聚合數字隨新報價重算。
+分析頁 SHALL NOT 顯示 header 刷新圓鈕（owner 2026-07-04 視覺對圖拍板移除：進頁即以最新持倉+報價重算、focus 依 TTL 自動刷新已涵蓋，按鈕增量價值低）。報價全缺降級態的「重試」SHALL 保留**真實報價強制刷新**（略過新鮮判定的批次 loadFor）並以 toast「報價已更新」回饋；刷新完成後聚合數字隨新報價重算。
 
-#### Scenario: 點 refresh
+#### Scenario: 降級態點重試
 
-- **WHEN** 使用者點分析頁 refresh 圓鈕
+- **WHEN** 分析頁處於「報價載入中…」降級態，使用者點「重試」
 - **THEN** 對目前持倉 targets 強制刷新報價，顯示「報價已更新」toast，數字以新報價重算
 
 ### Requirement: 分析頁 TWD/USD 全頁切換

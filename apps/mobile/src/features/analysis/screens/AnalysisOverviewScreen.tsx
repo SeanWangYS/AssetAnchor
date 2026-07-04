@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   aggregateHoldings,
@@ -71,9 +71,9 @@ const CLASS_COLOR: Record<AssetClass, string> = {
   ETF: chartCategory.etf,
 };
 
-export default function AnalysisOverviewScreen({
-  navigation,
-}: AnalysisStackScreenProps<'AnalysisOverview'>) {
+export default function AnalysisOverviewScreen(
+  _props: AnalysisStackScreenProps<'AnalysisOverview'>,
+) {
   const transactions = useTransactionsStore((s) => s.transactions);
   const txLoading = useTransactionsStore((s) => s.loading);
   const txError = useTransactionsStore((s) => s.error);
@@ -151,7 +151,8 @@ export default function AnalysisOverviewScreen({
     }
   }, [input, rates]);
 
-  // 刷新圓鈕（header right）→ 真實 force 刷新報價（略過 TTL）+ toast + 重觸 count-up。
+  // 降級態「重試」→ 真實 force 刷新報價（略過 TTL）+ toast + 重觸 count-up。
+  // （header 刷新圓鈕已移除——focus 依 TTL 自動刷新已涵蓋，owner 2026-07-04 拍板）
   const handleRefresh = () => {
     void useQuotesStore
       .getState()
@@ -161,20 +162,6 @@ export default function AnalysisOverviewScreen({
         setRefreshKey((k) => k + 1);
       });
   };
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="重新整理報價"
-          onPress={handleRefresh}
-          style={styles.refreshBtn}
-        >
-          <Icon name="refresh" color={colors.accent} size={20} />
-        </Pressable>
-      ),
-    });
-  }, [navigation]);
 
   // —— 降級態（change design D3；語彙對齊持倉頁）——
   if (transactions.length === 0 && txError) {
@@ -460,17 +447,6 @@ function ChartCard({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.screen },
   content: { padding: spacing.page, paddingBottom: spacing.xxl, gap: spacing.lg },
-
-  refreshBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.round,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.divider,
-    backgroundColor: colors.surface,
-  },
 
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   emptyText: {

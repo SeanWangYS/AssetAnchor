@@ -80,7 +80,7 @@ buildAnalysisInput(positions, resolveQuote, resolveMeta, nowMs): AnalysisInput
 
 ### D4：報價載入時機沿用持倉頁三件套
 
-`useQuotes(targets)`（targets 變動載入）+ `useRefreshQuotesOnFocus(targets)`（切回分頁/回前景，TTL 去抖）+ header 刷新鈕 `loadFor(targets, {force:true})`（取代 demo toast）。targets 由 positions 推導（market/symbol/currency），與持倉頁同一組 → 共用 in-memory/Firestore cache，切頁不重打 API。
+`useQuotes(targets)`（targets 變動載入）+ `useRefreshQuotesOnFocus(targets)`（切回分頁/回前景，TTL 去抖）+ 降級態「重試」`loadFor(targets, {force:true})`（header 刷新鈕已依 owner 2026-07-04 視覺對圖拍板移除）。targets 由 positions 推導（market/symbol/currency），與持倉頁同一組 → 共用 in-memory/Firestore cache，切頁不重打 API。
 
 ### D5：`analysisData.ts` 瘦身而非刪除
 
