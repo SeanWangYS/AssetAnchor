@@ -4,3 +4,4 @@ export * from './transaction.js';
 export * from './symbol.js';
 export * from './exchange-rate.js';
 export * from './quote.js';
+export * from './price-history.js';

@@ -10,3 +10,4 @@ export * from './preferences/index.js';
 export * from './quotes/index.js';
 export * from './symbols/index.js';
 export * from './analysis/index.js';
+export * from './history/index.js';
