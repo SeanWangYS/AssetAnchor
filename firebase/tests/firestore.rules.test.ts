@@ -92,6 +92,20 @@ describe('全域 collection（§7）', () => {
     await assertSucceeds(getDoc(doc(alice, 'quotes/AAPL')));
     await assertFails(setDoc(doc(alice, 'quotes/AAPL'), { price: '1' }));
   });
+
+  it('登入者可讀 price_history、不能寫（含 FX pseudo-symbol）', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertSucceeds(getDoc(doc(alice, 'price_history/TW_2330_2025')));
+    await assertSucceeds(getDoc(doc(alice, 'price_history/FX_USDTWD_2025')));
+    await assertFails(
+      setDoc(doc(alice, 'price_history/TW_2330_2025'), { closes: { '2025-01-02': '1' } }),
+    );
+  });
+
+  it('未登入不能讀 price_history', async () => {
+    const anon = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(anon, 'price_history/TW_2330_2025')));
+  });
 });
 
 describe('accounts subcollection 隔離（Sprint 2）', () => {

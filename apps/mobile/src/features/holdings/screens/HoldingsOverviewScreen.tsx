@@ -35,8 +35,8 @@ import {
 import { useSymbols, symbolNameOf, symbolTargetsFromTransactions } from '../../../services/symbols';
 import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { useCountUp } from '../useCountUp';
+import { useTrendSeries } from '../useTrendSeries';
 import {
-  DEMO_SERIES,
   accountOf,
   avatarColor,
   currencyPrefix,
@@ -323,7 +323,8 @@ export default function HoldingsOverviewScreen({
       maximumFractionDigits: dp,
     })}`;
 
-  const series = DEMO_SERIES[tf] ?? [];
+  // 走勢圖真值（ADR-0010）：組合證券市值序列（不含現金）；hero.value 為今日即時點。
+  const trend = useTrendSeries(tf, displayCcy, hero?.value ?? null);
 
   return (
     <>
@@ -450,14 +451,22 @@ export default function HoldingsOverviewScreen({
           <Segmented options={CCY_OPTIONS} value={displayCcy} onChange={onChangeCurrency} />
         </View>
 
-        {/* 走勢圖卡 */}
+        {/* 走勢圖卡（真值：證券市值，不含現金；載入/空態不畫假線） */}
         <Card style={styles.trendCard} padding={spacing.lg - 2}>
           <View style={styles.trendHead}>
             <Text style={styles.trendTitle}>資產走勢</Text>
             <Text style={styles.trendTf}>{tf}</Text>
           </View>
           <View style={styles.trendChart}>
-            <Chart data={series} height={108} />
+            {trend.state === 'ready' ? (
+              <Chart data={trend.series} height={108} />
+            ) : (
+              <View style={styles.trendPlaceholder}>
+                <Text style={styles.trendPlaceholderText}>
+                  {trend.state === 'loading' ? '歷史資料回補中…' : '暫無走勢資料'}
+                </Text>
+              </View>
+            )}
           </View>
           <TimeTabs items={TIMEFRAMES} value={tf} onChange={setTf} />
         </Card>
@@ -597,6 +606,12 @@ const styles = StyleSheet.create({
     ...numericStyle,
   },
   trendChart: { marginTop: spacing.sm + 2 },
+  trendPlaceholder: { height: 108, alignItems: 'center', justifyContent: 'center' },
+  trendPlaceholderText: {
+    fontFamily: fontFamily.text.regular,
+    fontSize: 12,
+    color: colors.textFaint,
+  },
 
   segmentedWrap: { marginTop: spacing.lg },
 

@@ -8,8 +8,8 @@ import { useHoldings } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { quoteFor, useQuotes, useRefreshQuotesOnFocus } from '../../../services/quotes';
 import { useSymbolMap, symbolNameOf, symbolEnglishOf } from '../../../services/symbols';
+import { useSymbolTrendSeries } from '../useTrendSeries';
 import {
-  DEMO_SERIES,
   accountOf,
   currencyPrefix,
   displayDecimals,
@@ -47,6 +47,18 @@ export default function AssetDetailScreen({
 
   const [tf, setTf] = useState<Timeframe>('1M');
   const [displayCcy, setDisplayCcy] = useState<Currency>(position?.currency ?? 'TWD');
+
+  // 走勢圖真值（ADR-0010）：原幣別價格序列；1D/1W 盤中即抓即回、其餘讀 price_history。
+  // 現價（fresh 或最後已知）作為日線 tabs 的今日點。hook 需在 early return 之前呼叫。
+  const nativeCcy = position?.currency ?? 'TWD';
+  const quote = quoteFor(quotes, market, symbol);
+  const trend = useSymbolTrendSeries(
+    market,
+    symbol,
+    nativeCcy,
+    tf,
+    quote ? new Money(quote.price, nativeCcy).toNumber() : null,
+  );
 
   // header：中央顯示「代號 名稱」+ 副標（英文名 · 台股|美股）。
   useLayoutEffect(() => {
@@ -87,7 +99,6 @@ export default function AssetDetailScreen({
   }
 
   // 現價/市值/未實現損益：報價真值（ADR-0006）。無報價 → null（降級顯示「更新中…」）；過期仍顯示最後已知值。
-  const quote = quoteFor(quotes, market, symbol);
   const priceM = quote ? new Money(quote.price, position.currency) : null;
   const marketValue = priceM ? priceM.multiply(position.quantity) : null;
   const totalCostM = Money.fromDecimalString(position.totalCost, position.currency);
@@ -118,7 +129,6 @@ export default function AssetDetailScreen({
       ? priceM.subtract(prevCloseM).divide(prevCloseM.toDecimalString()).multiply('100').toNumber()
       : null;
 
-  const series = DEMO_SERIES[tf] ?? [];
   const priceCcyPrefix = currencyPrefix(position.currency);
 
   return (
@@ -159,9 +169,17 @@ export default function AssetDetailScreen({
       ) : null}
       <Text style={styles.delayNote}>{asOfLabel ?? '資料延遲 15 分鐘 · Yahoo Finance'}</Text>
 
-      {/* 走勢圖 + 時間 tabs */}
+      {/* 走勢圖 + 時間 tabs（真值：1D/1W 盤中、其餘日線；載入/空態不畫假線） */}
       <View style={styles.chart}>
-        <Chart data={series} height={164} />
+        {trend.state === 'ready' ? (
+          <Chart data={trend.series} height={164} />
+        ) : (
+          <View style={styles.chartPlaceholder}>
+            <Text style={styles.chartPlaceholderText}>
+              {trend.state === 'loading' ? '歷史資料回補中…' : '暫無走勢資料'}
+            </Text>
+          </View>
+        )}
       </View>
       <View style={styles.timeTabs}>
         <TimeTabs items={TIMEFRAMES} value={tf} onChange={setTf} />
@@ -292,6 +310,12 @@ const styles = StyleSheet.create({
   },
 
   chart: { marginTop: spacing.lg },
+  chartPlaceholder: { height: 164, alignItems: 'center', justifyContent: 'center' },
+  chartPlaceholderText: {
+    fontFamily: fontFamily.text.regular,
+    fontSize: 12,
+    color: colors.textFaint,
+  },
   timeTabs: { marginTop: spacing.sm },
   ccyToggle: { marginTop: spacing.lg + 2 },
 

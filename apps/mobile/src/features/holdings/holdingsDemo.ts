@@ -156,20 +156,6 @@ export function fmtShares(quantity: string, currency: Currency): string {
   return Money.fromDecimalString(quantity, currency).toNumber().toLocaleString('en-US');
 }
 
-/**
- * 走勢圖假序列（prototype SERIES；無真實歷史 → 第二階段接報價）。
- * 各 timeframe 一條遞增折線，數字僅供畫面完整。
- */
-export const DEMO_SERIES: Record<string, readonly number[]> = {
-  '1D': [52, 51, 53, 52, 54, 53, 55, 54, 56, 58, 57, 59, 58, 60, 59, 61],
-  '1W': [40, 44, 42, 48, 46, 52, 50, 55, 53, 58, 60, 57, 62, 66, 64, 68],
-  '1M': [30, 34, 32, 40, 38, 44, 50, 46, 54, 58, 55, 64, 62, 70, 68, 74],
-  '3M': [22, 28, 26, 38, 34, 46, 42, 56, 52, 64, 60, 72, 68, 78, 74, 82],
-  YTD: [18, 24, 30, 28, 40, 38, 52, 48, 62, 58, 72, 68, 80, 78, 86, 90],
-  '1Y': [12, 20, 16, 30, 26, 42, 38, 54, 48, 66, 60, 78, 72, 86, 82, 94],
-  ALL: [6, 14, 22, 18, 34, 30, 48, 44, 62, 58, 76, 70, 86, 82, 92, 98],
-};
-
 /** 持倉總覽 hero / bento 的整體 mock 摘要（TWD；prototype SUM）。需報價，故為示意。 */
 export const DEMO_SUMMARY = {
   /** 總資產 TWD。 */
