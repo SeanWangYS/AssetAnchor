@@ -598,6 +598,33 @@ const ASSET_TYPES = [
 - 使用者新增交易時若 symbol 不在 collection 裡，動態建立一筆
 - 長期可做 cron job 從外部資料源 enrich
 
+### Collection 7：`price_history/{symbolId}_{year}` — 全域共用歷史日線（ADR-0010）
+
+```javascript
+// Document ID: "{symbolId}_{year}"，per-symbol per-year 分塊
+// 例如 "TW_2330_2025"、"US_AAPL_2024"、"FX_USDTWD_2025"（匯率 pseudo-symbol＝Yahoo TWD=X）
+{
+  symbol_id: "TW_2330",                    // 同 quotes/symbols 的 id 慣例
+  market: "TW",                            // 'TW' | 'US' | 'FX'（HistoryMarket；不動交易域 Market enum）
+  symbol: "2330",
+  currency: "TWD",                         // 序列計價幣別（TW→TWD、US→USD、FX_USDTWD→TWD）
+  year: 2025,                              // 分塊年份，同 doc id 後綴
+
+  closes:    { "2025-01-02": "1085.0000000000", /* ... */ },  // 日線收盤，Money 10 位小數 string
+  adjcloses: { "2025-01-02": "1080.1000000000", /* ... */ },  // 還原收盤（備未來除權/分割還原，暫不消費）
+  last_date: "2025-07-03",                 // 該 doc 已涵蓋的最後日期（增量起點查詢用）
+
+  source: "yahoo-finance",
+  updated_at: timestamp
+}
+```
+
+由 Cloud Function `ensureHistory` 於開圖時 lazy 寫入：lazy backfill（起點＝該 symbol 最早交易日）
+＋ 7 天回看增量 upsert（append 與假日缺洞修補，冪等）。使用者只能讀（rules 同 quotes）。
+盤中粒度（1D/1W）走 `fetchIntraday` 即抓即回、**不落地**。走勢圖的組合市值序列由 client 以
+`buildPortfolioSeries`（shared 純函式）用「交易 × 本 collection 日線 × FX 序列」即時重建
+——**不存每日組合市值 snapshot**（會被補登/修改交易弄髒；Ghostfolio 同模式，詳 ADR-0010）。
+
 ### 重要設計決定
 
 #### 為什麼不存 holdings collection？

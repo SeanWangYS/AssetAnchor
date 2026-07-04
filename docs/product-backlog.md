@@ -4,7 +4,13 @@
 
 ## 🔴 高優先（owner 標記）
 
-- **資產走勢圖接真實資料（不可是假折線）** — 來源：持倉總覽 §3.1-5 / AssetDetail §3.2-3 走勢圖；owner 於 2026-06-19 change 1 視覺對圖時標為**高優先**。現況 `holdingsDemo.ts` 的 `DEMO_SERIES` 為寫死假折線（planning §3 原將圖表延後第二階段）。**「資產走勢不可以是假資料」**——需接真實歷史/淨值序列（持倉市值 over time 或標的歷史價）。觸發：排為下一波重點。範圍待評估：歷史價來源（Yahoo chart 已有 range/interval、或自建每日 snapshot）、持倉市值時間序列計算（跨幣別、成本基礎）、圖表元件接真資料。**注意這比報價更重，因需歷史序列而非單點報價。**
+（無——「資產走勢圖接真實資料」已由 change `add-real-trend-series` 交付（2026-07-04，ADR-0010）：`price_history` 落地日線 + 開圖 lazy 增量 + 兩畫面接真值。衍生候選項見下方「走勢圖後續」。）
+
+## 走勢圖後續（ADR-0010 衍生候選）
+
+- **除權/分割還原** — `adjcloses` 已一併落地未消費；分割事件附近的歷史市值段會失真（MVP Non-goal，台股+ETF 為主影響小）。觸發：持有個股發生分割，或要做「還原績效」曲線。
+- **台股 fallback provider（TWSE 官方 API / FinMind）** — `HistoryProvider` 介面已留擴充點；Yahoo 若對 GCP IP 持續 429 再實作（TWSE keyless、一次一個月）。
+- **每日組合快照作快取層** — 若組合序列 client 重建變慢（交易量大幅成長），可加 snapshot 當快取（非第一手資料，重算即正確；ADR-0010 Alternatives C）。
 
 ## 報價 / 資料真值（Quotes / real data）
 

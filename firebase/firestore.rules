@@ -26,5 +26,11 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+
+    // 歷史日線分塊（ADR-0010 price_history）：登入使用者皆可讀，只有後端 (Cloud Function) 可寫
+    match /price_history/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
   }
 }
