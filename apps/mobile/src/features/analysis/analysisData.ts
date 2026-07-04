@@ -1,27 +1,16 @@
-import {
-  aggregateHoldings,
-  convertMoney,
-  type AnalysisAggregate,
-  type AnalysisRawHolding,
-  type Currency,
-  type Money,
-  type RateMap,
-} from '@assetanchor/shared';
+import { convertMoney, type Money, type RateMap } from '@assetanchor/shared';
 
 /**
- * 分析頁的本地資料層（features/analysis 私有）——**僅保留 mock 輸入 + 顯示格式化**；
- * 聚合數學已抽到 `@assetanchor/shared` 的 `aggregateHoldings`（純函式、單元測試覆蓋）。
+ * 分析頁的本地顯示層 helpers（features/analysis 私有）——demo 匯率 fallback + 格式化。
  *
- * 為什麼是「本地 mock」而非讀真實持倉：
- * - 衍生持倉（deriveHoldings）只在 features/holdings 取用、資料源 transactionsStore 屬 features/transactions；
- *   features 之間禁止互相 import（planning §12）。
- * - 分析頁需要「市值」，而市值需要報價（quotes 尚未串接 → Non-goals）。
- * 因此以原型（aa-analysis-charts.jsx `AHOLD`）mock 為輸入；資料真實化屬後續。
+ * 資料真值化（wire-analysis-real-data）後，聚合輸入來自真實持倉 × 報價：
+ * - 持倉：transactions（onSnapshot store）→ shared `deriveHoldings`；
+ * - 市值：shared `buildAnalysisInput`（現價 × 股數，缺報價排除 + pending/stale 計數）；
+ * - 聚合數學：shared `aggregateHoldings`（純函式、單元測試覆蓋）。
+ * 本檔只剩與資料源無關的顯示層工具，消費端 import 路徑不變。
  *
  * 內部基準幣別＝TWD；跨幣別合計/損益/軸刻度於顯示時以最新 exchange_rates 即時換算（ADR-0005 / design §5）。
  */
-
-const BASE: Currency = 'TWD';
 
 /**
  * Demo 匯率（design §5：1 USD = 30.95 TWD「mock 寫死處」）。
@@ -46,80 +35,19 @@ export type {
   ClassRollup,
 } from '@assetanchor/shared';
 
-/**
- * Mock 持倉（市場原幣別）。數字對齊 design spec §5 衍生結果
- * （市值 455,935 / 成本 377,181 / 未實現 +78,754；個股 44.1% vs ETF 55.9%）。
- */
-const RAW_HOLDINGS: readonly AnalysisRawHolding[] = [
-  {
-    symbol: '2330',
-    name: '台積電',
-    assetType: 'STOCK',
-    currency: 'TWD',
-    cost: '55000',
-    value: '110000',
-  },
-  {
-    symbol: '2317',
-    name: '鴻海',
-    assetType: 'STOCK',
-    currency: 'TWD',
-    cost: '35600',
-    value: '38000',
-  },
-  {
-    symbol: 'AAPL',
-    name: 'Apple',
-    assetType: 'STOCK',
-    currency: 'USD',
-    cost: '1444',
-    value: '1712.88',
-  },
-  {
-    symbol: 'VTI',
-    name: 'Vanguard Total',
-    assetType: 'ETF',
-    currency: 'USD',
-    cost: '2820',
-    value: '3012',
-  },
-  {
-    symbol: 'QQQ',
-    name: 'Invesco QQQ',
-    assetType: 'ETF',
-    currency: 'USD',
-    cost: '2010',
-    value: '2210',
-  },
-  {
-    symbol: '0050',
-    name: '元大台灣50',
-    assetType: 'ETF',
-    currency: 'TWD',
-    cost: '71000',
-    value: '72500',
-  },
-  {
-    symbol: '00878',
-    name: '國泰永續高股息',
-    assetType: 'ETF',
-    currency: 'TWD',
-    cost: '21400',
-    value: '20800',
-  },
-];
-
-/**
- * 由 mock 原幣別持倉聚合出分析資料（TWD 基準）。委派 shared `aggregateHoldings`（純函式）。
- * rates 缺對應 key 時 fail loud（convertMoney 丟錯），由呼叫端 try/catch 後優雅降級。
- */
-export function aggregateAnalysis(rates: RateMap): AnalysisAggregate {
-  return aggregateHoldings(RAW_HOLDINGS, rates, BASE);
-}
-
 /** 把 TWD 基準的 Money 換算成顯示幣別（TWD 原值返回 / USD 以匯率換算）。 */
 export function toDisplay(twd: Money, display: DisplayCurrency, rates: RateMap): Money {
   return convertMoney(twd, rates, display);
+}
+
+/**
+ * Hero 註腳用的實際 USD/TWD 匯率標籤（取代寫死 30.95）：
+ * 顯示層字串（四捨五入至 2 位、去尾零），非金錢運算（ADR-0005 toNumber 逃生門範圍）。
+ */
+export function fxFootnoteRate(rates: RateMap): string {
+  const raw = rates['USD_TWD'] ?? DEMO_RATES['USD_TWD'] ?? '30.95';
+  const n = Number(raw);
+  return Number.isFinite(n) ? String(Math.round(n * 100) / 100) : '—';
 }
 
 /** 金額顯示字串：前綴 NT$ / US$ + 千分位、無小數（對齊原型 fA）。 */
