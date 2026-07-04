@@ -5,6 +5,9 @@ const config: ExpoConfig = {
   slug: 'assetanchor',
   scheme: 'assetanchor',
   version: '0.0.1',
+  // App icon（owner 2026-07-04 拍板先用 AI 產的 v1：深色底＋accent 紫上升折線＋發光端點，
+  // 視覺對齊 app 內「資產走勢」卡；之後可再換正式版）。iOS icon 需不透明背景。
+  icon: './assets/icon.png',
   orientation: 'portrait',
   // 設計包是 dark-first（design.md §3 / D4）；MVP 不做 light theme。
   userInterfaceStyle: 'dark',
