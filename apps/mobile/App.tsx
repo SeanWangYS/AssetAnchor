@@ -13,7 +13,12 @@ import RootNavigator from './src/core/navigation/RootNavigator';
 import SplashGate from './src/core/navigation/SplashGate';
 import { fontMap, useFonts } from './src/core/theme/fonts';
 
-GoogleSignin.configure({ webClientId: 'autoDetect' });
+// webClientId 必須是 Firebase 專案的 Web OAuth client（GIDSignIn 將其當 token 交換的
+// audience）；裝的 v16 不支援新版的 'autoDetect' 哨兵值——字面值會被原樣送給 Google，
+// token 交換回 AppAuth 不認得的 OAuth 錯誤（-61440 OIDErrorCodeOAuthOther）。
+GoogleSignin.configure({
+  webClientId: '269986802776-ruvb9c520d4osm0p3091kuueeogiis9a.apps.googleusercontent.com',
+});
 
 export default function App() {
   const setUser = useAuthStore((s) => s.setUser);
