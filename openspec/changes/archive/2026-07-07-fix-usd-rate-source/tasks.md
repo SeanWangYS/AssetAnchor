@@ -19,5 +19,5 @@
 
 - [x] 4.1 `pnpm -r typecheck && pnpm -r lint && pnpm --filter @assetanchor/shared test:coverage && pnpm --filter @assetanchor/functions test`（若 functions 無獨立 test script 則以 workspace 測試指令為準）全綠
 - [x] 4.2 本機 emulator 煙霧測試：`emulators` 起 functions 後打本地 `seedUsdRate`，確認寫入 `exchange_rates/{今日}` 且欄位值正確
-- [ ] 4.3 開 PR（fix branch，stacked 於 main）；PR body 註明部署 gate 待 owner 授權
-- [ ] 4.4 🛑 owner 授權後 `firebase deploy --only functions`；部署後打 production 驗證或次日看 `functions:log` 確認排程成功寫入
+- [x] 4.3 開 PR（fix branch，stacked 於 main）；PR body 註明部署 gate 待 owner 授權
+- [x] 4.4 🛑 owner 授權後 `firebase deploy --only functions`；部署後打 production 驗證或次日看 `functions:log` 確認排程成功寫入
