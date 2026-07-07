@@ -1,7 +1,10 @@
 import type { FirestoreTimestamp } from './user.js';
 
-/** 匯率基準類型。MVP 只用 spot_sell（即期賣出）；其餘為第二階段預留。 */
-export type RateType = 'spot_sell' | 'spot_buy' | 'cash_sell' | 'cash_buy';
+/**
+ * 匯率基準類型。現行寫入用 market（Yahoo 市場價，fix-usd-rate-source 起）；
+ * spot_sell 等牌告值保留供歷史 BOT 文件相容與未來回牌告語義時區分。
+ */
+export type RateType = 'market' | 'spot_sell' | 'spot_buy' | 'cash_sell' | 'cash_buy';
 
 /**
  * Key 格式：{FROM}_{TO}，例如 "USD_TWD"（1 USD = N TWD）。
@@ -17,7 +20,7 @@ export interface ExchangeRateDocument {
   /** 牌告日 YYYY-MM-DD（= document id）。 */
   date: string;
   source: 'BOT' | 'EXCHANGERATE_HOST' | 'YAHOO';
-  /** 匯率基準（MVP 恆 "spot_sell"）。 */
+  /** 匯率基準（現行寫入恆 "market"；歷史 BOT 文件為 "spot_sell"）。 */
   rate_type: RateType;
   /** 至少含雙向 USD_TWD / TWD_USD，皆 Money 10 位小數 string。 */
   rates: RateMap;

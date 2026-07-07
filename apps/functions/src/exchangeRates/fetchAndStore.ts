@@ -4,9 +4,15 @@ import * as logger from 'firebase-functions/logger';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { Money } from '@assetanchor/shared';
-import { parseBotUsdCsv } from './parseBotCsv';
+import { parseYahooFxRate } from './parseYahooFxRate';
 
-const BOT_USD_L6M_URL = 'https://rate.bot.com.tw/xrt/flcsv/0/L6M/USD';
+/**
+ * 匯率源：Yahoo v8 chart `TWD=X`（1 USD = N TWD 市場價）。
+ * 原台銀 CSV 源自 2026-06-30 起被全站 anti-bot JS challenge 擋死（fix-usd-rate-source）；
+ * Yahoo 端點與報價層（ADR-0006/0010）同源同慣例（誠實 UA），production 已驗證。
+ */
+const YAHOO_FX_URL =
+  'https://query1.finance.yahoo.com/v8/finance/chart/TWD%3DX?interval=1d&range=1d';
 const REGION = 'asia-east1';
 
 function ensureApp(): void {
@@ -14,43 +20,42 @@ function ensureApp(): void {
 }
 
 /**
- * 抓台銀 USD L6M CSV → 解析即期賣出 → 以 Admin SDK upsert `exchange_rates/{牌告日}`。
+ * 抓 Yahoo `TWD=X` → 解析最新市場價與資料日 → 以 Admin SDK upsert `exchange_rates/{資料日}`。
  *
- * 回傳寫入的牌告日。idempotent（同牌告日覆寫同一文件）。抓取/解析失敗一律 fail loud，
+ * 回傳寫入的資料日。idempotent（同資料日覆寫同一文件）。抓取/解析失敗一律 fail loud，
  * 不寫半套文件（ADR-0005 / design D4、D7）。匯率以 `Money` 序列化成 10 位小數 string。
  */
 export async function fetchAndStoreUsdRate(): Promise<{ date: string }> {
   ensureApp();
 
-  const res = await fetch(BOT_USD_L6M_URL);
+  const res = await fetch(YAHOO_FX_URL, { headers: { 'User-Agent': 'Mozilla/5.0 (AssetAnchor)' } });
   if (!res.ok) {
-    throw new Error(`BOT fetch 失敗：HTTP ${res.status}`);
+    throw new Error(`Yahoo FX fetch 失敗：HTTP ${res.status}`);
   }
-  const csv = await res.text();
-  const { boardDate, spotSell } = parseBotUsdCsv(csv);
+  const { date, rate } = parseYahooFxRate(await res.json());
 
-  // 1 USD = N TWD（spot_sell）；反向 TWD_USD 預存（互為倒數）。皆 10 位小數 string。
-  const usdTwd = new Money(spotSell, 'TWD').toDecimalString();
-  const twdUsd = new Money('1', 'TWD').divide(spotSell).toDecimalString();
+  // 1 USD = N TWD（market）；反向 TWD_USD 預存（互為倒數）。皆 10 位小數 string。
+  const usdTwd = new Money(rate, 'TWD').toDecimalString();
+  const twdUsd = new Money('1', 'TWD').divide(rate).toDecimalString();
 
   await getFirestore()
     .collection('exchange_rates')
-    .doc(boardDate)
+    .doc(date)
     .set({
-      date: boardDate,
-      source: 'BOT',
-      rate_type: 'spot_sell',
+      date,
+      source: 'YAHOO',
+      rate_type: 'market',
       rates: { USD_TWD: usdTwd, TWD_USD: twdUsd },
       fetched_at: FieldValue.serverTimestamp(),
       is_estimated: false,
     });
 
-  return { date: boardDate };
+  return { date };
 }
 
-/** 每日排程（Asia/Taipei 16:30，牌告固定後）抓取並寫入最新匯率。 */
+/** 每日排程（Asia/Taipei 09:30；外匯近全天候，取當下最新市場價，design D4）。 */
 export const scheduledUsdRate = onSchedule(
-  { schedule: '30 16 * * *', timeZone: 'Asia/Taipei', region: REGION },
+  { schedule: '30 9 * * *', timeZone: 'Asia/Taipei', region: REGION },
   async () => {
     const r = await fetchAndStoreUsdRate();
     logger.info('exchange rate stored', r);
@@ -59,7 +64,7 @@ export const scheduledUsdRate = onSchedule(
 
 /**
  * 手動觸發端點（emulator 驗證 / 正式環境初次 seed 用）。寫入內容與排程相同。
- * 僅寫公開的 `exchange_rates`（資料源台銀、idempotent），不碰任何使用者資料。
+ * 僅寫公開的 `exchange_rates`（資料源 Yahoo、idempotent），不碰任何使用者資料。
  */
 export const seedUsdRate = onRequest({ region: REGION }, async (_req, res) => {
   try {
