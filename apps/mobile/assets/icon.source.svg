@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- 底色：深藍黑 + 中央極淡的 accent 暈染（對齊 v1 的深底發光語彙） -->
+    <radialGradient id="bgGlow" cx="50%" cy="46%" r="62%">
+      <stop offset="0%" stop-color="#231d3f"/>
+      <stop offset="55%" stop-color="#151327"/>
+      <stop offset="100%" stop-color="#0E1117"/>
+    </radialGradient>
+    <!-- 錨後柔光暈 -->
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7C6CF0" stop-opacity="0.38"/>
+      <stop offset="55%" stop-color="#7C6CF0" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#7C6CF0" stop-opacity="0"/>
+    </radialGradient>
+    <!-- 錨身漸層：上亮下深，對齊 AALogoMark 的 userSpaceOnUse 漸層 -->
+    <linearGradient id="anchor" gradientUnits="userSpaceOnUse" x1="6" y1="6" x2="42" y2="44">
+      <stop offset="0%" stop-color="#A99CFF"/>
+      <stop offset="100%" stop-color="#7C6CF0"/>
+    </linearGradient>
+    <filter id="blurBig" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.2"/>
+    </filter>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="1024" height="1024" fill="#0E1117"/>
+  <rect width="1024" height="1024" fill="url(#bgGlow)"/>
+
+  <!-- 微弱格線（v1 血緣：資產座標感） -->
+  <g stroke="#FFFFFF" stroke-opacity="0.035" stroke-width="2">
+    <path d="M256 0V1024M512 0V1024M768 0V1024"/>
+    <path d="M0 256H1024M0 512H1024M0 768H1024"/>
+  </g>
+
+  <!-- 錨後柔光 -->
+  <circle cx="512" cy="500" r="430" fill="url(#halo)"/>
+
+  <!-- 錨形標誌：AALogoMark 幾何（viewBox 0 0 48 48）等比放大，scale 15.5、置中 -->
+  <g transform="translate(140,133) scale(15.5)">
+    <!-- 柔光層：同幾何模糊墊底 -->
+    <g fill="none" stroke="#7C6CF0" stroke-opacity="0.55" stroke-linecap="round" stroke-linejoin="round" filter="url(#blurBig)">
+      <circle cx="24" cy="11" r="5.2" stroke-width="3.6"/>
+      <path d="M24 16.2 V41" stroke-width="3.6"/>
+      <path d="M14.5 25.5 H33.5" stroke-width="3.6"/>
+      <path d="M9 31 C10 38.4 16 42.4 24 42.4 C32 42.4 38 38.4 39 31" stroke-width="3.6"/>
+      <path d="M9 31 L6.2 36.2 M9 31 L14.4 33.2" stroke-width="3"/>
+      <path d="M39 31 L41.8 36.2 M39 31 L33.6 33.2" stroke-width="3"/>
+    </g>
+    <!-- 本體 -->
+    <g fill="none" stroke="url(#anchor)" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="11" r="5.2" stroke-width="3.6"/>
+      <path d="M24 16.2 V41" stroke-width="3.6"/>
+      <path d="M14.5 25.5 H33.5" stroke-width="3.6"/>
+      <path d="M9 31 C10 38.4 16 42.4 24 42.4 C32 42.4 38 38.4 39 31" stroke-width="3.6"/>
+      <path d="M9 31 L6.2 36.2 M9 31 L14.4 33.2" stroke-width="3"/>
+      <path d="M39 31 L41.8 36.2 M39 31 L33.6 33.2" stroke-width="3"/>
+    </g>
+  </g>
+</svg>
