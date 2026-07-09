@@ -252,6 +252,7 @@ export default function TransactionForm({
         render={({ field, fieldState }) => (
           <View>
             <Input
+              testID="tx-symbol"
               label="股票代號"
               value={field.value}
               onChangeText={field.onChange}
@@ -373,6 +374,7 @@ export default function TransactionForm({
           render={({ field, fieldState }) => (
             <View style={styles.col}>
               <Input
+                testID="tx-quantity"
                 label="股數"
                 value={field.value}
                 onChangeText={field.onChange}
@@ -388,6 +390,7 @@ export default function TransactionForm({
           render={({ field, fieldState }) => (
             <View style={styles.col}>
               <Input
+                testID="tx-price"
                 label={`單價（${currencySymbol(currency)}）`}
                 value={field.value}
                 onChangeText={field.onChange}
@@ -435,7 +438,7 @@ export default function TransactionForm({
         <Text style={styles.previewNote}>股數 × 單價 {isBuy ? '＋' : '−'} 手續費（原幣別）</Text>
       </Card>
 
-      <Button title={submitLabel} onPress={submit} loading={isSubmitting} />
+      <Button testID="tx-submit" title={submitLabel} onPress={submit} loading={isSubmitting} />
     </View>
   );
 }

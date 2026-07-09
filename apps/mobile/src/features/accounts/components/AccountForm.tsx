@@ -89,6 +89,7 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
   return (
     <View style={styles.form}>
       <Input
+        testID="account-name"
         label="帳戶名稱"
         value={accountName}
         onChangeText={setAccountName}
@@ -147,7 +148,13 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
       />
 
       <View style={styles.submit}>
-        <Button title={submitLabel} onPress={handleSubmit} loading={busy} disabled={busy} />
+        <Button
+          testID="account-submit"
+          title={submitLabel}
+          onPress={handleSubmit}
+          loading={busy}
+          disabled={busy}
+        />
       </View>
     </View>
   );
