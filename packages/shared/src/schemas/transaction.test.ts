@@ -63,13 +63,42 @@ describe('transactionInputSchema', () => {
     ).toBe(false);
   });
 
-  it('accepts both MVP currencies USD and TWD', () => {
-    expect(transactionInputSchema.safeParse({ ...valid, currency: 'USD' }).success).toBe(true);
+  it('accepts both MVP currencies USD and TWD (各配一致的市場)', () => {
+    // guard-transaction-market-consistency：幣別須與市場一致（TW↔TWD、US↔USD）。
+    expect(
+      transactionInputSchema.safeParse({ ...valid, market: 'US', symbol: 'VOO', currency: 'USD' })
+        .success,
+    ).toBe(true);
     expect(transactionInputSchema.safeParse({ ...valid, currency: 'TWD' }).success).toBe(true);
   });
 
   it('rejects a non-MVP currency even if it is a valid Currency enum (JPY)', () => {
     expect(transactionInputSchema.safeParse({ ...valid, currency: 'JPY' }).success).toBe(false);
+  });
+
+  it('rejects TW market × USD（市場×幣別不一致）', () => {
+    const r = transactionInputSchema.safeParse({ ...valid, currency: 'USD' });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      const issue = r.error.issues.find((i) => i.path.includes('currency'));
+      expect(issue?.message).toContain('TWD');
+    }
+  });
+
+  it('rejects US market × TWD（production bug 實例：US×0050×TWD）', () => {
+    expect(
+      transactionInputSchema.safeParse({ ...valid, market: 'US', symbol: '0050', currency: 'TWD' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('OTHER / CRYPTO 市場不受幣別一致性約束', () => {
+    expect(
+      transactionInputSchema.safeParse({ ...valid, market: 'OTHER', currency: 'USD' }).success,
+    ).toBe(true);
+    expect(
+      transactionInputSchema.safeParse({ ...valid, market: 'CRYPTO', currency: 'TWD' }).success,
+    ).toBe(true);
   });
 
   it('rejects malformed transaction_date (not YYYY-MM-DD)', () => {
