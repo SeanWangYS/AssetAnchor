@@ -8,8 +8,8 @@ import * as Sentry from '@sentry/react-native';
  * 隱私：sendDefaultPii=false；事件 detail 以 symbolId/階段/HTTP status 為限，
  * 不含金額、email、uid（ADR-0005 資料最小化精神）。
  *
- * features 層不 import 本模組（依賴方向紀律）——錯誤經各 services seam
- * （如 services/quotes 的 logQuoteError）集中轉送。
+ * Sentry SDK 只在本模組 import（features/services 一律經 initErrorReporting /
+ * reportHandledError 這兩個 seam，不散布 Sentry 呼叫）；換上報服務只改此檔。
  */
 
 const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
