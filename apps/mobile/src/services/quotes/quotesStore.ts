@@ -3,9 +3,10 @@ import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { create } from 'zustand';
 import { doc, getDoc } from '@react-native-firebase/firestore';
-import { isFresh, type Currency, type Market } from '@assetanchor/shared';
+import { isFresh, type Currency, type Market, type QuoteErrorCode } from '@assetanchor/shared';
 import { db, functionsBaseUrl } from '../firebase';
-import { buildFetchQuotesUrl, parseFetchQuotesResponse } from './quotesBatch';
+import { buildFetchQuotesUrl, parseFetchQuotesResponse, resolveBatchTargets } from './quotesBatch';
+import { logQuoteError } from './quotesLog';
 
 /**
  * 報價雙層 cache（ADR-0006）。in-memory（本 store）+ Firestore `quotes/{symbolId}`（共用、後端寫）；
@@ -47,27 +48,31 @@ async function readFirestoreCache(
     return data.price
       ? { price: data.price, prevClose: data.prev_close ?? null, currency, fetchedAtMs }
       : null;
-  } catch {
+  } catch (e) {
+    logQuoteError('firestore_cache', { symbolId, message: String(e) });
     return null;
   }
 }
 
 /**
  * 批次抓報價（add-quote-batch-discovery 層 2）：一次呼叫 `fetchQuotes` 取多檔（N→1），
- * 取代逐檔 `fetchQuote`。回 `symbolId → QuoteEntry`（currency 依各 target 補上）；
- * 整批失敗 / 解析不出 → 回 {}（呼叫端據此降級為過期值）。純 URL/解析邏輯見 quotesBatch.ts。
+ * 取代逐檔 `fetchQuote`。回 `{ entries, errors }`（currency 依各 target 補上；errors 為
+ * per-symbol 錯誤碼）。整批失敗（網路 / 非 2xx / 解析不出）→ entries 空、全數標 `transient`
+ * 並經 logQuoteError 記錄（不靜默吞錯）。純 URL/解析邏輯見 quotesBatch.ts。
  */
-async function triggerFetchQuotes(targets: QuoteTarget[]): Promise<Record<string, QuoteEntry>> {
-  if (targets.length === 0) return {};
+async function triggerFetchQuotes(
+  targets: QuoteTarget[],
+): Promise<{ entries: Record<string, QuoteEntry>; errors: Record<string, QuoteErrorCode> }> {
+  if (targets.length === 0) return { entries: {}, errors: {} };
   try {
     const res = await fetch(buildFetchQuotesUrl(functionsBaseUrl, targets));
     const parsed = parseFetchQuotesResponse(await res.json(), Date.now());
-    const out: Record<string, QuoteEntry> = {};
+    const entries: Record<string, QuoteEntry> = {};
     for (const t of targets) {
       const id = keyOf(t.market, t.symbol);
-      const p = parsed[id];
+      const p = parsed.quotes[id];
       if (p) {
-        out[id] = {
+        entries[id] = {
           price: p.price,
           prevClose: p.prevClose,
           currency: t.currency,
@@ -75,20 +80,30 @@ async function triggerFetchQuotes(targets: QuoteTarget[]): Promise<Record<string
         };
       }
     }
-    return out;
-  } catch {
-    return {};
+    for (const [symbolId, code] of Object.entries(parsed.errors)) {
+      logQuoteError('batch_item', { symbolId, code });
+    }
+    return { entries, errors: parsed.errors };
+  } catch (e) {
+    logQuoteError('batch_http', { message: String(e), targetCount: targets.length });
+    // 整批失敗＝暫時錯誤：全數標 transient（與「無資料」明確區分；UI 行為不變）。
+    const errors: Record<string, QuoteErrorCode> = {};
+    for (const t of targets) errors[keyOf(t.market, t.symbol)] = 'transient';
+    return { entries: {}, errors };
   }
 }
 
 interface QuotesState {
   quotes: Record<string, QuoteEntry>;
+  /** per-symbol 報價錯誤（runtime 狀態，不落地）：symbol_not_found → UI 顯示「查無代號」；成功取得報價即清除。 */
+  errors: Record<string, QuoteErrorCode>;
   /** 為一組持倉載入報價：in-memory 新鮮→略過；Firestore 新鮮→用；否則批次 `fetchQuotes` 抓（抓不到降級為過期值）。force 略過新鮮判定（pull-to-refresh）。 */
   loadFor: (targets: QuoteTarget[], opts?: { force?: boolean }) => Promise<void>;
 }
 
 export const useQuotesStore = create<QuotesState>((set, get) => ({
   quotes: {},
+  errors: {},
   loadFor: async (targets, opts) => {
     const force = opts?.force ?? false;
     const now = Date.now();
@@ -116,20 +131,25 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
     );
 
     // Phase 2：批次抓（N→1）。抓到的覆蓋；抓不到者降級為過期 Firestore 報價（最後已知值），
-    // 而非永久卡「報價載入中…」。in-memory 既有值由 merge 只增不刪保住。
+    // 而非永久卡「報價載入中…」；完全無值且後端回報錯誤碼者標記 per-symbol 錯誤
+    // （symbol_not_found → UI「查無代號」出口）。in-memory 既有值由 merge 只增不刪保住。
+    let errorUpdates: Record<string, QuoteErrorCode> = {};
     if (toFetch.length > 0) {
-      const fetched = await triggerFetchQuotes(toFetch);
-      for (const t of toFetch) {
-        const id = keyOf(t.market, t.symbol);
-        const fresh = fetched[id];
-        const stale = staleFallback[id];
-        if (fresh) updates[id] = fresh;
-        else if (stale) updates[id] = stale;
-      }
+      const { entries, errors } = await triggerFetchQuotes(toFetch);
+      const resolved = resolveBatchTargets(toFetch, entries, staleFallback, errors);
+      Object.assign(updates, resolved.updates);
+      errorUpdates = resolved.errorUpdates;
     }
 
-    if (Object.keys(updates).length > 0) {
-      set((s) => ({ quotes: { ...s.quotes, ...updates } }));
+    if (Object.keys(updates).length > 0 || Object.keys(errorUpdates).length > 0) {
+      set((s) => {
+        // 拿到值（新抓/新鮮 cache/stale fallback）的 symbol 清除舊錯誤；新錯誤覆蓋。
+        const merged = { ...s.errors, ...errorUpdates };
+        const errors = Object.fromEntries(
+          Object.entries(merged).filter(([id]) => !(id in updates)),
+        );
+        return { quotes: { ...s.quotes, ...updates }, errors };
+      });
     }
   },
 }));
@@ -141,6 +161,15 @@ export function quoteFor(
   symbol: string,
 ): QuoteEntry | undefined {
   return quotes[keyOf(market, symbol)];
+}
+
+/** 取某 (market, symbol) 的報價錯誤碼（無錯誤回 undefined）。 */
+export function quoteErrorFor(
+  errors: Record<string, QuoteErrorCode>,
+  market: Market,
+  symbol: string,
+): QuoteErrorCode | undefined {
+  return errors[keyOf(market, symbol)];
 }
 
 /**

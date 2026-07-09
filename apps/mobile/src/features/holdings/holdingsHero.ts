@@ -1,4 +1,11 @@
-import { Money, isFresh, type Currency, type Market, type RateMap } from '@assetanchor/shared';
+import {
+  Money,
+  isFresh,
+  type Currency,
+  type Market,
+  type QuoteErrorCode,
+  type RateMap,
+} from '@assetanchor/shared';
 import type { QuoteEntry } from '../../services/quotes';
 import { toDisplay } from './holdingsDemo';
 
@@ -41,13 +48,34 @@ export interface HoldingsHero {
   todayKnown: boolean;
   /** 已納入彙總的持倉數（有可用報價且可換算）。 */
   includedCount: number;
-  /** 缺報價 / 無法換算而排除的持倉數（顯示「N 檔更新中」）。 */
+  /** 缺報價 / 無法換算而排除的持倉數（顯示「N 檔更新中」；不含查無代號者）。 */
   pendingCount: number;
+  /** 查無報價代號（symbol_not_found）的持倉數（顯示「N 檔查無代號」，非「更新中」）。 */
+  notFoundCount: number;
   /** 是否有任一納入的報價為過期值（顯示「截至 HH:MM／延遲」）。 */
   anyStale: boolean;
 }
 
 export type QuoteResolver = (market: Market, symbol: string) => QuoteEntry | undefined;
+export type QuoteErrorResolver = (market: Market, symbol: string) => QuoteErrorCode | undefined;
+
+/**
+ * 計數「無報價且 symbol_not_found」的持倉（hero 為 null 時 screen 判定降級文案用；
+ * 有報價者不計——正常流程成功即清除錯誤，此為防禦）。
+ */
+export function countQuoteNotFound(
+  positions: readonly HeroPosition[],
+  getQuote: QuoteResolver,
+  errorOf: QuoteErrorResolver,
+): number {
+  let n = 0;
+  for (const p of positions) {
+    if (!getQuote(p.market, p.symbol) && errorOf(p.market, p.symbol) === 'symbol_not_found') {
+      n += 1;
+    }
+  }
+  return n;
+}
 
 export function computeHoldingsHero(
   positions: readonly HeroPosition[],
@@ -55,6 +83,7 @@ export function computeHoldingsHero(
   rates: RateMap | null,
   displayCcy: Currency,
   nowMs: number,
+  errorOf?: QuoteErrorResolver,
 ): HoldingsHero | null {
   if (positions.length === 0 || rates === null) return null;
 
@@ -64,12 +93,15 @@ export function computeHoldingsHero(
   let todayKnown = true;
   let includedCount = 0;
   let pendingCount = 0;
+  let notFoundCount = 0;
   let anyStale = false;
 
   for (const p of positions) {
     const q = getQuote(p.market, p.symbol);
     if (!q) {
-      pendingCount += 1;
+      // 查無代號（永久錯誤）與「更新中」（暫時缺值）分開計數——UI 出口不同。
+      if (errorOf?.(p.market, p.symbol) === 'symbol_not_found') notFoundCount += 1;
+      else pendingCount += 1;
       todayKnown = false;
       continue;
     }
@@ -123,6 +155,7 @@ export function computeHoldingsHero(
     todayKnown,
     includedCount,
     pendingCount,
+    notFoundCount,
     anyStale,
   };
 }
