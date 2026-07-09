@@ -11,7 +11,7 @@
 - [x] 2.2 實作 `SymbolNotFoundError` 類別 + `yahooProvider` 分類擲錯
 - [x] 2.3 測試先行：`fetchQuotes` per-item error 帶 `code`（`SymbolNotFoundError` → `symbol_not_found`、其他/sanity 失敗 → `transient`），錯誤隔離與 400 行為不變（分類抽純函式 `classifyQuoteError`/`quoteErrorPayload` 測試）
 - [x] 2.4 實作 `fetchQuotes` handler error 分類；本機 `emulators:fn` 實測：`US:0050` → `{code:"symbol_not_found"}`、`TW:0050` → price 105.80 ✓
-- [ ] 2.5 `pnpm --filter @assetanchor/functions test` + `pnpm -r typecheck lint` 全綠（functions 66 tests ✓；全 repo 收尾跑）
+- [x] 2.5 `pnpm --filter @assetanchor/functions test` + `pnpm -r typecheck lint` 全綠（functions 66 tests ✓）
 
 ## 3. mobile — parser / store / logQuoteError
 
@@ -30,5 +30,5 @@
 ## 5. 收尾（gates）
 
 - [ ] 5.1 iOS Simulator 視覺對圖（holdings-overview-spec.md + 原型；查無文案/版位與 owner 確認）——owner gate
-- [ ] 5.2 `pnpm -r typecheck lint test` + `pnpm format:check` 全綠；開 PR（stacked on 目前 stack 頂端）
+- [x] 5.2 `pnpm -r typecheck lint test` + `pnpm format:check` 全綠；PR #40（stacked on chore/archive-fix-usd-rate-source）
 - [ ] 5.3 functions production 部署 + 新 TestFlight build——owner gate（記入 PR 描述，不自行執行）
