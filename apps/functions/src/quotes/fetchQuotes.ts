@@ -2,6 +2,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import { getOrFetchQuote } from './fetchQuote';
 import { parseBatchInput } from './parseBatchInput';
+import { quoteErrorPayload } from './quoteErrors';
 import { yahooProvider } from './yahooProvider';
 
 const REGION = 'asia-east1';
@@ -25,8 +26,11 @@ export const fetchQuotes = onRequest({ region: REGION, cors: true }, async (req,
       try {
         return await getOrFetchQuote(item, yahooProvider, now);
       } catch (e) {
-        logger.error('fetchQuotes item failed', { item, error: String(e) });
-        return { symbolId, error: '報價暫時無法取得' };
+        // error 帶 code（symbol_not_found | transient）供 client 區分永久/暫時錯誤；
+        // 舊 client 的 parser 本就丟棄 error 筆，格式為向後相容擴充。
+        const error = quoteErrorPayload(e);
+        logger.error('fetchQuotes item failed', { item, code: error.code, error: String(e) });
+        return { symbolId, error };
       }
     }),
   );
