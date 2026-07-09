@@ -1,0 +1,37 @@
+# E2E：新增一筆 BUY 交易（台股 2330，有真實報價）→ 回持倉清單看到它。
+# 覆蓋核心 rail：登入 → 開表單 → modal 欄位 inputText（testID 命中，view-flattening 下穩定）→ 送出 → 讀回。
+appId: com.seanwangys.assetanchor
+---
+- runFlow: login.yaml
+# 持倉頁 header 的「＋」（accessibilityLabel＝新增交易）→ 開新增買入 modal
+- tapOn: '新增交易'
+- extendedWaitUntil:
+    visible: '新增買入'
+    timeout: 15000
+# 代號（testID；modal 欄位）
+- tapOn:
+    id: 'tx-symbol'
+- inputText: '2330'
+# 資產類型 picker：預設「請選擇」→ 開 sheet 選「個股」（市場預設台股/TWD 即可）
+- tapOn: '請選擇'
+- tapOn: '個股'
+# 股數 / 單價
+- tapOn:
+    id: 'tx-quantity'
+- inputText: '100'
+- tapOn:
+    id: 'tx-price'
+- inputText: '600'
+# 捲到底露出送出鈕（在備註/預估總成本之下；捲動同時把鍵盤推開）。
+# 不用 hideKeyboard——RN 自訂輸入不支援 Maestro 的標準 dismiss。
+- scrollUntilVisible:
+    element:
+      id: 'tx-submit'
+    direction: DOWN
+- tapOn:
+    id: 'tx-submit'
+# 回持倉：清單應出現 2330（台積電）
+- extendedWaitUntil:
+    visible: '2330'
+    timeout: 30000
+- takeScreenshot: e2e-add-transaction-done

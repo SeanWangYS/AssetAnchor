@@ -1,0 +1,27 @@
+# E2E：Email/密碼登入 → 落在「持倉」（種子帳號）。
+# 亦作為 add-account / add-transaction 的前置 subflow（runFlow: login.yaml）。
+# cold-start（每次乾淨狀態，避免 run 間 modal 洩漏）；已登入時（session 存 keychain）自動略過登入。
+# 前置：Firebase Emulator（auth+firestore，帶種子）+ Metro（EXPO_PUBLIC_USE_FIREBASE_EMULATOR=true）。
+appId: com.seanwangys.assetanchor
+---
+- launchApp
+# 等 dev-build 的 Metro bundle 載入完成——登入頁或持倉任一出現即可（regex OR）。
+- extendedWaitUntil:
+    visible: '持倉|登入'
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: 'signin-email'
+    commands:
+      - tapOn:
+          id: 'signin-email'
+      - inputText: 'test@assetanchor.dev'
+      - tapOn:
+          id: 'signin-password'
+      - inputText: 'test1234'
+      - tapOn:
+          id: 'signin-submit'
+- extendedWaitUntil:
+    visible: '持倉'
+    timeout: 30000

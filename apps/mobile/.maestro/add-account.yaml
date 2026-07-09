@@ -1,0 +1,37 @@
+# E2E：新增一個帳戶（設定 → 帳戶管理 → FAB）→ 清單看到它。
+# 涵蓋 pickers（券商/類型/市場）——用 picker 欄位 testID 開對的 sheet（三個「請選擇」佔位
+# 相同，非 testID 無法區分），再點 sheet 內中文 option。基礎幣別預設 TWD、識別色有預設，無需操作。
+appId: com.seanwangys.assetanchor
+---
+- runFlow: login.yaml
+# 設定 tab：RN bottom-tab 複合 a11y label 在 XCUITest hierarchy 文字匹配不穩 → 用畫面百分比座標。
+- tapOn:
+    point: '88%,95%'
+- tapOn: '帳戶管理'
+- tapOn: '新增帳戶'
+- tapOn:
+    id: 'account-name'
+- inputText: 'E2E測試帳戶'
+- hideKeyboard
+- tapOn:
+    id: 'account-broker'
+- tapOn: 'Firstrade'
+- tapOn:
+    id: 'account-type'
+- tapOn: '現金帳戶'
+- tapOn:
+    id: 'account-market'
+- tapOn: '台股'
+- scrollUntilVisible:
+    element:
+      id: 'account-submit'
+    direction: DOWN
+- tapOn:
+    id: 'account-submit'
+# 送出成功 → 關閉表單、回「帳戶管理」清單（驗證失敗會卡在「新增帳戶」表單，故此斷言可辨成敗）。
+# 註：清單「列」本身的帳戶名文字是複合 a11y label、Maestro 匹配不到 → 要斷言特定列需為列補 testID
+# （帳戶列 testID 屬後續 instrumentation）。此處以「回到清單」為成功訊號 + 截圖存視覺證據。
+- extendedWaitUntil:
+    visible: '帳戶管理'
+    timeout: 30000
+- takeScreenshot: e2e-add-account-done
