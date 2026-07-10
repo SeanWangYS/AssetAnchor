@@ -60,5 +60,5 @@ maestro test apps/mobile/.maestro/regression-quote-not-found.yaml
 ## 後續（尚未做）
 
 - 帳戶 / 持股**列**補 `testID` → 可直接斷言「建立的那筆」而非只驗回清單。
-- 報價「查無代號」降級的 E2E 迴歸 flow（美股 + 0050 → 斷言「查無代號」）——沿 add-transaction pattern 擴充。
+- `regression-quote-not-found.yaml` 已建（tag `devbuild-flaky`）：待 release build 或 TransactionForm 減少 re-render 後移出 flaky tag、納入穩定 gate。
 - 串進 owner 批次 merge 前的本地 checklist（`docs/runbook/testflight-release.md` 或 pre-merge 步驟）。
