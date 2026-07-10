@@ -27,8 +27,11 @@ context: |
   ## 開發慣例
   - Conventional Commits（commitlint 強制）；scopes：mobile / functions / shared /
     infra / docs / firebase
-  - Trunk-based：main 受保護、一律 feature/* 等分支開 PR；merge 按鈕由使用者本人按，
-    AI 絕不 push main
+  - GitHub Flow（最高指導原則，CLAUDE.md §8）：單一 main 永遠可發布、受保護；短命
+    feature/*·fix/* 從最新 main 拉、PR + CI 綠即快速 merge（不延後/批次）；預設不 stacked PR。
+    分級 merge（僅本個人專案）：低風險 AI 自 merge（docs/測試/shared 純函式/低風險重構），
+    UI/schema/Money/部署由 owner 本人 merge；AI 絕不 push/merge main 的高風險類別。
+    merge 後保留分支。iOS：main 恆可發布，實際發布=定期從 main 切 TestFlight（非「merge 即部署」）
   - 依賴方向：features/* → core/* | services/* | packages/shared；
     features 之間不互相 import
   - 開發環境：Simulator 連本地 Firebase Emulator（EXPO_PUBLIC_USE_FIREBASE_EMULATOR=true）；

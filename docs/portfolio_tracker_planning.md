@@ -94,7 +94,7 @@
 | **License** | MIT |
 | **Commit 規範** | Conventional Commits + commitlint（commit-msg hook 強制） |
 | **CI** | GitHub Actions：PR 觸發 lint + typecheck + test（MVP 不做 CD） |
-| **Branch 策略** | Trunk-based：main 受保護、`feature/*` PR-only merge |
+| **Branch 策略** | GitHub Flow：單一 main 恆可發布·受保護、短命 `feature/*` 從最新 main 拉、PR + CI 綠即快速 merge（分級授權，§12.6） |
 | **程式碼品質工具** | ESLint + Prettier + Husky + lint-staged + Jest |
 
 ---
@@ -126,11 +126,11 @@
 4. 動到 Money/decimal 精度規則（ADR-0005）。
 5. 需要跨 change 的重大決策（開新 ADR）。
 
-> **merge PR 不是會讓 loop 停的 gate**（owner 規則 2026-06-17）：merge 到 main 延後、由 owner 在里程碑批次執行（仍 owner 本人按，AI 不自動 merge main）。loop 在 PR + 視覺對圖後照常 archive + 續做。
+> **merge 分級、非延後**（GitHub Flow，owner 2026-07-11 拍板，取代舊「里程碑批次」規則）：CI 綠即快速 merge。**低風險（docs/測試/shared 純函式/低風險重構）AI 自 merge**；**owner-gated（帶 UI/聖牛 schema/Money 精度/跨 change ADR/部署·花錢·真機）由 owner 本人 merge**——此類 loop **不停下等 merge**（開 PR + archive 後續做），但 PR 即時交付、非批次囤積。AI 絕不 merge/push main 的高風險類別。
 
 ### 自動化開發循環
 
-每個 Sprint = 一或多個 OpenSpec change，走 explore →（propose → apply → archive）。**PR + （帶 UI 則）owner 視覺對圖通過後就 archive、續做下一個 change，不停下等 merge**；merge 延後由 owner 批次處理。可一次推進多個 change，直到觸發上面的人類介入 gate 才停下找 owner；否則收尾（archive）後續做、並回報「哪些 PR 等 owner 批次 merge」。
+每個 Sprint = 一或多個 OpenSpec change，走 explore →（propose → apply → archive）。**低風險 change：CI 綠 → AI 自 merge 進 main → 下一個 change 直接從新的 `main` 開**（GitHub Flow，預設不 stacked PR）。**owner-gated change（含帶 UI 視覺對圖）：PR + archive 後續做下一個 change、不停下等 merge**，PR 即時留給 owner。可一次推進多個 change，直到觸發上面的人類介入 gate 才停下找 owner；收尾後回報「做了什麼 + 下一個 + 哪些 PR 等 owner merge」。
 
 ---
 
@@ -998,32 +998,30 @@ docs(adr): add ADR-003 navigation structure decision
 
 > **為什麼 solo dev 還裝 husky / commitlint**：未來開源後第一個 PR 進來，規範已內建、不需重新教育；自己也少做 inconsistent commit。
 
-### 12.6 Branch & Release 策略：Trunk-based
+### 12.6 Branch & Release 策略：GitHub Flow
 
-- 主分支：`main`（受保護，必須過 CI 才能 merge）
-- 工作分支命名：`feature/*`、`fix/*`、`hotfix/*`、`docs/*`、`chore/*`
-- 全部走 PR，自我 review、CI 綠燈才 merge（solo dev 也維持紀律）
+- 主分支：`main`（單一長命、受保護、**永遠可發布、CI 恆綠**，必須過 CI 才能 merge）
+- 工作分支命名：`feature/*`、`fix/*`、`hotfix/*`、`docs/*`、`chore/*`——皆**短命**、從最新 `main` 拉
+- 全部走 PR，自我 review + CI 綠燈才 merge；**PR + CI 綠即快速 merge，不延後/批次**（CLAUDE.md §8）
 - 版本 tag：semver — MVP 期間 `v0.x.x`，上架後 `v1.0.0`
-- **無 release branch**（solo dev 不需要）
+- **無 release branch / 無 develop 分支**（GitHub Flow；solo dev 不需要）；線上緊急修用 `hotfix/*` 從 release tag 開
+- **iOS 發布**：`main` 恆可發布，但手機無法「merge 即部署」→ 實際發布＝定期從 `main` 切 TestFlight / App Store build
 
-> **重要**：依 global 規則，永遠不直接 push `main`，永遠開 PR、merge 按鈕由使用者本人按。
+> **重要（絕不可違反）**：**永遠不直接 push `main`，一律開 PR**。誰按 merge 照**分級授權**（僅本個人專案，CLAUDE.md §8）：低風險（docs/測試/shared 純函式/低風險重構）AI 自 merge；UI/schema/Money/部署由 **owner 本人 merge**；AI 絕不 merge/push `main` 的高風險類別。
 
-#### 12.6.1 開新分支的基準（branch base）— 延後 merge 下的實況
+#### 12.6.1 開新分支的基準（branch base）— GitHub Flow
 
-Trunk-based 的「永遠從剛 pull 的 `main` 拉短命分支」是教科書黃金標準，**前提是頻繁 merge**。但本專案實務上採 **延後 merge / owner 批次**（CLAUDE.md §8）：loop 不停下等 merge，PR 累積成一條 **stacked 分支鏈**，`main` 因此通常落後實際進度（例：曾出現 `HEAD` 領先 local `main` 12 個 commit、且 local `main` 還落後 `origin/main` 的情形）。在這個模式下「從 `main` 拉」會掉光未 merge 的工作，故規則如下：
+本專案 git 策略＝ **GitHub Flow**（CLAUDE.md §8，最高指導原則）。黃金標準就是「**永遠從剛 pull 的最新 `main` 拉短命分支**」——因為採**快速 merge**（低風險 AI 自 merge、owner-gated 由 owner 即時 merge，皆不延後/批次），`main` 緊跟開發進度，從 `main` 拉不再掉工作。
 
-- **不要**從 `main`、也**不要**從「最後被 merge 的分支」拉新分支。`git branch --merged main` 在本 repo 幾乎只回遠古的 `sprint-0`，因為下游分支都還沒 merge。
-- 開工前先 `git fetch --all`，再用
-  ```bash
-  git for-each-ref --sort=-committerdate refs/heads --format='%(committerdate:short)  %(refname:short)'
-  ```
-  找出「**目前這條開發線的 stack 頂端**」（最新的 `feature/*`／`fix/*`）。
-- **延續型開發**（新工作依賴前一條分支的 code）：從 stack 頂端拉新分支，沿用既有 stacked-PR 流程。
-- **平行型開發**（多個 agent 做彼此不相干的功能）：各工作從**同一個約定 base**（通常即現在的 stack 頂端）開分支，並用 `git worktree` 隔離（Claude Code 原生 `--worktree`／`superpowers:using-git-worktrees`），**彼此不互相 stack**（互相 stack 會製造假依賴、把平行序列化掉）；完成後進一個 integration 分支收斂、跑測試解衝突，再一起交 owner。
-- **回歸 trunk-based 的時機**：一旦 owner 在里程碑批次把整條 stack merge 進 `main`，新的 base 就回到 `main`，回到「從 main 拉」。
-- 「最新」一律以「**我要延伸的那條工作線**」為準，**不是純 commit 時間排序**——平行時，時間最新的分支未必含你要的依賴。依賴關係不確定 → 停下問 owner（§2.5 人類介入 gate）。
+- 開工前 `git fetch origin && git pull`（或直接從 `origin/main`），開短命 `feature/*`·`fix/*` 分支。
+- **依賴型工作**：等前一個 change 併入 `main` 後，**直接從新的 `main` 開**——**預設不再 stacked PR**（快速 merge 讓 stack 沒必要，也消除長 stack 的 cascade 衝突成本）。
+- **唯一 stack 例外**：下一個 change 依賴一個**尚未 merge 的 owner-gated PR**（帶 UI/schema/Money 等，owner 還沒按）時，才短暫從那條分支拉、stack 在其上。此時：
+  - 該 base（owner-gated）PR **owner 請用 rebase-merge 或 merge commit，勿 squash**——squash 會重寫 base 的 commits、破壞上層 PR 的自動 retarget，逼你事後手動 `git rebase --onto origin/main <old-base> <branch>` + 改 PR base（2026-07-11 已踩過一次）。
+  - base merge 進 `main` 後，因本 repo **保留已 merge 分支**、GitHub 不會自動 retarget → **手動把上層 PR 的 base 改成 `main`**（`gh pr edit <n> --base main`），必要時先把上層 rebase 到最新 `main`。
+- **平行型開發**（多 agent 做彼此不相干的功能）：各自從最新 `main` 開分支 + `git worktree` 隔離（Claude Code 原生 `--worktree`／`superpowers:using-git-worktrees`），**彼此不 stack**；各自獨立 PR，低風險快速 merge、owner-gated 交 owner。
+- 依賴關係不確定 → 停下問 owner（§2.5 人類介入 gate）。
 
-> **延後-merge stack 的已知代價**（業界共識）：stack 養越長，owner 批次 merge（尤其 squash-merge）時整條鏈的 restack/rebase 與 cascade 衝突越痛。長 stack 是「先衝開發速度、把整合成本延後」的取捨，owner 批次 merge 時要預期這筆帳。
+> **為何從「延後/批次 merge」改為 GitHub Flow 快速 merge**（owner 2026-07-11 拍板）：舊模型把 PR 累積成長 stack，`main` 嚴重落後、squash-merge 時整條鏈 restack/cascade 衝突很痛。改 GitHub Flow 後 stack 自然消失、`main` 恆為單一事實來源，這筆整合成本一併消除。Git Flow（develop/release 雙長命分支）對本專案這種持續交付的小專案是過度儀式，原作者亦已改推 GitHub Flow；本專案只在上 App Store 後借用其 `hotfix/*` + release tag 概念（見 CLAUDE.md §8）。
 
 ### 12.7 CI 規劃（MVP 階段）
 
