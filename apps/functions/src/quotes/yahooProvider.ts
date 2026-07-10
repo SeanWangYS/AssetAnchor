@@ -1,5 +1,6 @@
 import type { RawQuote } from '@assetanchor/shared';
 import { parseYahooChart, toYahooSymbol } from './parseYahooChart';
+import { SymbolNotFoundError } from './quoteErrors';
 
 /** Provider 回傳：RawQuote + 來源時戳（epoch 秒）。 */
 export type ProviderQuote = RawQuote & { sourceTimestampSec: number | null };
@@ -22,8 +23,16 @@ export const yahooProvider: QuoteProvider = {
       ySymbol,
     )}?interval=1d&range=1d`;
     const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (AssetAnchor)' } });
+    // 404 = 代號不存在（永久錯誤）；其餘非 2xx（429/5xx）為暫時錯誤（一般 Error）。
+    if (res.status === 404) throw new SymbolNotFoundError(market, symbol);
     if (!res.ok) throw new Error(`Yahoo fetch 失敗：HTTP ${res.status}（${ySymbol}）`);
-    const parsed = parseYahooChart(await res.json());
+    const json = (await res.json()) as { chart?: { result?: unknown[] } } | null;
+    // Yahoo 對不存在代號有時回 200 + 空 result——同樣視為查無代號。
+    const result = json?.chart?.result;
+    if (!Array.isArray(result) || result.length === 0) {
+      throw new SymbolNotFoundError(market, symbol);
+    }
+    const parsed = parseYahooChart(json);
     if (!parsed) throw new Error(`Yahoo 報價解析失敗（${ySymbol}）`);
     return parsed;
   },

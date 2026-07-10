@@ -14,6 +14,9 @@ lib/
 # Test coverage
 coverage/
 
+# E2E（Maestro）跑 takeScreenshot 產生的截圖（相對 CWD 落地；本地驗證用、非資產）
+e2e-*.png
+
 # Design prototype 離線單檔（~7MB/檔，React/Babel/字體 inline 的產物，可由 prototype/ 重新產生）
 *.standalone.html
 

@@ -20,6 +20,10 @@ interface ButtonProps {
   variant?: Variant;
   disabled?: boolean;
   loading?: boolean;
+  /** E2E 自動化選擇器（→ iOS accessibilityIdentifier）；view-flattening 下穩定命中。預設用 title。 */
+  testID?: string;
+  /** 無障礙標籤（未指定時 Pressable 以 title 為可讀名）。 */
+  accessibilityLabel?: string;
 }
 
 export default function Button({
@@ -28,6 +32,8 @@ export default function Button({
   variant = 'primary',
   disabled = false,
   loading = false,
+  testID,
+  accessibilityLabel,
 }: ButtonProps) {
   const off = disabled || loading;
   const isGradient = variant === 'primary' || variant === 'gradient';
@@ -51,7 +57,9 @@ export default function Button({
     return (
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? title}
         accessibilityState={{ disabled: off, busy: loading }}
+        testID={testID}
         onPress={off ? undefined : onPress}
         disabled={off}
         style={({ pressed }) => [styles.shadow, { opacity: off ? 0.62 : pressed ? 0.9 : 1 }]}
@@ -71,7 +79,9 @@ export default function Button({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: off, busy: loading }}
+      testID={testID}
       onPress={off ? undefined : onPress}
       disabled={off}
       style={({ pressed }) => [

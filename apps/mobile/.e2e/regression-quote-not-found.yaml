@@ -1,0 +1,70 @@
+# E2E 迴歸：守護 2026-07-09 prod bug——台股 ETF 存成 market=US → Yahoo 查無代號回 404
+# → 過去整條鏈路把 404 當「還沒拿到報價」→ 持倉永遠「報價載入中…」、client 零線索。
+# 修法（surface-quote-symbol-errors #40）：404 分類 symbol_not_found → 持倉顯示明確「查無代號」降級。
+# 本 flow 重現該情境並斷言「查無代號」出現（而非卡載入中）。
+#
+# ⚠️ 需 emulator 帶 Functions（`pnpm --filter @assetanchor/firebase emulators:fn`）：
+#    fetchQuotes 要實打 Yahoo 才會對 US:0050 回 404 → symbol_not_found。純 auth+firestore emulator 不會。
+#
+# picker 互動鐵律（dev-build 實測）：①picker 欄位用 testID 開對的 sheet ②開 sheet 後
+# extendedWaitUntil 等選項可見再點（sheet 滑入動畫）③選完 waitForAnimationToEnd 等關閉動畫。
+# 市場放第一個（初始狀態最穩），資產類型第二個。
+appId: com.seanwangys.assetanchor
+# tag 排除於預設 gate：本 flow 在 dev-build 上時序不穩（見下方說明），非 app bug。
+# 穩定 gate 跑 `maestro test .e2e/ --exclude-tags=devbuild-flaky`。
+tags:
+  - devbuild-flaky
+---
+# ⚠️ dev-build 已知限制：TransactionForm 連續兩個 picker（市場→資產類型）+ #41 市場→幣別聯動
+# 的 re-render，會讓 Maestro 的 XCUITest accessibility 快照嚴重落後畫面（選項/欄位值畫面已在、
+# Maestro 查不到），導致本 flow 間歇失敗。**非 app bug**：①此 bug 邏輯已由單元測試守住
+# （holdingsHero notFoundCount / quotesBatch resolveBatchTargets / functions classifyQuoteError）；
+# ②app 行為已用 AXe 手動驗證（US+0050 → 持倉「查無代號」）。release build（JS thread 不飽和）
+# 或 TransactionForm 減少 re-render 後可望穩定。保留本 flow 為意圖文件 + release build 迴歸。
+- runFlow: login.yaml
+- tapOn: '新增交易'
+- extendedWaitUntil:
+    visible: '新增買入'
+    timeout: 15000
+# 1) 市場改美股（#41 幣別聯動：自動切 USD）
+- tapOn:
+    id: 'tx-market'
+- extendedWaitUntil:
+    visible: '美股'
+    timeout: 25000
+- tapOn: '美股'
+- waitForAnimationToEnd
+# 關鍵：選美股觸發 #41 市場→幣別聯動（setValue currency=USD）的額外 re-render，會競掉下一個 picker
+# 的 tap。等幣別欄真的變成 USD＝該 re-render 已完成，再點下一個 picker。
+- extendedWaitUntil:
+    visible: 'USD'
+    timeout: 15000
+# 2) 資產類型（必填；對本迴歸無影響）
+- tapOn:
+    id: 'tx-asset-type'
+- extendedWaitUntil:
+    visible: '個股'
+    timeout: 25000
+- tapOn: '個股'
+- waitForAnimationToEnd
+# 3) 代號 0050（美股不存在 → Yahoo 404）。#41 軟警告「代號看起來像台股…」會出現（非阻擋）
+- tapOn:
+    id: 'tx-symbol'
+- inputText: '0050'
+- tapOn:
+    id: 'tx-quantity'
+- inputText: '10'
+- tapOn:
+    id: 'tx-price'
+- inputText: '50'
+- scrollUntilVisible:
+    element:
+      id: 'tx-submit'
+    direction: DOWN
+- tapOn:
+    id: 'tx-submit'
+# 回持倉：US:0050 → fetchQuotes 404 → symbol_not_found → 「查無代號」降級（非永遠「報價載入中…」）
+- extendedWaitUntil:
+    visible: '查無代號'
+    timeout: 30000
+- takeScreenshot: e2e-quote-not-found-done

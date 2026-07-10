@@ -99,6 +99,7 @@ export default function SignInScreen({ navigation }: AuthStackScreenProps<'SignI
             ) : null}
 
             <Input
+              testID="signin-email"
               label="Email"
               placeholder="you@example.com"
               autoCapitalize="none"
@@ -119,6 +120,7 @@ export default function SignInScreen({ navigation }: AuthStackScreenProps<'SignI
             />
 
             <Input
+              testID="signin-password"
               label="密碼"
               placeholder="輸入密碼"
               autoCapitalize="none"
@@ -156,7 +158,13 @@ export default function SignInScreen({ navigation }: AuthStackScreenProps<'SignI
               <Text style={styles.link}>忘記密碼？</Text>
             </Pressable>
 
-            <Button title="登入" onPress={onSignIn} loading={busy} disabled={anyBusy} />
+            <Button
+              testID="signin-submit"
+              title="登入"
+              onPress={onSignIn}
+              loading={busy}
+              disabled={anyBusy}
+            />
 
             <View style={styles.divider}>
               <View style={styles.line} />

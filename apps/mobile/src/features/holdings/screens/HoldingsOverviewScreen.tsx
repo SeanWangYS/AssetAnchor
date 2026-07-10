@@ -26,6 +26,7 @@ import { useHoldings, useRealizedEvents } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { usePreferencesStore } from '../../../services/preferences';
 import {
+  quoteErrorFor,
   quoteFor,
   useQuotes,
   useQuotesStore,
@@ -47,7 +48,7 @@ import {
   marketLabel,
   toDisplay,
 } from '../holdingsDemo';
-import { computeHoldingsHero } from '../holdingsHero';
+import { computeHoldingsHero, countQuoteNotFound } from '../holdingsHero';
 
 /** 清單分組模式（持股 / 帳戶 / 類別）。 */
 type GroupMode = '持股' | '帳戶' | '類別';
@@ -144,12 +145,15 @@ function HoldingRow({
   name,
   dense,
   quote,
+  notFound,
   onPress,
 }: {
   position: Position;
   name: string;
   dense: boolean;
   quote: QuoteEntry | undefined;
+  /** 查無報價代號（symbol_not_found）：顯示明確標示而非「更新中…」。 */
+  notFound?: boolean;
   onPress: () => void;
 }) {
   const avg = Money.fromDecimalString(position.averageCost, position.currency);
@@ -195,6 +199,9 @@ function HoldingRow({
               <Text style={styles.rowPending}>—</Text>
             )}
           </>
+        ) : notFound ? (
+          // 永久錯誤出口：代號在該市場查無報價（多為市場選錯），引導修正而非無限等待。
+          <Text style={styles.rowNotFound}>查無代號</Text>
         ) : (
           <Text style={styles.rowPending}>更新中…</Text>
         )}
@@ -229,6 +236,8 @@ export default function HoldingsOverviewScreen({
     currency: p.currency,
   }));
   const quotes = useQuotes(quoteTargets);
+  // per-symbol 報價錯誤（symbol_not_found → 查無代號降級；成功即清除）。
+  const quoteErrors = useQuotesStore((s) => s.errors);
   // 「每次打開」都檢查新鮮度：切回分頁 focus + App 回前景（非 force、TTL 去抖）。
   useRefreshQuotesOnFocus(quoteTargets);
   async function onRefresh() {
@@ -281,8 +290,22 @@ export default function HoldingsOverviewScreen({
         rates,
         displayCcy,
         Date.now(),
+        (market, symbol) => quoteErrorFor(quoteErrors, market, symbol),
       ),
-    [positions, quotes, rates, displayCcy],
+    [positions, quotes, quoteErrors, rates, displayCcy],
+  );
+
+  // hero=null（完全無可納入報價）時：有 symbol_not_found → 顯示查無降級文案而非永遠載入中。
+  const heroNotFound = useMemo(
+    () =>
+      hero
+        ? 0
+        : countQuoteNotFound(
+            positions,
+            (market, symbol) => quoteFor(quotes, market, symbol),
+            (market, symbol) => quoteErrorFor(quoteErrors, market, symbol),
+          ),
+    [hero, positions, quotes, quoteErrors],
   );
 
   // 「本月已實現損益」真值（§4）：當月 SELL 已實現，各原幣別以最新匯率換算成顯示幣別後加總。
@@ -358,18 +381,27 @@ export default function HoldingsOverviewScreen({
                 <Text style={styles.heroPeriod}>全期</Text>
               </View>
             </>
+          ) : heroNotFound > 0 ? (
+            // 永久錯誤降級：全部持倉皆無可用報價且含查無代號者——顯示引導而非無限載入。
+            <Text style={styles.heroNotFound} numberOfLines={2}>
+              {heroNotFound} 檔查無報價代號{'\n'}請檢查交易的市場/代號設定
+            </Text>
           ) : (
             <Text style={styles.heroValue} numberOfLines={1}>
               報價載入中…
             </Text>
           )}
-          {/* 降級揭露：部分缺報價（更新中）/ 含過期值（顯示最後已知）+ 重試。 */}
-          {hero && (hero.pendingCount > 0 || hero.anyStale) ? (
+          {/* 降級揭露：部分缺報價（更新中）/ 查無代號 / 含過期值（顯示最後已知）+ 重試。 */}
+          {hero && (hero.pendingCount > 0 || hero.notFoundCount > 0 || hero.anyStale) ? (
             <View style={styles.heroStaleRow}>
               <Text style={styles.heroStaleText} numberOfLines={1}>
-                {hero.pendingCount > 0 ? `${hero.pendingCount} 檔報價更新中` : ''}
-                {hero.pendingCount > 0 && hero.anyStale ? ' · ' : ''}
-                {hero.anyStale ? '部分為最後已知報價（延遲）' : ''}
+                {[
+                  hero.pendingCount > 0 ? `${hero.pendingCount} 檔報價更新中` : null,
+                  hero.notFoundCount > 0 ? `${hero.notFoundCount} 檔查無代號` : null,
+                  hero.anyStale ? '部分為最後已知報價（延遲）' : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -516,6 +548,7 @@ export default function HoldingsOverviewScreen({
                   name={symbolNameOf(symbols, p.market, p.symbol)}
                   dense={mode !== '持股'}
                   quote={quoteFor(quotes, p.market, p.symbol)}
+                  notFound={quoteErrorFor(quoteErrors, p.market, p.symbol) === 'symbol_not_found'}
                   onPress={() =>
                     navigation.navigate('AssetDetail', { market: p.market, symbol: p.symbol })
                   }
@@ -560,6 +593,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   heroStaleText: { fontFamily: fontFamily.text.regular, fontSize: 11, color: colors.textSecondary },
+  heroNotFound: {
+    fontFamily: fontFamily.text.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textSecondary,
+  },
   heroRetry: { fontFamily: fontFamily.text.bold, fontSize: 11, color: colors.accent },
   demoNote: {
     fontFamily: fontFamily.text.regular,
@@ -693,6 +732,7 @@ const styles = StyleSheet.create({
     ...numericStyle,
   },
   rowPending: { fontFamily: fontFamily.text.regular, fontSize: 13, color: colors.textFaint },
+  rowNotFound: { fontFamily: fontFamily.text.regular, fontSize: 13, color: colors.danger },
 
   bottomSpacer: { height: spacing.lg },
 });

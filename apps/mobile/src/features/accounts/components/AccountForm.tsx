@@ -89,6 +89,7 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
   return (
     <View style={styles.form}>
       <Input
+        testID="account-name"
         label="帳戶名稱"
         value={accountName}
         onChangeText={setAccountName}
@@ -98,6 +99,7 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
       />
 
       <PickerField
+        testID="account-broker"
         label="券商"
         sheetTitle="選擇券商"
         value={broker}
@@ -108,6 +110,7 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
       />
 
       <PickerField
+        testID="account-type"
         label="帳戶類型"
         sheetTitle="選擇帳戶類型"
         value={accountType}
@@ -124,6 +127,7 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
       </View>
 
       <PickerField
+        testID="account-market"
         label="主要市場"
         sheetTitle="選擇主要市場"
         value={market}
@@ -147,7 +151,13 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
       />
 
       <View style={styles.submit}>
-        <Button title={submitLabel} onPress={handleSubmit} loading={busy} disabled={busy} />
+        <Button
+          testID="account-submit"
+          title={submitLabel}
+          onPress={handleSubmit}
+          loading={busy}
+          disabled={busy}
+        />
       </View>
     </View>
   );
@@ -167,6 +177,8 @@ interface PickerFieldProps {
   options: readonly PickerOption[];
   onSelect: (value: string) => void;
   error?: string | null;
+  /** E2E 選擇器：多個 picker 的「請選擇」佔位相同，需 testID 才能區分（→ 點對欄位開對的 sheet）。 */
+  testID?: string;
 }
 
 /** 表單內聯選單（feature 本地 picker，沿用 core/ui Sheet）。 */
@@ -178,13 +190,16 @@ function PickerField({
   options,
   onSelect,
   error,
+  testID,
 }: PickerFieldProps) {
   const [open, setOpen] = useState(false);
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <Pressable
+        testID={testID}
         accessibilityRole="button"
+        accessibilityLabel={label}
         style={[styles.select, error ? styles.selectError : null]}
         onPress={() => setOpen(true)}
       >

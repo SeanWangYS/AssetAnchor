@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Maestro takeScreenshot 產物（跑在 cwd）
+e2e-*.png
