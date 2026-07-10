@@ -224,11 +224,21 @@ export function deriveHoldingsForAccountSafe(
   transactions: TransactionDocument[],
   accountId: string,
 ): SafeHoldingsResult {
-  const accountTxs = transactions.filter((t) => t.account_id === accountId);
+  return safeHoldingsFromTxs(
+    transactions.filter((t) => t.account_id === accountId),
+    `account ${accountId}`,
+  );
+}
 
+/**
+ * 逐-(market, symbol) 容錯衍生（`deriveHoldingsForAccountSafe` 與 `deriveHoldingsByAccount`
+ * 的共用核心）。傳入的 `txs` 已由呼叫端過濾（單一帳戶 / orphan 桶）；`label` 僅供 warn 訊息。
+ * 單組 throw（超賣 / orphan SELL / 混幣別）只跳過該 symbol、收進 `skipped`，不整包消失。
+ */
+function safeHoldingsFromTxs(txs: TransactionDocument[], label: string): SafeHoldingsResult {
   // 依 (market, symbol) 分組，保留各組首見順序（最終結果由 deriveHoldings 重新排序）。
   const groups = new Map<string, { market: Market; symbol: string; txs: TransactionDocument[] }>();
-  for (const tx of accountTxs) {
+  for (const tx of txs) {
     const key = `${tx.market}_${tx.symbol}`;
     let group = groups.get(key);
     if (!group) {
@@ -248,7 +258,7 @@ export function deriveHoldingsForAccountSafe(
     } catch (err) {
       skipped.push({ market: group.market, symbol: group.symbol });
       console.warn(
-        `[holdings] account ${accountId} 之 ${group.market}_${group.symbol} 推導失敗，已跳過該 symbol：`,
+        `[holdings] ${label} 之 ${group.market}_${group.symbol} 推導失敗，已跳過該 symbol：`,
         err instanceof Error ? err.message : err,
       );
     }
@@ -262,4 +272,60 @@ export function deriveHoldingsForAccountSafe(
   );
 
   return { positions, skipped };
+}
+
+/** 帳戶最小識別資訊（`deriveHoldingsByAccount` 輸入；呼叫端傳完整 account doc 亦可，結構相容）。 */
+export interface AccountRef {
+  account_id: string;
+  account_name: string;
+}
+
+/** 單一帳戶的持倉分組（持倉總覽「帳戶」模式用）。 */
+export interface AccountHoldingsGroup {
+  accountId: string;
+  accountName: string;
+  positions: Position[];
+  skipped: SkippedSymbol[];
+}
+
+/**
+ * 依**真實 `account_id`** 將持倉分組（持倉總覽「帳戶」模式）——取代 symbol→帳戶 demo 對照。
+ *
+ * 對每個帳戶各自以 `safeHoldingsFromTxs`（＝`deriveHoldingsForAccountSafe` 的核心）推導；
+ * `account_id` 對不到任何現存帳戶的交易（orphan，如帳戶已刪）彙整成 `accountName: '未分類'`
+ * 的群並殿後（fail-soft，不靜默消失）。只回傳「有持倉或有 skipped」的群（無交易的帳戶不成群）。
+ * 群順序依傳入 `accounts` 的順序。純函式。
+ */
+export function deriveHoldingsByAccount(
+  transactions: TransactionDocument[],
+  accounts: readonly AccountRef[],
+): AccountHoldingsGroup[] {
+  const knownIds = new Set(accounts.map((a) => a.account_id));
+  const result: AccountHoldingsGroup[] = [];
+
+  for (const acct of accounts) {
+    const { positions, skipped } = safeHoldingsFromTxs(
+      transactions.filter((t) => t.account_id === acct.account_id),
+      `account ${acct.account_id}`,
+    );
+    if (positions.length > 0 || skipped.length > 0) {
+      result.push({
+        accountId: acct.account_id,
+        accountName: acct.account_name,
+        positions,
+        skipped,
+      });
+    }
+  }
+
+  // orphan：account_id 對不到任何現存帳戶 → 歸「未分類」，殿後。
+  const orphanTxs = transactions.filter((t) => !knownIds.has(t.account_id));
+  if (orphanTxs.length > 0) {
+    const { positions, skipped } = safeHoldingsFromTxs(orphanTxs, '未分類');
+    if (positions.length > 0 || skipped.length > 0) {
+      result.push({ accountId: '', accountName: '未分類', positions, skipped });
+    }
+  }
+
+  return result;
 }

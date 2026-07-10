@@ -5,6 +5,7 @@ import {
   type Market,
   type QuoteErrorCode,
   type RateMap,
+  type RealizedEvent,
 } from '@assetanchor/shared';
 import type { QuoteEntry } from '../../services/quotes';
 import { toDisplay } from './holdingsDemo';
@@ -158,4 +159,35 @@ export function computeHoldingsHero(
     notFoundCount,
     anyStale,
   };
+}
+
+/** `realizedInMonth` 回傳：當月已實現損益加總（顯示幣別）+ 納入的事件數（0 → UI 顯示中性空狀態）。 */
+export interface RealizedInMonth {
+  sum: Money;
+  count: number;
+}
+
+/**
+ * 指定月份（`monthPrefix` = 本地時間 `YYYY-MM`）的已實現損益加總。
+ *
+ * 以 `transaction_date`（純日曆字串 `YYYY-MM-DD`）前綴比對過濾當月 SELL 事件，各原幣別以
+ * `toDisplay`（rates 優先、退 demo 匯率）換算成 `displayCcy` 後加總。回傳 `count`＝納入事件數：
+ * `count === 0` 代表當月無賣出（呼叫端據此顯示中性空狀態，而非綠色 ▲ NT$ 0）。純函式。
+ */
+export function realizedInMonth(
+  events: readonly RealizedEvent[],
+  monthPrefix: string,
+  rates: RateMap | null,
+  displayCcy: Currency,
+): RealizedInMonth {
+  let sum = Money.zero(displayCcy);
+  let count = 0;
+  for (const ev of events) {
+    if (!ev.transaction_date.startsWith(monthPrefix)) continue;
+    const conv = toDisplay(new Money(ev.realized, ev.currency), rates, displayCcy);
+    if (conv === null) continue; // TWD/USD 恆有 demo fallback，理論不會 null
+    sum = sum.add(conv);
+    count += 1;
+  }
+  return { sum, count };
 }

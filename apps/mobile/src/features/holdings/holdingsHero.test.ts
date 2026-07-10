@@ -1,12 +1,13 @@
 import {
   computeHoldingsHero,
   countQuoteNotFound,
+  realizedInMonth,
   type HeroPosition,
   type QuoteErrorResolver,
   type QuoteResolver,
 } from './holdingsHero';
 import type { QuoteEntry } from '../../services/quotes';
-import type { QuoteErrorCode } from '@assetanchor/shared';
+import type { Currency, Market, QuoteErrorCode, RealizedEvent } from '@assetanchor/shared';
 
 // 固定時鐘：fresh = now-1min；stale = now-20min（TTL 15min）
 const NOW = 1_700_000_000_000;
@@ -194,5 +195,71 @@ describe('countQuoteNotFound（hero=null 時 screen 判定用）', () => {
     const positions = [pos({ symbol: 'B', quantity: '5', totalCost: '500.0000000000' })];
     expect(countQuoteNotFound(positions, resolver({}), errResolver({ TW_B: 'transient' }))).toBe(0);
     expect(countQuoteNotFound(positions, resolver({}), errResolver({}))).toBe(0);
+  });
+});
+
+describe('realizedInMonth', () => {
+  const ev = (
+    transaction_date: string,
+    realized: string,
+    currency: Currency = 'TWD',
+    market: Market = 'TW',
+    symbol = '2330',
+  ): RealizedEvent => ({ market, symbol, currency, transaction_date, realized });
+
+  it('空事件 → count 0、sum 0', () => {
+    const r = realizedInMonth([], '2026-07', null, 'TWD');
+    expect(r.count).toBe(0);
+    expect(r.sum.toNumber()).toBe(0);
+  });
+
+  it('本月無賣出（事件皆他月）→ count 0（呼叫端據此顯示中性）', () => {
+    const r = realizedInMonth([ev('2026-06-15', '5000.0000000000')], '2026-07', null, 'TWD');
+    expect(r.count).toBe(0);
+    expect(r.sum.toNumber()).toBe(0);
+  });
+
+  it('本月有賣出（同幣別）→ 加總正確、count 計數', () => {
+    const r = realizedInMonth(
+      [ev('2026-07-03', '1000.0000000000'), ev('2026-07-20', '2500.0000000000')],
+      '2026-07',
+      null,
+      'TWD',
+    );
+    expect(r.count).toBe(2);
+    expect(r.sum.toNumber()).toBe(3500);
+  });
+
+  it('月邊界：6/30 歸六月、7/1 歸七月', () => {
+    const events = [ev('2026-06-30', '999.0000000000'), ev('2026-07-01', '111.0000000000')];
+    expect(realizedInMonth(events, '2026-07', null, 'TWD').sum.toNumber()).toBe(111);
+    expect(realizedInMonth(events, '2026-06', null, 'TWD').sum.toNumber()).toBe(999);
+  });
+
+  it('跨年：12 月不漏進 1 月', () => {
+    const events = [ev('2025-12-31', '888.0000000000'), ev('2026-01-05', '222.0000000000')];
+    const r = realizedInMonth(events, '2026-01', null, 'TWD');
+    expect(r.count).toBe(1);
+    expect(r.sum.toNumber()).toBe(222);
+  });
+
+  it('多幣別：USD 事件以 demo 匯率(30.95)換算進 TWD 加總', () => {
+    const r = realizedInMonth(
+      [
+        ev('2026-07-10', '1000.0000000000', 'TWD'),
+        ev('2026-07-11', '100.0000000000', 'USD', 'US', 'AAPL'),
+      ],
+      '2026-07',
+      null,
+      'TWD',
+    );
+    expect(r.count).toBe(2);
+    expect(r.sum.toNumber()).toBe(1000 + 100 * 30.95);
+  });
+
+  it('負的已實現損益正確加總', () => {
+    const r = realizedInMonth([ev('2026-07-08', '-750.0000000000')], '2026-07', null, 'TWD');
+    expect(r.count).toBe(1);
+    expect(r.sum.toNumber()).toBe(-750);
   });
 });
