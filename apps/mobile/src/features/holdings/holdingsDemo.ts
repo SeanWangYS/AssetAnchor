@@ -1,11 +1,8 @@
-import {
-  Money,
-  convertMoney,
-  type Currency,
-  type Market,
-  type Position,
-  type RateMap,
-} from '@assetanchor/shared';
+import { Money, type Currency, type Market, type Position } from '@assetanchor/shared';
+
+// toDisplay / DEMO_USD_TWD 已上移 services/valuation（change account-detail-market-value）；
+// 此處 re-export 維持既有 `import { toDisplay } from './holdingsDemo'` 相容。
+export { toDisplay, DEMO_USD_TWD } from '../../services/valuation';
 
 /**
  * 持倉總覽 / 詳情的「報價層」demo 資料（align-to-design-package WP-A）。
@@ -17,9 +14,6 @@ import {
  * 真實資料（股數 / 加權均價 / 總成本 / 幣別）一律來自 `useHoldings()`（deriveHoldings），
  * 本檔只補「需要報價才能算」的欄位，並由畫面以「資料延遲」字樣標示為示意。
  */
-
-/** demo 匯率 fallback：1 USD = 30.95 TWD（design §5；rates 未就緒時用）。 */
-export const DEMO_USD_TWD = '30.95';
 
 // 「帳戶分布」曾用 symbol→帳戶名硬編 demo 表（DEMO_ACCOUNT/accountOf）；已於 fix-holdings-account-grouping
 // 移除，改由 shared `deriveHoldingsByAccount` 依真實 account_id 分群（持倉「帳戶」模式 + AssetDetail 帳戶分布）。
@@ -88,28 +82,6 @@ export function mockPrice(position: Position): Money {
   const qty = Money.fromDecimalString(position.quantity, position.currency);
   if (qty.isZero()) return Money.zero(position.currency);
   return mockMarketValue(position).divide(position.quantity);
-}
-
-/**
- * 把原幣別 Money 換算成目標幣別供「合計」用：rates 優先，否則退 demo 匯率。
- * 同幣別免換算。只有 TWD/USD 互換有 demo fallback；其餘缺率回 null。
- */
-export function toDisplay(amount: Money, rates: RateMap | null, to: Currency): Money | null {
-  if (amount.currency === to) return amount;
-  if (rates !== null) {
-    try {
-      return convertMoney(amount, rates, to);
-    } catch {
-      // fall through to demo fallback
-    }
-  }
-  if (amount.currency === 'USD' && to === 'TWD') {
-    return new Money(amount.multiply(DEMO_USD_TWD).toDecimalString(), to);
-  }
-  if (amount.currency === 'TWD' && to === 'USD') {
-    return new Money(amount.divide(DEMO_USD_TWD).toDecimalString(), to);
-  }
-  return null;
 }
 
 /** 幣別前綴（NT$ / US$）。 */

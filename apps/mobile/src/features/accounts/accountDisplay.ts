@@ -4,7 +4,6 @@ import type {
   AccountType,
   Broker,
   Currency,
-  Position,
   SafeHoldingsResult,
   TransactionDocument,
 } from '@assetanchor/shared';
@@ -109,16 +108,6 @@ export function holdingsForAccount(
   accountId: string,
 ): SafeHoldingsResult {
   return deriveHoldingsForAccountSafe(transactions, accountId);
-}
-
-/** 該帳戶持股市值（原幣別）合計 —— MVP 無即時報價，以總成本為市值代理（對齊 HoldingsOverview）。 */
-export function holdingsValueByCurrency(positions: Position[]): Partial<Record<Currency, Money>> {
-  const sums: Partial<Record<Currency, Money>> = {};
-  for (const p of positions) {
-    const prev = sums[p.currency] ?? Money.zero(p.currency);
-    sums[p.currency] = prev.add(Money.fromDecimalString(p.totalCost, p.currency));
-  }
-  return sums;
 }
 
 /**

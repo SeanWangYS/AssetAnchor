@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Money, type AccountInput, type Currency } from '@assetanchor/shared';
+import { Money, type AccountInput, type Currency, type RateMap } from '@assetanchor/shared';
 import type { AccountsStackScreenProps } from '../../../core/navigation/types';
 import { useAuthStore } from '../../auth/authStore';
 import { useAccountsStore } from '../accountsStore';
@@ -23,7 +23,6 @@ import {
   formatMoney,
   formatSnapshot,
   holdingsForAccount,
-  holdingsValueByCurrency,
 } from '../accountDisplay';
 import {
   Avatar,
@@ -32,9 +31,24 @@ import {
   ConfirmDialog,
   EmptyState,
   ListItem,
+  Pnl,
   Sheet,
   Toast,
 } from '../../../core/ui';
+import { useExchangeRatesStore } from '../../../services/exchange-rates';
+import {
+  quoteErrorFor,
+  quoteFor,
+  useQuotes,
+  useQuotesStore,
+  useRefreshQuotesOnFocus,
+} from '../../../services/quotes';
+import {
+  computeHoldingsHero,
+  countQuoteNotFound,
+  positionValuation,
+  toDisplay,
+} from '../../../services/valuation';
 import {
   colors,
   fontFamily,
@@ -54,6 +68,8 @@ export default function AccountDetailScreen({
   const uid = useAuthStore((s) => s.user?.uid);
   const account = useAccountsStore((s) => s.accounts.find((a) => a.account_id === accountId));
   const transactions = useTransactionsStore((s) => s.transactions);
+  const rates = useExchangeRatesStore((s) => s.rates);
+  const quoteErrors = useQuotesStore((s) => s.errors);
 
   const [editing, setEditing] = useState(false); // 現金 inline 編輯態
   const [usd, setUsd] = useState('');
@@ -72,6 +88,17 @@ export default function AccountDetailScreen({
     () => transactions.some((t) => t.account_id === accountId),
     [transactions, accountId],
   );
+
+  // 報價（ADR-0006 雙層 cache）：為該帳戶持股 on-demand 載入 + focus 檢查新鮮度。
+  const quoteTargets = useMemo(
+    () => positions.map((p) => ({ market: p.market, symbol: p.symbol, currency: p.currency })),
+    [positions],
+  );
+  const quotes = useQuotes(quoteTargets);
+  useRefreshQuotesOnFocus(quoteTargets);
+  function retryQuotes() {
+    void useQuotesStore.getState().loadFor(quoteTargets, { force: true });
+  }
 
   useLayoutEffect(() => {
     if (!account) return;
@@ -101,17 +128,40 @@ export default function AccountDetailScreen({
   const userId = uid;
   const base = acct.base_currency;
 
-  // —— hero：帳戶總值（持股市值 + 現金，基礎幣別）+ 拆分小字（accounts A5）——
-  // 跨幣別需即時 FX（本 feature 不引匯率服務）；此處僅合計 base_currency 同幣別部分，
-  // 非基礎幣別的持股/現金以「另計」小字分列，不靜默混算（對齊 §5 / fail-honest）。
-  const holdingSums = holdingsValueByCurrency(positions);
-  const holdingBase = holdingSums[base] ?? Money.zero(base);
-  const cashBaseStr = acct.cash_balances[base];
-  const cashBase = cashBaseStr ? Money.fromDecimalString(cashBaseStr, base) : Money.zero(base);
-  const totalBase = holdingBase.add(cashBase);
+  // —— hero：帳戶市值＝持股市值（真實報價，基礎幣別）＋現金（accounts A5，B 案）——
+  // computeHoldingsHero 逐持倉以報價計市值、跨幣別以 rates（退 demo FX）換算進基礎幣別；
+  // 現金各幣別亦換算進基礎幣別後併入帳戶市值。缺報價/過期複用 live-quotes 降級（不以成本冒充）。
+  const hero = computeHoldingsHero(
+    positions,
+    (market, symbol) => quoteFor(quotes, market, symbol),
+    rates,
+    base,
+    Date.now(),
+    (market, symbol) => quoteErrorFor(quoteErrors, market, symbol),
+  );
+  const heroNotFound = hero
+    ? 0
+    : countQuoteNotFound(
+        positions,
+        (market, symbol) => quoteFor(quotes, market, symbol),
+        (market, symbol) => quoteErrorFor(quoteErrors, market, symbol),
+      );
 
-  /** 非基礎幣別的「另計」項（持股 + 現金合併同幣別），用於 hero 下方提示。 */
-  const otherCurrencyLines = buildOtherCurrencyLines(base, holdingSums, acct.cash_balances);
+  // 現金合計（各幣別換算進基礎幣別；無法換算者跳過並列入揭露，不靜默混算）。
+  const { cash: cashBase, unconverted: cashUnconverted } = cashInBase(
+    acct.cash_balances,
+    rates,
+    base,
+  );
+  // 持股市值（基礎幣別）：報價就緒→hero.value；無持股→0；有持股但全缺報價→null（載入中）。
+  const holdingsValue = hero ? hero.value : positions.length === 0 ? 0 : null;
+  const accountValue = holdingsValue === null ? null : holdingsValue + cashBase.toNumber();
+
+  const dp = base === 'USD' ? 2 : 0;
+  const fmtNum = (n: number): string =>
+    n.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  const fmtBase = (n: number): string => `${currencyPrefix(base)} ${fmtNum(n)}`;
+  const fmtBaseAbs = (n: number): string => `${currencyPrefix(base)} ${fmtNum(Math.abs(n))}`;
 
   function startEdit() {
     setCashError(null);
@@ -183,24 +233,72 @@ export default function AccountDetailScreen({
               {!acct.is_active ? <Text style={styles.inactiveBadge}>已停用</Text> : null}
             </View>
 
-            <Text style={styles.heroLabel}>帳戶總值</Text>
-            <Text style={styles.heroValue} numberOfLines={1}>
-              {currencyPrefix(base)} {totalBase.toDisplayString()}
-            </Text>
+            <Text style={styles.heroLabel}>帳戶市值</Text>
+            {accountValue !== null ? (
+              <Text style={styles.heroValue} numberOfLines={1}>
+                {fmtBase(accountValue)}
+              </Text>
+            ) : heroNotFound > 0 ? (
+              // 全缺報價且含查無代號：顯示引導而非無限「載入中」（對齊 HoldingsOverview）。
+              <Text style={styles.heroNotFound} numberOfLines={2}>
+                {heroNotFound} 檔查無報價代號{'\n'}請檢查交易的市場/代號設定
+              </Text>
+            ) : (
+              <Text style={styles.heroValue} numberOfLines={1}>
+                報價載入中…
+              </Text>
+            )}
 
+            {/* 拆分小字：持股市值 · 現金（持股市值缺報價時「更新中…」，現金照常）。 */}
             <View style={styles.splitRow}>
               <Text style={styles.splitText}>
-                持股 {currencyPrefix(base)} {holdingBase.toDisplayString()}
+                持股市值 {holdingsValue === null ? '更新中…' : fmtBase(holdingsValue)}
               </Text>
               <Text style={styles.splitDot}>·</Text>
-              <Text style={styles.splitText}>
-                現金 {currencyPrefix(base)} {cashBase.toDisplayString()}
-              </Text>
+              <Text style={styles.splitText}>現金 {fmtBase(cashBase.toNumber())}</Text>
             </View>
-            {otherCurrencyLines.length > 0 ? (
-              <Text style={styles.otherCcy}>
-                另計 {otherCurrencyLines.join('、')}（依當日匯率換算）
-              </Text>
+
+            {/* 成本 / 未實現損益列（B 案；報價就緒才呈現，不以成本冒充市值）。 */}
+            {hero ? (
+              <View style={styles.pnlRow}>
+                <Text style={styles.splitText}>投入成本 {fmtBase(hero.cost)}</Text>
+                <Text style={styles.splitDot}>·</Text>
+                <Text style={styles.splitText}>未實現</Text>
+                <Pnl value={hero.unrealized} display={fmtBaseAbs(hero.unrealized)} size={12} />
+                <Pnl
+                  value={hero.returnPct}
+                  display={`${Math.abs(hero.returnPct).toFixed(2)}%`}
+                  signMode="plusminus"
+                  size={12}
+                />
+              </View>
+            ) : null}
+
+            {/* 降級揭露：部分缺報價/查無代號/含過期值 + 無法換算幣別現金 + 重試。 */}
+            {(hero && (hero.pendingCount > 0 || hero.notFoundCount > 0 || hero.anyStale)) ||
+            cashUnconverted.length > 0 ? (
+              <View style={styles.staleRow}>
+                <Text style={styles.staleText} numberOfLines={2}>
+                  {[
+                    hero && hero.pendingCount > 0 ? `${hero.pendingCount} 檔報價更新中` : null,
+                    hero && hero.notFoundCount > 0 ? `${hero.notFoundCount} 檔查無代號` : null,
+                    hero && hero.anyStale ? '部分為最後已知報價（延遲）' : null,
+                    cashUnconverted.length > 0
+                      ? `${cashUnconverted.join('、')} 現金未計入（匯率未就緒）`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="重試報價"
+                  hitSlop={6}
+                  onPress={retryQuotes}
+                >
+                  <Text style={styles.retry}>重試</Text>
+                </Pressable>
+              </View>
             ) : null}
           </LinearGradient>
         </View>
@@ -263,16 +361,38 @@ export default function AccountDetailScreen({
           />
         ) : (
           <View style={styles.holdings}>
-            {positions.map((p) => (
-              <ListItem
-                key={`${p.market}_${p.symbol}`}
-                title={p.symbol}
-                subtitle={`${shares(p.quantity, p.currency)} 股 · 均價 ${Money.fromDecimalString(p.averageCost, p.currency).toDisplayString()}`}
-                right={
-                  <Text style={styles.holdingValue}>{formatMoney(p.totalCost, p.currency)}</Text>
-                }
-              />
-            ))}
+            {positions.map((p) => {
+              // 每列右側＝市值 + 報酬%（原幣別；均價留 subtitle）；缺報價降級不以成本冒充。
+              const v = positionValuation(p, quoteFor(quotes, p.market, p.symbol), Date.now());
+              const notFound =
+                quoteErrorFor(quoteErrors, p.market, p.symbol) === 'symbol_not_found';
+              return (
+                <ListItem
+                  key={`${p.market}_${p.symbol}`}
+                  title={p.symbol}
+                  subtitle={`${shares(p.quantity, p.currency)} 股 · 均價 ${Money.fromDecimalString(p.averageCost, p.currency).toDisplayString()}`}
+                  right={
+                    v ? (
+                      <View style={styles.holdingRight}>
+                        <Text style={styles.holdingValue}>
+                          {formatMoney(v.marketValue.toDecimalString(), p.currency)}
+                        </Text>
+                        <Pnl
+                          value={v.returnPct}
+                          display={`${Math.abs(v.returnPct).toFixed(2)}%`}
+                          signMode="plusminus"
+                          size={12}
+                        />
+                      </View>
+                    ) : notFound ? (
+                      <Text style={styles.holdingNotFound}>查無代號</Text>
+                    ) : (
+                      <Text style={styles.holdingPending}>更新中…</Text>
+                    )
+                  }
+                />
+              );
+            })}
             {/* 逐-symbol 容錯：資料異常的標的標示為「資料異常」，不顯示錯誤數字、不 blank 整頁。 */}
             {skipped.map((s, i) => (
               <ListItem
@@ -365,26 +485,30 @@ function shares(quantity: string, currency: Currency): string {
   return Money.fromDecimalString(quantity, currency).toNumber().toLocaleString();
 }
 
-/** 非基礎幣別的另計項（持股市值 + 現金，同幣別合併）。 */
-function buildOtherCurrencyLines(
-  base: Currency,
-  holdingSums: Partial<Record<Currency, Money>>,
+/**
+ * 帳戶現金合計換算進基礎幣別：各幣別餘額以 `toDisplay`（rates 優先、退 demo FX）換算後加總。
+ * 無法換算的幣別（rates 未就緒且非 demo 支援對）跳過，回傳其幣別前綴清單供揭露（不靜默混算）。
+ */
+function cashInBase(
   cash: Partial<Record<Currency, string>>,
-): string[] {
-  const others = new Map<Currency, Money>();
-  for (const [ccy, money] of Object.entries(holdingSums)) {
-    if (ccy === base || !money) continue;
-    others.set(ccy as Currency, money);
-  }
+  rates: RateMap | null,
+  base: Currency,
+): { cash: Money; unconverted: string[] } {
+  let sum = Money.zero(base);
+  const unconverted: string[] = [];
   for (const [ccy, str] of Object.entries(cash)) {
-    if (ccy === base || !str) continue;
+    if (!str) continue;
     const c = ccy as Currency;
-    const prev = others.get(c) ?? Money.zero(c);
-    others.set(c, prev.add(Money.fromDecimalString(str, c)));
+    const amount = Money.fromDecimalString(str, c);
+    if (amount.isZero()) continue;
+    const conv = toDisplay(amount, rates, base);
+    if (conv === null) {
+      unconverted.push(currencyPrefix(c).trim());
+      continue;
+    }
+    sum = sum.add(conv);
   }
-  return [...others.entries()].map(
-    ([ccy, money]) => `${currencyPrefix(ccy)} ${money.toDisplayString()}`,
-  );
+  return { cash: sum, unconverted };
 }
 
 const styles = StyleSheet.create({
@@ -467,12 +591,33 @@ const styles = StyleSheet.create({
     ...numericStyle,
   },
   splitDot: { color: colors.textWeak },
-  otherCcy: {
-    fontFamily: fontFamily.text.regular,
-    fontSize: fontSize.label,
-    color: colors.textWeak,
+  pnlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     marginTop: spacing.xs,
   },
+  heroNotFound: {
+    fontFamily: fontFamily.text.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  staleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  staleText: {
+    flex: 1,
+    fontFamily: fontFamily.text.regular,
+    fontSize: 11,
+    color: colors.textWeak,
+  },
+  retry: { fontFamily: fontFamily.text.bold, fontSize: 11, color: colors.accent },
 
   // cash
   cashBlock: { gap: spacing.sm },
@@ -505,11 +650,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.surface,
   },
+  holdingRight: { alignItems: 'flex-end', gap: 2 },
   holdingValue: {
     fontFamily: fontFamily.num.semibold,
     fontSize: fontSize.text,
     color: colors.textPrimary,
     ...numericStyle,
+  },
+  holdingPending: {
+    fontFamily: fontFamily.text.regular,
+    fontSize: fontSize.footnote,
+    color: colors.textFaint,
+  },
+  holdingNotFound: {
+    fontFamily: fontFamily.text.regular,
+    fontSize: fontSize.footnote,
+    color: colors.danger,
   },
   skippedTag: {
     fontFamily: fontFamily.text.semibold,
