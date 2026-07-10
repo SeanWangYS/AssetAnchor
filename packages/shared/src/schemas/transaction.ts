@@ -2,6 +2,7 @@ import { z } from 'zod';
 import Decimal from 'decimal.js';
 import { MARKETS } from '../enums/markets.js';
 import { ASSET_TYPES } from '../enums/asset-types.js';
+import { expectedCurrencyForMarket } from '../markets/marketConsistency.js';
 
 /** MVP 幣別範圍：schema 預留多幣別，但 MVP 交易只收 USD / TWD（planning doc §2 / §5）。 */
 const MVP_CURRENCIES = ['USD', 'TWD'] as const;
@@ -52,24 +53,37 @@ const nonNegativeDecimal = (label: string) =>
  * runtime 驗證，型別由 z.infer 推導。金額/數量在此只驗形（正負、數字性），
  * 實際精度轉換交由 Money 在組文件階段處理（見 ADR-0007 純轉換 seam）。
  */
-export const transactionInputSchema = z.object({
-  account_id: z.string().trim().min(1, '帳戶必填'),
-  symbol: z
-    .string()
-    .trim()
-    .min(1, '代號必填')
-    .transform((s) => s.toUpperCase()),
-  market: z.enum(MARKETS),
-  asset_type: z.enum(ASSET_TYPES),
-  // BUY / SELL（Sprint 5）；公司行動等其餘型別留待後續 sprint。不可超賣為表單層驗證（需衍生持倉）。
-  transaction_type: z.enum(['BUY', 'SELL']),
-  transaction_date: z.string().trim().refine(isRealDate, '日期需為 YYYY-MM-DD'),
-  currency: z.enum(MVP_CURRENCIES),
-  quantity: positiveDecimal('股數'),
-  price: positiveDecimal('單價'),
-  fee: nonNegativeDecimal('手續費').default('0'),
-  tax: nonNegativeDecimal('交易稅').default('0'),
-  notes: z.string().default(''),
-});
+export const transactionInputSchema = z
+  .object({
+    account_id: z.string().trim().min(1, '帳戶必填'),
+    symbol: z
+      .string()
+      .trim()
+      .min(1, '代號必填')
+      .transform((s) => s.toUpperCase()),
+    market: z.enum(MARKETS),
+    asset_type: z.enum(ASSET_TYPES),
+    // BUY / SELL（Sprint 5）；公司行動等其餘型別留待後續 sprint。不可超賣為表單層驗證（需衍生持倉）。
+    transaction_type: z.enum(['BUY', 'SELL']),
+    transaction_date: z.string().trim().refine(isRealDate, '日期需為 YYYY-MM-DD'),
+    currency: z.enum(MVP_CURRENCIES),
+    quantity: positiveDecimal('股數'),
+    price: positiveDecimal('單價'),
+    fee: nonNegativeDecimal('手續費').default('0'),
+    tax: nonNegativeDecimal('交易稅').default('0'),
+    notes: z.string().default(''),
+  })
+  // 市場×幣別一致性（guard-transaction-market-consistency）：TW↔TWD、US↔USD 硬擋，
+  // CRYPTO/OTHER 不約束。擋在 schema 層使未來所有寫入端（批次匯入等）同受保護。
+  .superRefine((v, ctx) => {
+    const expected = expectedCurrencyForMarket(v.market);
+    if (expected !== null && v.currency !== expected) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['currency'],
+        message: v.market === 'TW' ? '台股交易幣別須為 TWD' : `美股交易幣別須為 ${expected}（USD）`,
+      });
+    }
+  });
 
 export type TransactionInput = z.infer<typeof transactionInputSchema>;

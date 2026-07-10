@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Controller, useForm, type Resolver } from 'react-hook-form';
@@ -7,7 +7,9 @@ import {
   ASSET_TYPES,
   MARKETS,
   Money,
+  expectedCurrencyForMarket,
   sellableQuantityForAccount,
+  symbolLooksLikeMarketMismatch,
   transactionInputSchema,
   type AccountDocument,
   type Currency,
@@ -163,6 +165,27 @@ export default function TransactionForm({
     [qty, price, fee, currency, isBuy],
   );
 
+  // 市場 → 幣別單向聯動（guard-transaction-market-consistency）：使用者改市場時自動帶對應幣別
+  // （TW→TWD、US→USD；CRYPTO/OTHER 不動）。僅在「變動」時同步一次（跳過 mount，
+  // 避免編輯既有不一致資料時被反向自動改掉——修正方向應由使用者選市場決定）。
+  const prevMarketRef = useRef(market);
+  useEffect(() => {
+    if (market === prevMarketRef.current) return;
+    prevMarketRef.current = market;
+    if (!(MARKETS as readonly string[]).includes(market)) return;
+    const expected = expectedCurrencyForMarket(market as Market);
+    if (expected) setValue('currency', expected, { shouldValidate: true });
+  }, [market, setValue]);
+
+  // 代號樣式 vs 市場的軟警告（非阻擋；啟發式有誤報可能，故僅提示「請確認」）。
+  const marketMismatchHint = useMemo(() => {
+    if (!(MARKETS as readonly string[]).includes(market)) return null;
+    if (!symbolLooksLikeMarketMismatch(market as Market, symbolRaw)) return null;
+    return market === 'US'
+      ? '代號看起來像台股代號，請確認市場選擇'
+      : '代號看起來像美股代號，請確認市場選擇';
+  }, [market, symbolRaw]);
+
   // 代號自動補完：由歷史交易去重推導候選，以目前輸入做前綴比對（最多 5 筆）。
   const symbolSuggestionsAll = useMemo(() => deriveSymbolSuggestions(transactions), [transactions]);
   const symbolQuery = symbolRaw.trim();
@@ -236,6 +259,10 @@ export default function TransactionForm({
               autoCapitalize="characters"
               error={fieldState.error?.message ?? null}
             />
+            {/* 代號樣式 vs 市場軟警告（非阻擋）：US×數字代號 / TW×純字母代號時提示。 */}
+            {marketMismatchHint ? (
+              <Text style={styles.marketMismatchHint}>{marketMismatchHint}</Text>
+            ) : null}
             {symbolSuggestions.length > 0 ? (
               <View style={styles.suggestList}>
                 {symbolSuggestions.map((s) => (
@@ -662,6 +689,13 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.text.medium,
     fontSize: fontSize.label,
     color: colors.textWeak,
+    marginTop: spacing.xs,
+  },
+  // 市場/代號樣式軟警告：非錯誤（不擋送出），用 accent 區別於 down 紅。
+  marketMismatchHint: {
+    fontFamily: fontFamily.text.medium,
+    fontSize: fontSize.label,
+    color: colors.accent,
     marginTop: spacing.xs,
   },
 
