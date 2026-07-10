@@ -12,8 +12,9 @@ appId: com.seanwangys.assetanchor
 - tapOn:
     id: 'tx-symbol'
 - inputText: '2330'
-# 資產類型 picker：預設「請選擇」→ 開 sheet 選「個股」（市場預設台股/TWD 即可）
-- tapOn: '請選擇'
+# 資產類型 picker：用 testID 開 sheet 選「個股」（市場預設台股/TWD 即可）
+- tapOn:
+    id: 'tx-asset-type'
 - tapOn: '個股'
 # 股數 / 單價
 - tapOn:

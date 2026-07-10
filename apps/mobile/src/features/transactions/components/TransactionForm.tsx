@@ -293,6 +293,7 @@ export default function TransactionForm({
         name="account_id"
         render={({ field, fieldState }) => (
           <PickerField
+            testID="tx-account"
             label="帳戶"
             value={field.value}
             options={accountOptions}
@@ -309,6 +310,7 @@ export default function TransactionForm({
           render={({ field, fieldState }) => (
             <View style={styles.col}>
               <PickerField
+                testID="tx-market"
                 label="市場"
                 value={field.value}
                 options={MARKETS.map((m) => ({ value: m, label: MARKET_LABEL[m] ?? m }))}
@@ -324,6 +326,7 @@ export default function TransactionForm({
           render={({ field, fieldState }) => (
             <View style={styles.col}>
               <PickerField
+                testID="tx-asset-type"
                 label="資產類型"
                 value={field.value}
                 options={ASSET_TYPES.map((a) => ({ value: a, label: ASSET_TYPE_LABEL[a] ?? a }))}
@@ -356,6 +359,7 @@ export default function TransactionForm({
           render={({ field, fieldState }) => (
             <View style={styles.col}>
               <PickerField
+                testID="tx-currency"
                 label="幣別"
                 value={field.value}
                 options={MVP_CURRENCIES.map((c) => ({ value: c, label: c }))}
@@ -537,17 +541,21 @@ interface PickerFieldProps {
   options: readonly Option[];
   onSelect: (value: string) => void;
   error?: string | null;
+  /** E2E 選擇器：多個 picker 佔位「請選擇」相同，需 testID 才能點對欄位開對的 sheet。 */
+  testID?: string;
 }
 
 /** 選擇欄（點開底部 Sheet 選項清單）。對齊 prototype `Field` + chevron。 */
-function PickerField({ label, value, options, onSelect, error }: PickerFieldProps) {
+function PickerField({ label, value, options, onSelect, error, testID }: PickerFieldProps) {
   const [open, setOpen] = useState(false);
   const display = options.find((o) => o.value === value)?.label ?? '';
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <Pressable
+        testID={testID}
         accessibilityRole="button"
+        accessibilityLabel={label}
         style={[styles.control, error ? styles.controlError : null]}
         onPress={() => setOpen(true)}
       >

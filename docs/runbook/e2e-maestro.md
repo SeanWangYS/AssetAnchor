@@ -24,21 +24,24 @@ cd apps/mobile && EXPO_PUBLIC_USE_FIREBASE_EMULATOR=true pnpm start -- --clear
 # 3) 預熱 app 到已載入狀態（dev build 首次 cold-start 要抓 Metro bundle ~20s）
 xcrun simctl launch booted com.seanwangys.assetanchor
 
-# 4) 跑全套（或單條）
+# 4) 跑穩定 gate（3 條；排除 dev-build 時序不穩的迴歸 flow）
 export PATH="$HOME/.maestro/bin:$PATH" MAESTRO_CLI_NO_ANALYTICS=1
-maestro test apps/mobile/.maestro/                    # 3 條全跑
-maestro test apps/mobile/.maestro/add-transaction.yaml  # 單條
+maestro test apps/mobile/.maestro/ --exclude-tags=devbuild-flaky   # 穩定 gate（3/3）
+maestro test apps/mobile/.maestro/add-transaction.yaml             # 單條
+# 迴歸 flow（dev-build 間歇失敗，建議 release build 或手動跑；見下）
+maestro test apps/mobile/.maestro/regression-quote-not-found.yaml
 ```
 
-綠燈輸出：`3/3 Flows Passed`。
+穩定 gate 綠燈輸出：`3/3 Flows Passed`。
 
 ## Flows（`apps/mobile/.maestro/`）
 
-| Flow                   | 覆蓋                                              | 備註                                                                   |
-| ---------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- |
-| `login.yaml`           | Email/密碼登入 → 落「持倉」                       | 也是 subflow（`runFlow: login.yaml`）；session-aware（已登入自動略過） |
-| `add-account.yaml`     | 設定 → 帳戶管理 → FAB → 填表(含 3 pickers) → 建立 | 成功訊號＝回「帳戶管理」清單 + 截圖                                    |
-| `add-transaction.yaml` | header ＋ → 填 BUY(2330) → 送出 → 清單看到        | 覆蓋 modal 欄位 testID inputText + picker + 送出 + 讀回                |
+| Flow                                 | 覆蓋                                                         | 備註                                                                                                                                                                                                                                     |
+| ------------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `login.yaml`                         | Email/密碼登入 → 落「持倉」                                  | 也是 subflow（`runFlow: login.yaml`）；session-aware（已登入自動略過）                                                                                                                                                                   |
+| `add-account.yaml`                   | 設定 → 帳戶管理 → FAB → 填表(含 3 pickers) → 建立            | 成功訊號＝回「帳戶管理」清單 + 截圖                                                                                                                                                                                                      |
+| `add-transaction.yaml`               | header ＋ → 填 BUY(2330) → 送出 → 清單看到                   | 覆蓋 modal 欄位 testID inputText + picker + 送出 + 讀回                                                                                                                                                                                  |
+| `regression-quote-not-found.yaml` ⚠️ | 美股+0050 → 404 → 持倉「查無代號」（守 2026-07-09 prod bug） | **tag `devbuild-flaky`、不進穩定 gate**：TransactionForm 兩連續 picker + #41 幣別聯動 re-render 讓 XCUITest a11y 快照落後 → dev-build 間歇失敗（非 app bug）。此 bug 邏輯已由單元測試守住、行為已 AXe 手動驗證；release build 可望穩定。 |
 
 ## 踩過的坑（改 flow 前先讀）
 
