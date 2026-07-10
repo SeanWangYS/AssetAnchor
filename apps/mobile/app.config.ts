@@ -51,6 +51,15 @@ const config: ExpoConfig = {
     // expo-font config plugin：讓字型在 prebuild 時被打包進 native bundle（@expo-google-fonts
     // 在 dev 走 runtime asset、prod build 由此 plugin 嵌入）。
     'expo-font',
+    // Sentry（add-sentry-error-reporting）：org/project 由 owner 建帳號後以 env 提供；
+    // SENTRY_AUTH_TOKEN（EAS secret）存在時 build 自動上傳 source map，缺時僅警告不擋 build。
+    [
+      '@sentry/react-native/expo',
+      {
+        organization: process.env.SENTRY_ORG ?? 'assetanchor',
+        project: process.env.SENTRY_PROJECT ?? 'assetanchor-mobile',
+      },
+    ],
   ],
   extra: {
     eas: {

@@ -5,6 +5,7 @@ import {
   type Position,
   type RealizedEvent,
 } from '@assetanchor/shared';
+import { reportHandledError } from '../../services/monitoring';
 import { useTransactionsStore } from '../transactions/transactionsStore';
 
 /**
@@ -22,10 +23,10 @@ export function useHoldings(): Position[] {
     try {
       return deriveHoldings(transactions);
     } catch (err) {
-      console.warn(
-        '[holdings] deriveHoldings 推導失敗，降級為空持倉：',
-        err instanceof Error ? err.message : err,
-      );
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[holdings] deriveHoldings 推導失敗，降級為空持倉：', message);
+      // silent-severe：白屏降級是使用者看不出原因的資料問題，上報留跡（dev 為 no-op）。
+      reportHandledError('holdings:derive_failed', { message });
       return [];
     }
   }, [transactions]);
@@ -38,10 +39,9 @@ export function useRealizedEvents(): RealizedEvent[] {
     try {
       return deriveRealizedEvents(transactions);
     } catch (err) {
-      console.warn(
-        '[holdings] deriveRealizedEvents 推導失敗，降級為空事件：',
-        err instanceof Error ? err.message : err,
-      );
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[holdings] deriveRealizedEvents 推導失敗，降級為空事件：', message);
+      reportHandledError('holdings:realized_derive_failed', { message });
       return [];
     }
   }, [transactions]);
