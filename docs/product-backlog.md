@@ -29,6 +29,16 @@
 
 - **iOS 模擬器自動化 / E2E 工具（AXe + ios-simulator-mcp + Maestro）** — 來源：ADR-0007 §6 已 park 在 backlog（上架前再議）。完整方案見 [`docs/superpowers/plans/ios-simulator-automation-e2e-plan.md`](superpowers/plans/ios-simulator-automation-e2e-plan.md)。讓 Claude Code 能自主「觀察 + 操控」Simulator 並跑可重跑的 E2E flow。觸發：要做自主 E2E / agent-driven debug，或上架前的回歸測試。
 
+## 已 archive change 的遺留 owner gate
+
+以下三個 change 已 code-complete 並 merge 進 `main`（2026-07-09，PR #40 code 經 stacked #41 併入 / #41 / #42），change 記錄已 archive（`2026-07-10-*`）。剩餘皆為 owner 介入 gate（部署／真機／視覺對圖），非實作缺口：
+
+- **`surface-quote-symbol-errors`（查無代號降級）** — 遺留：①functions **production 部署** + 新 TestFlight build；②真機 dogfood（美股＋`0050`→顯示「查無代號」而非永遠載入中）；③**iOS Simulator 視覺對圖**（holdings-overview「查無代號」文案/版位，ADR-0008）。①②已入 [`testflight-release.md`](runbook/testflight-release.md) 驗收清單（line 104）。
+- **`guard-transaction-market-consistency`（市場×幣別防呆）** — 遺留：①emulator dogfood（重演 prod bug：US＋0050＋TWD→軟警告＋擋送出）；②**iOS Simulator 視覺對圖**（transactions 軟警告文案/版位，ADR-0008）。
+- **`add-sentry-error-reporting`（client 錯誤上報）** — EAS Sentry 機密已於 2026-07-10 設定（見 runbook §env）。遺留：①dev Simulator smoke（Sentry 停用無事件）；②真機觸發測試錯誤驗證 dashboard 收到且 source map 生效（已入 runbook line 105）。
+
+> 兩個帶 UI change 的 **視覺對圖** 是唯一未落到其他 runbook 的 gate——上架前批次視覺對圖時一併驗（ADR-0008）。
+
 ## UI 打磨（移出主路線）
 
 - **正式版 App icon** — 來源：2026-07-04 視覺對圖（PR #33）。現行 icon 為 AI 程式化產出的 v1（深色底＋accent 上升折線，CoreGraphics 腳本產 1024×1024）；owner 拍板先頂著用。觸發：上架前 branding 定稿時，換掉 `apps/mobile/assets/icon.png` 即可（`app.config.ts` 已接好 `icon` 欄位）。
