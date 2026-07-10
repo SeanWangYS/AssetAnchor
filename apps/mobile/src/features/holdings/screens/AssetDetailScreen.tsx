@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Money, isFresh, type Currency } from '@assetanchor/shared';
+import { Money, isFresh, deriveHoldingsByAccount, type Currency } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
 import { Button, Card, Chart, EmptyState, Pnl, Segmented, TimeTabs } from '../../../core/ui';
 import { colors, fontFamily, numericStyle, spacing } from '../../../core/theme';
@@ -9,8 +9,9 @@ import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { quoteFor, useQuotes, useRefreshQuotesOnFocus } from '../../../services/quotes';
 import { useSymbolMap, symbolNameOf, symbolEnglishOf } from '../../../services/symbols';
 import { useSymbolTrendSeries } from '../useTrendSeries';
+import { useTransactionsStore } from '../../transactions/transactionsStore';
+import { useAccountsStore } from '../../accounts/accountsStore';
 import {
-  accountOf,
   currencyPrefix,
   displayDecimals,
   fmtShares,
@@ -35,6 +36,16 @@ export default function AssetDetailScreen({
   const rateDate = useExchangeRatesStore((s) => s.date);
 
   const position = positions.find((p) => p.market === market && p.symbol === symbol);
+
+  // 帳戶分布（真實資料，取代已移除的 accountOf demo）：列出目前實際持有此 (market, symbol) 的帳戶名。
+  const transactions = useTransactionsStore((s) => s.transactions);
+  const accounts = useAccountsStore((s) => s.accounts);
+  const accountDistribution = useMemo(() => {
+    const names = deriveHoldingsByAccount(transactions, accounts)
+      .filter((g) => g.positions.some((p) => p.market === market && p.symbol === symbol))
+      .map((g) => g.accountName);
+    return names.length > 0 ? names.join('、') : '—';
+  }, [transactions, accounts, market, symbol]);
   // 名稱真值（Sprint 6）：唯讀訂閱 symbols store（持倉總覽進入時已 enrich）；缺值 fallback 代號。
   const symbols = useSymbolMap();
   const displayName = symbolNameOf(symbols, market, symbol);
@@ -231,7 +242,7 @@ export default function AssetDetailScreen({
             />
           }
         />
-        <Kv k="帳戶分布" v={accountOf(symbol)} last />
+        <Kv k="帳戶分布" v={accountDistribution} last />
       </Card>
       {displayCcy !== position.currency ? (
         <Text style={styles.fxNote}>

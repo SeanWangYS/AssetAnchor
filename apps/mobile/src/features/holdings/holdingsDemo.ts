@@ -21,24 +21,8 @@ import {
 /** demo 匯率 fallback：1 USD = 30.95 TWD（design §5；rates 未就緒時用）。 */
 export const DEMO_USD_TWD = '30.95';
 
-/**
- * 標的「帳戶分布」demo 對照（單一帳戶 demo；真實多帳戶分布屬對帳 change `complete-reconciliation`）。
- * ⚠️ 標的「名稱」已改由 `services/symbols`（symbols/{symbolId} + Yahoo enrich）提供真值，不再硬編於此。
- */
-const DEMO_ACCOUNT: Record<string, string> = {
-  '2330': '群益證券',
-  '2317': '群益證券',
-  '0050': '富邦證券',
-  '00878': '富邦證券',
-  AAPL: 'Firstrade',
-  VTI: 'Interactive Brokers',
-  QQQ: 'Firstrade',
-};
-
-/** 標的的 demo 帳戶分布名（未知標的回退「—」）。 */
-export function accountOf(symbol: string): string {
-  return DEMO_ACCOUNT[symbol] ?? '—';
-}
+// 「帳戶分布」曾用 symbol→帳戶名硬編 demo 表（DEMO_ACCOUNT/accountOf）；已於 fix-holdings-account-grouping
+// 移除，改由 shared `deriveHoldingsByAccount` 依真實 account_id 分群（持倉「帳戶」模式 + AssetDetail 帳戶分布）。
 
 export function marketLabel(market: Market): string {
   if (market === 'TW') return '台股';

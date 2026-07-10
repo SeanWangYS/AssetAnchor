@@ -3,9 +3,12 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import {
   DISPLAY_CURRENCIES,
   Money,
+  deriveHoldingsByAccount,
+  type AccountRef,
   type DisplayCurrency,
   type Market,
   type Position,
+  type TransactionDocument,
 } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
 import {
@@ -38,7 +41,6 @@ import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { useCountUp } from '../useCountUp';
 import { useTrendSeries } from '../useTrendSeries';
 import {
-  accountOf,
   avatarColor,
   currencyPrefix,
   displayDecimals,
@@ -48,7 +50,8 @@ import {
   marketLabel,
   toDisplay,
 } from '../holdingsDemo';
-import { computeHoldingsHero, countQuoteNotFound } from '../holdingsHero';
+import { computeHoldingsHero, countQuoteNotFound, realizedInMonth } from '../holdingsHero';
+import { useAccountsStore } from '../../accounts/accountsStore';
 
 /** 清單分組模式（持股 / 帳戶 / 類別）。 */
 type GroupMode = '持股' | '帳戶' | '類別';
@@ -96,6 +99,8 @@ function buildSections(
   positions: Position[],
   mode: GroupMode,
   quotes: Record<string, QuoteEntry>,
+  transactions: TransactionDocument[],
+  accounts: AccountRef[],
 ): GroupSection[] {
   if (mode === '持股') {
     return [
@@ -109,17 +114,19 @@ function buildSections(
     ];
   }
   if (mode === '帳戶') {
-    const byAccount = new Map<string, Position[]>();
-    for (const p of positions) {
-      const acct = accountOf(p.symbol);
-      byAccount.set(acct, [...(byAccount.get(acct) ?? []), p]);
-    }
-    return [...byAccount.entries()].map(([acct, list]) => ({
-      key: acct,
-      label: acct,
-      count: list.length,
-      subtotal: subtotalText(list, quotes),
-      positions: list,
+    // 依**真實 account_id** 分群（per-account 推導），取代已移除的 symbol→帳戶 demo 表。
+    // orphan account_id 歸「未分類」；某帳戶內髒資料 symbol 被 fail-soft 跳過並在小計標「N 檔資料異常」。
+    return deriveHoldingsByAccount(transactions, accounts).map((g) => ({
+      key: g.accountId || '__unassigned__',
+      label: g.accountName,
+      count: g.positions.length,
+      subtotal: [
+        subtotalText(g.positions, quotes),
+        g.skipped.length > 0 ? `${g.skipped.length} 檔資料異常` : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      positions: g.positions,
     }));
   }
   // 類別：依市場分（台股 TWD / 美股 USD …）。
@@ -217,6 +224,7 @@ export default function HoldingsOverviewScreen({
   const realizedEvents = useRealizedEvents();
   // Symbol 名稱真值（Sprint 6）：以交易清單（含 asset_type）為來源 enrich + 顯示。
   const transactions = useTransactionsStore((s) => s.transactions);
+  const accounts = useAccountsStore((s) => s.accounts);
   const txLoading = useTransactionsStore((s) => s.loading);
   const txError = useTransactionsStore((s) => s.error);
   const symbolTargets = useMemo(() => symbolTargetsFromTransactions(transactions), [transactions]);
@@ -277,7 +285,10 @@ export default function HoldingsOverviewScreen({
     });
   }, [navigation]);
 
-  const sections = useMemo(() => buildSections(positions, mode, quotes), [positions, mode, quotes]);
+  const sections = useMemo(
+    () => buildSections(positions, mode, quotes, transactions, accounts),
+    [positions, mode, quotes, transactions, accounts],
+  );
 
   // Hero / bento 彙總（報價）：部分渲染——有報價（新鮮或過期）的持倉先加總，缺者標「更新中」。
   // 純函式 computeHoldingsHero（已單元測試）；今日損益僅全數新鮮時呈現，否則 null。
@@ -308,18 +319,12 @@ export default function HoldingsOverviewScreen({
     [hero, positions, quotes, quoteErrors],
   );
 
-  // 「本月已實現損益」真值（§4）：當月 SELL 已實現，各原幣別以最新匯率換算成顯示幣別後加總。
-  const realizedThisMonth = useMemo(() => {
+  // 「本月已實現損益」真值（§4）：當月 SELL 已實現，各原幣別換算成顯示幣別後加總（純函式）。
+  // count === 0 ⇒ 本月無賣出 → bento 顯示中性空狀態（不以綠色 ▲ NT$ 0 誤導為上漲）。
+  const realized = useMemo(() => {
     const now = new Date();
     const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    let sum = Money.zero(displayCcy);
-    for (const ev of realizedEvents) {
-      if (!ev.transaction_date.startsWith(monthPrefix)) continue;
-      const conv = toDisplay(new Money(ev.realized, ev.currency), rates, displayCcy);
-      if (conv === null) continue; // TWD/USD 恆有 demo fallback，理論不會 null
-      sum = sum.add(conv);
-    }
-    return sum;
+    return realizedInMonth(realizedEvents, monthPrefix, rates, displayCcy);
   }, [realizedEvents, rates, displayCcy]);
 
   // 總資產 Hero count-up：報價就緒跑真值總市值，否則 0（顯示「報價載入中…」不跑數字）。
@@ -468,11 +473,16 @@ export default function HoldingsOverviewScreen({
           <Card padding={spacing.cardInner} style={styles.bentoCell}>
             <Text style={styles.bentoLabel}>本月已實現損益</Text>
             <View style={styles.bentoVal}>
-              <Pnl
-                value={realizedThisMonth.toNumber()}
-                display={fmtCcy(realizedThisMonth.toNumber())}
-                size={18}
-              />
+              {realized.count === 0 ? (
+                // 本月無賣出：中性「—」（比照今日損益 pending），不顯示綠色 ▲ NT$ 0 誤導為上漲
+                <Text style={styles.bentoPending}>—</Text>
+              ) : (
+                <Pnl
+                  value={realized.sum.toNumber()}
+                  display={fmtCcy(realized.sum.toNumber())}
+                  size={18}
+                />
+              )}
             </View>
           </Card>
         </View>
