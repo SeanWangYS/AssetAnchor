@@ -2,15 +2,15 @@
 
 ## 1. 依賴與設定
 
-- [ ] 1.1 安裝 `@sentry/react-native`、app config 加 Sentry expo plugin（organization/project 佔位，DSN 走 `EXPO_PUBLIC_SENTRY_DSN`）
-- [ ] 1.2 進入點 init：`__DEV__ || EXPO_PUBLIC_USE_FIREBASE_EMULATOR==='true'` 時不 init；`sendDefaultPii:false`
+- [x] 1.1 安裝 `@sentry/react-native`、app config 加 Sentry expo plugin（organization/project 佔位，DSN 走 `EXPO_PUBLIC_SENTRY_DSN`）
+- [x] 1.2 進入點 init：`__DEV__ || EXPO_PUBLIC_USE_FIREBASE_EMULATOR==='true'` 時不 init；`sendDefaultPii:false`
 - [ ] 1.3 `npx expo prebuild` 後 iOS Simulator smoke test：dev 模式 App 正常啟動、Sentry 停用（無事件）
 
 ## 2. seam 接入
 
-- [ ] 2.1 `logQuoteError` 加送 Sentry 事件（保留 console.warn；detail 限 symbolId/stage/HTTP status）
-- [ ] 2.2 `useHoldings` 等既有 fail-soft console.warn 邊界收斂進 seam 或加送事件（不散布 Sentry import 到 features 層）
-- [ ] 2.3 `pnpm -r typecheck lint test` + `pnpm format:check` 全綠
+- [x] 2.1 `logQuoteError` 加送 Sentry 事件（保留 console.warn；detail 限 symbolId/stage/HTTP status）
+- [x] 2.2 `useHoldings` 等既有 fail-soft console.warn 邊界收斂進 seam 或加送事件（不散布 Sentry import 到 features 層）
+- [x] 2.3 `pnpm -r typecheck lint test` + `pnpm format:check` 全綠
 
 ## 3. owner gates（記入 PR，AI 不自行執行）
 
