@@ -15,11 +15,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 5. **Firebase**：一律 `@react-native-firebase` v24 modular API（禁 namespaced）。
 6. **OpenSpec 工作流**：每個 change 走 explore→propose→apply→archive；**帶 UI 的 change 必引對應 `docs/design/<feature>/*-spec.md` + 通過 iOS Simulator 視覺對圖**。
 7. **測試紀律**（ADR-0007）：測試金字塔寫進每個 change 的 Definition-of-Done（shared 純函式 coverage gate、rules 必測、UI 關鍵 flow RNTL）。
-8. **Git 安全 + 分支基準 + 分級 merge + 延後 merge**：只 push 當次開發分支；**絕不直接 push main**。**merge 不阻擋自走 loop**（owner 規則 2026-06-17）：PR + （帶 UI 則）視覺對圖通過後就 `archive`、續做下一個 change，**不停下等 merge**；merge 到 main **延後由 owner 在里程碑批次執行**。誰 merge 仍照分級：
-   - 🛑 **owner 本人 merge（但 loop 不為它停）**：帶 UI（ADR-0008 視覺保真）、聖牛 schema、Money/decimal 精度、跨 change ADR、部署/花錢/真機。→ AI 開 PR + archive 後**繼續做**，PR 累積留給 owner 批次 merge。
-   - ✅ **低風險可自 merge**（`gh pr merge`）：純 docs / 測試 / `shared` 純函式 / 低風險重構等「自動 gate 完全涵蓋、無設計/schema/Money/UX 判斷」者，憲法仍允許；惟依延後 merge 規則，亦可同樣「開 PR + 續做、留 owner 批次」。
-   - 不確定屬哪層 → 當高風險：開 PR + archive + 續做，**不**自 merge。**前提**：須與 user global CLAUDE.md 的 merge 規則一致（global「絕對禁止 merge main」＋本專案分級授權但書；AI 永不自動 merge main，延後規則只改「何時」不改「誰」）。
-   - 🌱 **開新分支的基準（branch base）**：因「延後 merge」，`main` 通常落後實際進度——**開新分支不要從 `main`、也不要從「最後被 merge 的分支」拉**（本 repo `git branch --merged main` 幾乎只回 sprint-0，那是遠古 code）。開工前先 `git fetch --all`，用 `git for-each-ref --sort=-committerdate refs/heads` 找「**目前開發線的 stack 頂端**」（最新的 `feature/*`／`fix/*`）：①**延續型**（新工作依賴前一條的 code）從 stack 頂端拉，沿用 stacked-PR；②**平行型**（多 agent 做互不相干功能）各工作從**同一個約定 base**（通常即 stack 頂端）開分支 + `git worktree` 隔離、**彼此不互相 stack**，最後進 integration 分支收斂再交 owner。owner 批次 merge 進 `main` 後，base 即回到 `main`。「最新」以「要延伸的那條工作線」為準，**非單純 commit 時間排序**；依賴關係不確定就停下問 owner（見 §9）。權威細節見 planning §12.6。
+8. **Git 策略＝GitHub Flow（最高指導原則，owner 2026-07-11 拍板）**：單一長命分支 `main`（**永遠可發布、CI 恆綠**）；一切工作開**短命** `feature/*`·`fix/*` 分支、**從剛 `git pull` 的最新 `main` 拉**；PR + CI 綠**即快速 merge，不再延後/批次**。權威細節見 planning §12.6。
+   - **絕不直接 push `main`**——一律走 PR。
+   - **快速 merge，誰 merge 照分級授權**：
+     - ✅ **低風險 AI 自 merge**（`gh pr merge`，CI 綠後即併、不囤積）：純 docs / 測試 / `shared` 純函式 / 低風險重構等「自動 gate 完全涵蓋、無設計/schema/Money/UX 判斷」者。
+     - 🛑 **owner 本人 merge**：帶 UI（ADR-0008 視覺保真）、聖牛 schema、Money/decimal 精度、跨 change ADR、部署/花錢/真機。→ AI 開 PR + archive 後**繼續做下一個 change，不停下等 merge**（此類 PR 仍即時交付給 owner、非批次囤積）。
+     - 不確定屬哪層 → **當高風險**：開 PR，**不**自 merge。
+     - **授權範圍**：此分級自 merge **僅限本個人專案**（owner 授權），對齊 global CLAUDE.md 的「專案分級 merge 例外」但書；**AI 永不 merge/push `main` 的高風險類別**。
+   - **分支基準＝一律最新 `main`**（GitHub Flow 精神）：開工前 `git fetch origin && git pull`。因低風險快速 merge，依賴型工作通常等前一個 change 併入 `main` 後**直接從 `main` 開**即可——**預設不再 stacked PR**。
+   - **唯一 stack 例外**：下一個 change 依賴一個**尚未 merge 的 owner-gated PR** 時才短暫 stack 在其分支上；且該 base PR **owner 請用 rebase-merge / merge commit（勿 squash）**，避免破壞上層自動接續 + 需事後手動 rebase（見 planning §12.6）。
+   - **merge 後保留已 merge 分支**（不刪；owner 偏好；PR 亦保留歷史）。
+   - **iOS 部署**：GitHub Flow「merge = 部署」對手機不成立——`main` 維持隨時可發布，實際發布＝**定期從 `main` 切 TestFlight / App Store build**（release tag 標版本）；線上緊急修用 `hotfix/*` 從 release tag 開、修完併回 `main`。
+   - **未完成功能用 feature flag 藏**，不用長命分支擋（保 `main` 可發布）。
 9. **人類介入 gate**（planning §2.5）：聖牛 schema 變更、設計衝突/缺 spec、花錢·部署·真機、Money 精度規則、跨 change 重大決策——**必停找 owner**；其餘可自走。
 
 ## 常用指令
