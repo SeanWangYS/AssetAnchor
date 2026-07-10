@@ -64,8 +64,34 @@ eas submit -p ios --latest --non-interactive
 2. 朋友接受邀請後：App → TestFlight → 內部測試群組 → 加入該成員
 3. 朋友手機裝 [TestFlight app](https://apps.apple.com/app/testflight/id899247664) → 收到邀請即可安裝
 
-> 若之後想用「公開連結」廣發（不用逐一邀進團隊），改開**外部測試**群組——首個 build 需過
-> Beta App Review（約 1–2 天）。
+> 若之後想用「公開連結」廣發（不用逐一邀進團隊），改開**外部測試**群組——見下節。
+
+## TestFlight 外部測試：公開連結廣發（給非團隊的朋友）
+
+外部測試適合「發給一般朋友」：測試員**不必**是 App Store Connect 的 User、不進 Users and Access，
+用 email 加或直接開一條**公開連結**（`testflight.apple.com/join/xxxx`，上限 10,000 人）誰點誰裝。
+代價：**首個 build 需過 Beta App Review**（約 1–2 天），之後同群組新增 build 通常免再審。
+
+1. Apps → AssetAnchor → **TestFlight** → 左側 **External Testing** 旁 **＋** 建群組（如 `Friends`）
+2. 群組 **Builds** → **＋** → 選一個已處理完成的 build 加入
+3. 填 **Test Information**（外部測試必填，內部免）：
+   - **Beta App Description**：測試重點（例：「登入後看持倉、新增交易、看走勢圖」）
+   - **Feedback Email**：`seanwangys@gmail.com`
+   - **Contact Information**：本人聯絡資訊
+   - **Sign-In Information**（勾 **Sign-in required**）：填**正式環境**能登入的 demo 帳密
+     供 Apple 審核員登入 —— 現用 `dev_test@test.com` / `123456`
+4. **Submit for Review** → 首個 build 過 Beta App Review（約 1–2 天）
+5. 通過後群組頁 **Enable Public Link** → 產生公開連結 → 丟給朋友（LINE/訊息皆可）
+6. 朋友端：裝 [TestFlight app](https://apps.apple.com/app/testflight/id899247664) → 點連結即可安裝
+
+### 外部測試踩過的坑
+
+1. **demo 帳號必須在正式環境存在**：TestFlight build 連正式專案 `assetanchor-832df`，
+   **不是** emulator。種子帳號 `test@assetanchor.dev/test1234` 只存在本機 emulator，
+   填進 Sign-In Information 會讓審核員登入失敗 → 被退。必須先在正式環境用 email/密碼
+   **註冊**一組真帳號（現用 `dev_test@test.com` / `123456`），並登入塞幾筆資料
+   （帳戶＋1–2 筆交易），讓審核員一進去就看得到持倉/交易/走勢圖。
+2. **Google 登入不適合當審核 demo**：會需要你的 Google 帳號；一律用 email/密碼那條路建 demo 帳號。
 
 ## 發版後驗收（owner 真機）
 
