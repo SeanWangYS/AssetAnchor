@@ -11,7 +11,7 @@
 # 市場放第一個（初始狀態最穩），資產類型第二個。
 appId: com.seanwangys.assetanchor
 # tag 排除於預設 gate：本 flow 在 dev-build 上時序不穩（見下方說明），非 app bug。
-# 穩定 gate 跑 `maestro test .maestro/ --exclude-tags=devbuild-flaky`。
+# 穩定 gate 跑 `maestro test .e2e/ --exclude-tags=devbuild-flaky`。
 tags:
   - devbuild-flaky
 ---

@@ -68,7 +68,7 @@
 - **可繞過**：**id-less Maestro 先 bootstrap** — submit 有穩定中文 title（登入/建立帳戶/建立交易）、FAB 有 accessibilityLabel、tab 用可見文字（持倉/交易/分析/設定）→ 可先證明 flow 跑得起來，再補 testID。
 
 ### 其他就緒缺口
-- 無 `apps/mobile/.maestro/`、無任何 Detox/Appium 設定 → Layer 3 是 greenfield。
+- 無 `apps/mobile/.e2e/`（實作時採此名，非 Maestro 慣例 `.maestro/`）、無任何 Detox/Appium 設定 → Layer 3 是 greenfield。
 - `apps/mobile/ios/` 在本機已 prebuild 但 **gitignored 未 commit**（CNG 設計）→ fresh checkout 需先 `expo prebuild` + `expo run:ios`，Maestro 才有 `.app` 可測。
 - **登入 skip 陷阱**：`略過登入/Demo-skip`（`SignInScreen.tsx:70-73`）會用空 uid 進 MainTabs，無種子資料 → 登入 E2E **必須斷言走真種子帳號、非 skip**（runbook line 38 已警告）。
 - Picker 欄位（券商/類型/市場/幣別）非 TextInput，是 Pressable→Sheet，須 `tapOn` 欄位再 `tapOn` 中文 option label。
@@ -134,7 +134,7 @@
 - **STEP 0 — DE-RISK SPIKE（1 天，先做）**：裝 AXe + Maestro，`expo run:ios` 建好，boot iPhone 16 Pro + 種子 emulator。寫**一條丟棄式 id-less flow**：`launchApp(appId: com.seanwangys.assetanchor)` → 輸入種子帳密 → `tapOn` 文字「登入」→ 斷言落在「持倉」種子 artifact。**目標：證明 Maestro 在本機連得上跑得動（#2906/#3153 風險）**。若 hang/crash → 停 Maestro、保留 AXe-only 感知、等 upstream 修。
 - **STEP 1 — Phase 1（AXe），無論如何保留（0.5 天）**：標準化 AXe-over-Bash 做截圖/點按/檢視；**絕不用 raw-HID 打 RN TextInput**。即使 Maestro 延後，這仍是長期價值。
 - **STEP 2 — Instrumentation（0.5–1 天，spike 綠燈才做）**：(a) 走 Input `{...rest}` 落欄位 testID（免改 core）；(b) 改一次 shared `Button.tsx` 轉發 testID/accessibilityLabel（小而隔離、owner-reviewed、ADR-0008 gate）；(c) 修 plan 文字（bundle id / CJK / Xcode bug 過期）。
-- **STEP 3 — Phase 3 三條 flow（2–3 天）**：建 `.maestro/`，順序 登入（斷言真種子帳號）→ 新增帳戶（帳戶名稱先試 `inputText` 繁中、pickers 走 label）→ 新增 BUY（全 ASCII）。穩的用 id-less，flaky 處才補 testID。
+- **STEP 3 — Phase 3 三條 flow（2–3 天）**：建 `.e2e/`，順序 登入（斷言真種子帳號）→ 新增帳戶（帳戶名稱先試 `inputText` 繁中、pickers 走 label）→ 新增 BUY（全 ASCII）。穩的用 id-less，flaky 處才補 testID。
 - **STEP 4 — Phase 4 本地 gate（0.5 天）**：寫成 owner 批次 merge 前的**本地** runbook 步驟（非 CI），pin Maestro + Java。
 - **跳過/延後**：**Phase 2（ios-simulator-mcp）**——與 AXe 重複、多一個重開 session gate + stale idb CLI 依賴；真要 MCP 用 Maestro 自帶的。**CI E2E** 無 macOS runner，整段延後。
 

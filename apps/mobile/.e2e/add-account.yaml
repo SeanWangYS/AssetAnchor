@@ -4,9 +4,19 @@
 appId: com.seanwangys.assetanchor
 ---
 - runFlow: login.yaml
-# 設定 tab：RN bottom-tab 複合 a11y label 在 XCUITest hierarchy 文字匹配不穩 → 用畫面百分比座標。
-- tapOn:
-    point: '88%,95%'
+# 設定 tab：RN bottom-tab 的 a11y label 是複合字串「設定, tab, 4 of 4」（純「設定」精確比對不中）→
+# 用 regex `設定, tab.*` 命中且不寫死 tab 數（勿用盲座標 point）。
+# 時序：持倉頁重（走勢圖+多列+報價刷新），login 斷言「持倉」後 tab bar 仍需 settle，
+# 過早那一下 tap 會被丟掉（實測：延遲後同位置 AXe 點擊即成功切換）→ 先等動畫收斂再點，
+# 並用「帳戶管理未現則補點」化解殘餘的 dev-build 時序抖動。
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: '設定, tab.*'
+- runFlow:
+    when:
+      notVisible: '帳戶管理'
+    commands:
+      - tapOn: '設定, tab.*'
 - tapOn: '帳戶管理'
 - tapOn: '新增帳戶'
 - tapOn:

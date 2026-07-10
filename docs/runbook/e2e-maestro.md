@@ -26,15 +26,15 @@ xcrun simctl launch booted com.seanwangys.assetanchor
 
 # 4) 跑穩定 gate（3 條；排除 dev-build 時序不穩的迴歸 flow）
 export PATH="$HOME/.maestro/bin:$PATH" MAESTRO_CLI_NO_ANALYTICS=1
-maestro test apps/mobile/.maestro/ --exclude-tags=devbuild-flaky   # 穩定 gate（3/3）
-maestro test apps/mobile/.maestro/add-transaction.yaml             # 單條
+maestro test apps/mobile/.e2e/ --exclude-tags=devbuild-flaky   # 穩定 gate（3/3）
+maestro test apps/mobile/.e2e/add-transaction.yaml             # 單條
 # 迴歸 flow（dev-build 間歇失敗，建議 release build 或手動跑；見下）
-maestro test apps/mobile/.maestro/regression-quote-not-found.yaml
+maestro test apps/mobile/.e2e/regression-quote-not-found.yaml
 ```
 
 穩定 gate 綠燈輸出：`3/3 Flows Passed`。
 
-## Flows（`apps/mobile/.maestro/`）
+## Flows（`apps/mobile/.e2e/`）
 
 | Flow                                 | 覆蓋                                                         | 備註                                                                                                                                                                                                                                     |
 | ------------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -53,7 +53,7 @@ maestro test apps/mobile/.maestro/regression-quote-not-found.yaml
 6. **`clearState: true` 不登出**：RNFirebase session 在 keychain，clearState 清不掉 → 要回登入頁走 設定 → 登出 → 確認。
 7. **元素選擇器**：
    - 欄位 / submit：有 `testID`（`signin-*`/`account-*`/`tx-*`）→ 用 `id:`（最穩）。
-   - RN bottom-tab（設定）：複合 a11y label 匹配不穩 → 用畫面百分比座標 `point: '88%,95%'`。
+   - RN bottom-tab（設定）：tab **在** a11y tree 內，但 label 是複合字串 `設定, tab, 4 of 4`（純 `設定` 精確比對不中）→ 用 regex `tapOn: '設定, tab.*'`（不寫死 tab 數）。**勿用盲座標 `point`**：一次性、無等待/重試，login 斷言後 tab bar 尚未 settle 時那一下會被丟掉。正解＝`waitForAnimationToEnd` 先收斂動畫 + 「`帳戶管理` 未現則補點一次」（`runFlow: when: notVisible`）化解殘餘時序抖動（實測補點確會觸發）。
    - picker：三個「請選擇」佔位相同 → 靠欄位 `testID` 開對的 sheet，再點 sheet 內中文 option。
    - **清單「列」**：帳戶/持股列是複合 a11y label，Maestro 文字匹配不到 → 要斷言特定列需為列補 `testID`（後續 instrumentation；目前以「回到清單頁」為成功訊號）。
 

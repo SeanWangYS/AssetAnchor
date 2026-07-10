@@ -105,7 +105,7 @@ maestro --version
 claude mcp add maestro -- maestro mcp                  # （選用）讓 Claude Code 直接驅動 Maestro
 ```
 
-要寫的 3 條關鍵旅程（建議放 `apps/mobile/.maestro/`）：
+要寫的 3 條關鍵旅程（放 `apps/mobile/.e2e/`）：
 
 | Flow                       | 路徑                                              | 文字輸入策略                                        |
 | -------------------------- | ------------------------------------------------- | --------------------------------------------------- |
@@ -118,7 +118,7 @@ claude mcp add maestro -- maestro mcp                  # （選用）讓 Claude 
 - ASCII 文字用 `inputText`；**繁中欄位**先 `echo -n "中文" | xcrun simctl pbcopy booted`（或 `pbpaste | xcrun simctl pbcopy booted` 防 Xcode 26 同步 bug），再以 `tapOn` 聚焦欄位 + 貼上。
 - 元素匹配用 `id`（對應元件 `testID`）優先，文字 label 次之。**先補 testID** 到上述三條旅程會碰到的螢幕/元件（caveat #4）。
 - 每步 `takeScreenshot`，Claude Code 可 Read 來核對；驗收用 `assertVisible`（如登入後 `assertVisible: 持倉`）。
-- 跑單一 flow：`maestro test apps/mobile/.maestro/login.yaml`。
+- 跑單一 flow：`maestro test apps/mobile/.e2e/login.yaml`。
 
 最小範例（登入）：
 
