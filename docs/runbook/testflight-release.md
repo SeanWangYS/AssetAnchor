@@ -7,7 +7,11 @@
 
 - Apple Developer Program 生效，Team `XBWL62Y664`（Individual）
 - EAS 登入 `sean.ys`，projectId 已設於 `app.config.ts`（PR #30）
-- EAS production 環境已有 file 機密 `GOOGLE_SERVICES_PLIST`（`eas env:list production` 可驗）
+- EAS production 環境已有 file 機密 `GOOGLE_SERVICES_PLIST`（`eas env:list --environment production` 可驗）
+- EAS production 環境已有 Sentry 機密（2026-07-10 設）：
+  - `EXPO_PUBLIC_SENTRY_DSN`（plaintext；錯誤回報地址，build 時烤進 bundle）
+  - `SENTRY_AUTH_TOKEN`（sensitive；build 時上傳 source map 用，缺則堆疊無法還原成原始碼行號）
+  - Sentry org/project slug＝`assetanchor` / `assetanchor-mobile`，對齊 `app.config.ts` 預設，故**免**設 `SENTRY_ORG` / `SENTRY_PROJECT`
 - iOS distribution 憑證＋provisioning profile 由 EAS 代管（2026-06-24 配置）
 - ASC app record：`AssetAnchor`，**ascAppId `6783860980`**（已回填 `eas.json` submit profile）
 - ASC API key `72WAMTT8XK`（APP_MANAGER 權限，存 EAS 雲端）——EAS Submit 自動使用，本機 `.secrets/AuthKey_KFPGMZGBHC.p8` 未用到
@@ -25,6 +29,8 @@ curl "https://asia-east1-assetanchor-832df.cloudfunctions.net/fetchQuote?market=
 # 期望 {"ok":true,...}；並用 firebase functions:log 掃 scheduledUsdRate 有無連續失敗
 
 # 3. 🛑 owner 授權後：雲端 build（~15-25 分鐘；autoIncrement 自動遞增 build number）
+# ⚠️ code 若新增任何「EAS 注入的 env/機密」（如 Sentry DSN/token），務必在此 build 前用
+#    `eas env:create` 設好——否則功能會「沉默失效」（no-op、不報錯、build 也不會擋）。首設見前置條件。
 cd apps/mobile && eas build -p ios --profile production --non-interactive --no-wait
 #（--no-wait 後用 eas build:view <id> --json 輪詢 status 到 FINISHED）
 
@@ -45,10 +51,9 @@ eas submit -p ios --latest --non-interactive
    建立後回填 `eas.json` 即可全自動。API key 權限選 **APP_MANAGER**（最小權限）。
 3. **Yahoo 429 未發生**：production（GCP asia-east1 IP）直打 Yahoo 報價正常——ADR-0010 的
    誠實 UA 策略在雲端有效。持續觀察即可。
-4. **台銀匯率源已死（待修）**：`rate.bot.com.tw` 全站（含 CSV 端點）自 ~2026-06-30 起對
-   非瀏覽器 client 回 anti-bot JS challenge，`scheduledUsdRate` 每日 08:30 UTC 必失敗，
-   production `exchange_rates` 停在 2026-06-29。app 以最近一日匯率 fallback 不會壞，
-   但需換資料源（候選：Yahoo `TWD=X`，provider 已於 production 驗證可用）。
+4. **台銀匯率源已死 → 已換 Yahoo（2026-07-07 修復，PR #38 `aeb7fa4`）**：`rate.bot.com.tw`
+   全站（含 CSV 端點）自 ~2026-06-30 起對非瀏覽器 client 回 anti-bot JS challenge，
+   `scheduledUsdRate` 每日 08:30 UTC 必失敗。已改用 Yahoo `TWD=X` 並 deploy 驗證。留此記錄供日後 provider 抉擇參考。
 
 ## TestFlight 內部測試：加測試員
 
@@ -69,4 +74,6 @@ eas submit -p ios --latest --non-interactive
 - [ ] 持倉頁報價即時載入（驗 production functions 接線）
 - [ ] 走勢圖各 range 有資料（`ensureHistory`/`fetchIntraday`）
 - [ ] 新增交易 → 持倉重算正確
-- [ ] 多幣別總值換算（注意：匯率暫為 06-29 舊值，修復前屬已知現象）
+- [ ] 多幣別總值換算正確（匯率源已修為 Yahoo `TWD=X`）
+- [ ] **查無代號降級**（守 2026-07-09 prod bug）：新增一筆 market＝美股 + 代號 `0050` 的交易 → 持倉該檔顯示「查無代號」，**不是**永遠「報價載入中…」
+- [ ] **Sentry 接線**：https://assetanchor.sentry.io 的 `assetanchor-mobile` 專案能收到事件（或確認無錯誤湧入）；build log 顯示 source map 上傳成功
