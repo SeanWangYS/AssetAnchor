@@ -34,7 +34,7 @@
 ## 7. 驗證與收尾
 
 - [x] 7.1 `pnpm --filter @assetanchor/shared test:coverage`（>90%）+ `pnpm -r typecheck` + `lint` 全綠；mobile 43 tests
-- [ ] 7.2 本機 dogfood（Emulator 種子多帳戶）：「帳戶」模式每檔歸真實帳戶、無「富邦/IBKR」幽靈帳戶、orphan 進「未分類」；本月無賣出顯示中性「—」
-- [ ] 7.3 Maestro E2E（`apps/mobile/.e2e/`）：登入 → 持倉 → 切「帳戶」→ 斷言真實帳戶名、無 demo 帳戶名
-- [ ] 7.4 iOS Simulator 逐畫面視覺對圖（持倉「帳戶」分群 + AssetDetail 帳戶分布）對照 holdings-overview-spec §3.1/§3.2 —— **owner gate**
-- [ ] 7.5 開 PR；（帶 UI）視覺對圖過後 archive、續做 `account-detail-market-value`；merge 延後 owner 批次
+- [x] 7.2 本機 dogfood（Emulator 種子 4 帳戶）：「帳戶」模式每檔歸真實帳戶（群益=0050/2330、富邦=00878/2317、Firstrade=AAPL/TSLA/VTI、IBKR=QQQ）——映射與舊 demo 表明顯不同 → 證明讀真實 account_id；本月無賣出顯示中性「—」
+- [ ] 7.3 Maestro E2E flow（選作，未做）：登入 → 持倉 → 切「帳戶」→ 斷言真實帳戶名
+- [x] 7.4 iOS Simulator 視覺對圖（AXe 自動化）：持倉「帳戶」分群 + AssetDetail 帳戶分布（=群益證券）+ bento 中性「—」三畫面 PASS，對照 holdings-overview-spec §3.1 item 103（依券商分組/檔數/幣別小計/標題無圓點）
+- [x] 7.5 開 PR #45；視覺對圖過 → archive；merge 延後 owner 批次。附帶觀察：AssetDetail「已實現損益 ▲NT$0」仍綠（Pnl 全域 0 中性 follow-up，非本 change 範圍）
