@@ -1,18 +1,19 @@
 import { useLayoutEffect, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { AccountDocument, Currency } from '@assetanchor/shared';
+import { Money, type AccountDocument, type Currency } from '@assetanchor/shared';
 import type { AccountsStackScreenProps } from '../../../core/navigation/types';
 import { useAccountsStore } from '../accountsStore';
 import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { Avatar, EmptyState, ErrorState, Fab, Icon, ListItem, LoadingView } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
+import { accountMonogram, brokerLabel, formatMoney, holdingsForAccount } from '../accountDisplay';
 import {
-  accountMonogram,
-  brokerLabel,
-  currencyPrefix,
-  holdingsForAccount,
-  holdingsValueByCurrency,
-} from '../accountDisplay';
+  quoteFor,
+  useQuotes,
+  useRefreshQuotesOnFocus,
+  type QuoteTarget,
+} from '../../../services/quotes';
+import { positionValuation } from '../../../services/valuation';
 import { PlusIcon } from '../components/AccountIcons';
 
 /**
@@ -48,15 +49,38 @@ export default function AccountListScreen({ navigation }: AccountsStackScreenPro
     return { active: a, inactive: i };
   }, [accounts]);
 
-  /** 右側市值（原幣別）。持股可能多幣別 → 各幣別一列；無持股顯示 — 。 */
+  // 報價（A2）：為所有帳戶持股的聯集 on-demand 載入 + focus 檢查新鮮度；row 右側改真實市值。
+  const allTargets = useMemo(() => {
+    const seen = new Set<string>();
+    const t: QuoteTarget[] = [];
+    for (const acc of accounts) {
+      for (const p of holdingsForAccount(transactions, acc.account_id).positions) {
+        const k = `${p.market}_${p.symbol}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        t.push({ market: p.market, symbol: p.symbol, currency: p.currency });
+      }
+    }
+    return t;
+  }, [accounts, transactions]);
+  const quotes = useQuotes(allTargets);
+  useRefreshQuotesOnFocus(allTargets);
+
+  /** 右側市值（原幣別，真實報價）。多幣別各一列；缺報價標「N 檔更新中」；無持股顯示 — 。 */
   function valueText(accountId: string): string {
     const { positions } = holdingsForAccount(transactions, accountId);
-    const sums = holdingsValueByCurrency(positions);
-    const parts: string[] = [];
-    for (const [ccy, money] of Object.entries(sums)) {
-      if (!money) continue;
-      parts.push(`${currencyPrefix(ccy as Currency)} ${money.toDisplayString()}`);
+    const byCcy = new Map<Currency, Money>();
+    let pending = 0;
+    for (const p of positions) {
+      const v = positionValuation(p, quoteFor(quotes, p.market, p.symbol), Date.now());
+      if (!v) {
+        pending += 1;
+        continue;
+      }
+      byCcy.set(p.currency, (byCcy.get(p.currency) ?? Money.zero(p.currency)).add(v.marketValue));
     }
+    const parts = [...byCcy.entries()].map(([ccy, m]) => formatMoney(m.toDecimalString(), ccy));
+    if (pending > 0) parts.push(`${pending} 檔更新中`);
     return parts.length === 0 ? '—' : parts.join('\n');
   }
 
