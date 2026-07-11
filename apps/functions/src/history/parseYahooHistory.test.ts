@@ -4,6 +4,7 @@ import { parseYahooHistory, localDateOf } from './parseYahooHistory';
 function yahooJson(opts: {
   granularity?: string;
   timezone?: string;
+  symbol?: string;
   timestamps?: number[];
   closes?: (number | null)[];
   adjcloses?: (number | null)[];
@@ -13,6 +14,7 @@ function yahooJson(opts: {
       result: [
         {
           meta: {
+            ...(opts.symbol !== undefined ? { symbol: opts.symbol } : {}),
             dataGranularity: opts.granularity ?? '1d',
             exchangeTimezoneName: opts.timezone ?? 'Asia/Taipei',
             regularMarketPrice: 100,
@@ -81,5 +83,12 @@ describe('parseYahooHistory', () => {
       yahooJson({ timezone: 'Not/A_Zone', timestamps: [TPE_BAR], closes: [1] }),
     );
     expect(parsed?.bars[0]?.date).toBe('2025-01-02'); // UTC 05:30
+  });
+
+  it('meta.symbol 帶出為 yahooSymbol、缺值為 null（標的身分護欄比對來源）', () => {
+    expect(
+      parseYahooHistory(yahooJson({ symbol: 'BTC-USD', timestamps: [], closes: [] }))?.yahooSymbol,
+    ).toBe('BTC-USD');
+    expect(parseYahooHistory(yahooJson({ timestamps: [], closes: [] }))?.yahooSymbol).toBeNull();
   });
 });

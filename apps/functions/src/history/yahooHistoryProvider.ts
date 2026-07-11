@@ -26,9 +26,13 @@ export interface HistoryProvider {
   fetchIntraday(market: HistoryMarket, symbol: string, tf: IntradayTf): Promise<HistoryBar[]>;
 }
 
-/** market + symbol → Yahoo 歷史代號（台股 `.TW`；FX pseudo-symbol `USDTWD` → `TWD=X`）。 */
+/**
+ * market + symbol → Yahoo 歷史代號（台股 `.TW`；crypto `-USD`；FX pseudo-symbol `USDTWD` → `TWD=X`）。
+ * CRYPTO 後綴寫死 `-USD`（報價幣別恆 USD，同 quotes 的 toYahooSymbol；enable-crypto-quotes）。
+ */
 export function toYahooHistorySymbol(market: HistoryMarket, symbol: string): string {
   if (market === 'TW') return `${symbol}.TW`;
+  if (market === 'CRYPTO') return `${symbol}-USD`;
   if (market === 'FX') return symbol.startsWith('USD') ? `${symbol.slice(3)}=X` : `${symbol}=X`;
   return symbol;
 }
@@ -62,6 +66,10 @@ async function fetchChart(
   }
   const parsed = parseYahooHistory(await res.json());
   if (!parsed) throw new Error(`Yahoo history 解析失敗（${ySymbol}）`);
+  // 標的身分護欄（enable-crypto-quotes）：200 但回錯標的 → fail loud、不落地；缺值不擋。
+  if (parsed.yahooSymbol !== null && parsed.yahooSymbol.toUpperCase() !== ySymbol.toUpperCase()) {
+    throw new Error(`Yahoo 回應標的不符（請求 ${ySymbol}、回 ${parsed.yahooSymbol}）`);
+  }
   if (expectGranularity !== undefined && parsed.granularity !== expectGranularity) {
     // Yahoo 對過長 range 會靜默降級（如 1mo）——寧可 fail loud 也不寫月線髒資料
     throw new Error(

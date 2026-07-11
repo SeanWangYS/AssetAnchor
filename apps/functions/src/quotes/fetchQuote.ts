@@ -2,7 +2,15 @@ import { onRequest } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { CURRENCIES, MARKETS, isFresh, sanitizeQuote, type Currency } from '@assetanchor/shared';
+import {
+  CURRENCIES,
+  MARKETS,
+  isFresh,
+  quoteCurrencyForMarket,
+  sanitizeQuote,
+  type Currency,
+  type Market,
+} from '@assetanchor/shared';
 import { yahooProvider, type QuoteProvider } from './yahooProvider';
 
 const REGION = 'asia-east1';
@@ -32,7 +40,15 @@ function parseInput(q: Record<string, unknown>): ParseResult {
   if (!(CURRENCIES as readonly string[]).includes(currency)) {
     return { ok: false, msg: 'currency 需合法' };
   }
-  return { ok: true, input: { market, symbol, currency: currency as Currency } };
+  // 報價幣別由市場決定（design D9）：CRYPTO 恆 USD，client 聲稱的幣別不可信。
+  return {
+    ok: true,
+    input: {
+      market,
+      symbol,
+      currency: quoteCurrencyForMarket(market as Market, currency as Currency),
+    },
+  };
 }
 
 /**

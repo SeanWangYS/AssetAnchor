@@ -1,4 +1,10 @@
-import { CURRENCIES, MARKETS, type Currency } from '@assetanchor/shared';
+import {
+  CURRENCIES,
+  MARKETS,
+  quoteCurrencyForMarket,
+  type Currency,
+  type Market,
+} from '@assetanchor/shared';
 
 /** 批次報價單筆目標（market:symbol:currency）。 */
 export interface BatchQuoteItem {
@@ -40,7 +46,12 @@ export function parseBatchInput(q: Record<string, unknown>): ParseBatchResult {
     const id = `${market}_${symbol}`;
     if (seen.has(id)) continue; // 去重
     seen.add(id);
-    items.push({ market, symbol, currency: currency as Currency });
+    // 報價幣別由市場決定（design D9）：CRYPTO 恆 USD，client 聲稱的幣別不可信。
+    items.push({
+      market,
+      symbol,
+      currency: quoteCurrencyForMarket(market as Market, currency as Currency),
+    });
   }
 
   if (items.length === 0) return { ok: false, msg: '無有效項（market:symbol:currency）' };

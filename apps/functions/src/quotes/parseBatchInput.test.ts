@@ -37,6 +37,16 @@ describe('parseBatchInput', () => {
     expect(parseBatchInput({ items: '' }).ok).toBe(false);
   });
 
+  it('CRYPTO 報價幣別 coerce 為 USD——client 聲稱 TWD/USDT 不可信（design D9）', () => {
+    const r = parseBatchInput({ items: 'CRYPTO:BTC:TWD,CRYPTO:ETH:USDT,TW:2330:TWD' });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.items.find((i) => i.symbol === 'BTC')!.currency).toBe('USD');
+      expect(r.items.find((i) => i.symbol === 'ETH')!.currency).toBe('USD');
+      expect(r.items.find((i) => i.symbol === '2330')!.currency).toBe('TWD');
+    }
+  });
+
   it('超過上限 → ok:false', () => {
     const many = Array.from({ length: MAX_BATCH_ITEMS + 1 }, (_, i) => `US:S${i}:USD`).join(',');
     expect(parseBatchInput({ items: many }).ok).toBe(false);

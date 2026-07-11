@@ -34,6 +34,11 @@ export const yahooProvider: QuoteProvider = {
     }
     const parsed = parseYahooChart(json);
     if (!parsed) throw new Error(`Yahoo 報價解析失敗（${ySymbol}）`);
+    // 標的身分護欄（enable-crypto-quotes）：200 但回錯標的（如 `BTC` 撞同名 ETF）視同查無代號
+    // ——永久錯誤（Yahoo 對該 ticker 的解讀就是別的標的），不得放行錯價。缺值不擋（避免誤殺）。
+    if (parsed.yahooSymbol !== null && parsed.yahooSymbol.toUpperCase() !== ySymbol.toUpperCase()) {
+      throw new SymbolNotFoundError(market, symbol);
+    }
     return parsed;
   },
 };
