@@ -57,6 +57,12 @@ maestro test apps/mobile/.e2e/regression-quote-not-found.yaml
    - picker：三個「請選擇」佔位相同 → 靠欄位 `testID` 開對的 sheet，再點 sheet 內中文 option。
    - **清單「列」**：帳戶/持股列是複合 a11y label，Maestro 文字匹配不到 → 要斷言特定列需為列補 `testID`（後續 instrumentation；目前以「回到清單頁」為成功訊號）。
 
+8. **市場/幣別聯動 re-render 後 a11y 快照全面過期**（enable-crypto-quotes 實測）：表單內選完「市場」後（幣別聯動 re-render），後續**文字選項找不到、元素 frame 走位**（打字會落錯欄位、tap 打到鍵盤數字鍵）；**id tap 仍可用**。對策＝(a) 把「市場 sheet」排在該表單所有打字/其他 sheet 之後；(b) 其後的 sheet 選項用**座標 tap**（Sheet bottom-anchored、版面固定：6 選項 68/73/79/84/89/95%、4 選項 79/84/89/95%、3 選項 84/89/95%）＋ takeScreenshot 供視覺對圖。
+9. **鍵盤收不掉會吃 submit**：RN 表單 tap-outside 不會收鍵盤、`scrollUntilVisible` 又因 submit「幾何上可見」（在鍵盤後面）不捲動 → tap 打到鍵盤。**唯一實測可靠**：開任一 picker sheet 再點 backdrop 關閉（不改值），sheet 開合必收鍵盤。
+10. **文字打字順序**：每次 `inputText` 後**不要直接 tap 下一個輸入欄**（鍵盤開啟時內容上移 ~360px、快照 frame 沒跟上）——中間隔一個 sheet 開合，或欄位在鍵盤線以上才安全。
+11. **持股/清單「列」斷言用 regex**：列是複合 a11y label（`B, Bitcoin USD, BTC, …`），`visible: 'BTC'` 精確比對不中 → `scrollUntilVisible: element: '.*BTC.*'`（同坑 7 的正式解法之一）。
+12. **送出成功斷言防 false positive**：先驗 `notVisible: '新增買入'`（modal 真的關了）再驗清單內容——表單殘留時「BTC」等字樣會讓內容斷言誤判通過。
+
 ## 後續（尚未做）
 
 - 帳戶 / 持股**列**補 `testID` → 可直接斷言「建立的那筆」而非只驗回清單。
