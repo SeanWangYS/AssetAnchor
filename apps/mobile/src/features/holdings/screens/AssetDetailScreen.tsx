@@ -6,6 +6,7 @@ import { Button, Card, Chart, EmptyState, Pnl, Segmented, TimeTabs } from '../..
 import { colors, fontFamily, numericStyle, spacing } from '../../../core/theme';
 import { useHoldings } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
+import { quoteMoneyIn } from '../../../services/valuation';
 import { quoteFor, useQuotes, useRefreshQuotesOnFocus } from '../../../services/quotes';
 import { useSymbolMap, symbolNameOf, symbolEnglishOf } from '../../../services/symbols';
 import { useSymbolTrendSeries } from '../useTrendSeries';
@@ -68,7 +69,7 @@ export default function AssetDetailScreen({
     symbol,
     nativeCcy,
     tf,
-    quote ? new Money(quote.price, nativeCcy).toNumber() : null,
+    quote ? (quoteMoneyIn(quote.price, quote, nativeCcy, rates)?.toNumber() ?? null) : null,
   );
 
   // header：中央顯示「代號 名稱」+ 副標（英文名 · 台股|美股）。
@@ -110,7 +111,8 @@ export default function AssetDetailScreen({
   }
 
   // 現價/市值/未實現損益：報價真值（ADR-0006）。無報價 → null（降級顯示「更新中…」）；過期仍顯示最後已知值。
-  const priceM = quote ? new Money(quote.price, position.currency) : null;
+  // 報價幣別由市場決定（D9）：先換算到 lot 幣別（無法換算＝更新中），下游單幣別運算不變。
+  const priceM = quote ? quoteMoneyIn(quote.price, quote, position.currency, rates) : null;
   const marketValue = priceM ? priceM.multiply(position.quantity) : null;
   const totalCostM = Money.fromDecimalString(position.totalCost, position.currency);
   const unrealized = marketValue ? marketValue.subtract(totalCostM) : null;
@@ -133,7 +135,9 @@ export default function AssetDetailScreen({
       : null;
   // 今日漲跌（每股）：現價 − 前收（僅新鮮報價）。缺 prevClose 或過期則不顯示今日列。
   const prevCloseM =
-    quoteFresh && quote?.prevClose ? new Money(quote.prevClose, position.currency) : null;
+    quoteFresh && quote?.prevClose
+      ? quoteMoneyIn(quote.prevClose, quote, position.currency, rates)
+      : null;
   const todayDelta = priceM && prevCloseM ? priceM.subtract(prevCloseM) : null;
   const todayPct =
     priceM && prevCloseM && !prevCloseM.isZero()

@@ -17,6 +17,8 @@ export interface HistoryBar {
 export interface ParsedYahooHistory {
   granularity: string | null;
   timezone: string | null;
+  /** Yahoo 回傳的標的代號（`meta.symbol`，缺為 null）——標的身分護欄的比對來源。 */
+  yahooSymbol: string | null;
   bars: HistoryBar[];
 }
 
@@ -52,6 +54,7 @@ export function parseYahooHistory(json: unknown): ParsedYahooHistory | null {
   if (!meta) return null;
 
   const timezone = typeof meta.exchangeTimezoneName === 'string' ? meta.exchangeTimezoneName : null;
+  const yahooSymbol = typeof meta.symbol === 'string' ? meta.symbol : null;
   const granularity = typeof meta.dataGranularity === 'string' ? meta.dataGranularity : null;
 
   const timestamps = Array.isArray(first?.timestamp) ? first.timestamp : [];
@@ -69,5 +72,5 @@ export function parseYahooHistory(json: unknown): ParsedYahooHistory | null {
       adjclose: num(adjcloses[i]),
     });
   }
-  return { granularity, timezone, bars };
+  return { granularity, timezone, yahooSymbol, bars };
 }

@@ -27,8 +27,12 @@ interface FetchSymbolMetaInput {
 
 type ParseResult = { ok: true; input: FetchSymbolMetaInput } | { ok: false; msg: string };
 
-/** 驗證 query 參數（擋亂打）。 */
-function parseInput(q: Record<string, unknown>): ParseResult {
+/**
+ * 驗證 query 參數（擋亂打）。CRYPTO 的 `currency` 一律 coerce 為 USD（enable-crypto-quotes
+ * design D4）：symbol.currency 是**報價幣別**（crypto 恆 USD），與交易幣別（可 USDT/TWD）
+ * 分離；本函式為 symbols 唯一寫入者的入口，在此 coerce 可防禦任何寫入端。
+ */
+export function parseInput(q: Record<string, unknown>): ParseResult {
   const market = String(q.market ?? '');
   const symbol = String(q.symbol ?? '')
     .trim()
@@ -46,7 +50,12 @@ function parseInput(q: Record<string, unknown>): ParseResult {
   }
   return {
     ok: true,
-    input: { market, symbol, assetType: assetType as AssetType, currency: currency as Currency },
+    input: {
+      market,
+      symbol,
+      assetType: assetType as AssetType,
+      currency: market === 'CRYPTO' ? 'USD' : (currency as Currency),
+    },
   };
 }
 

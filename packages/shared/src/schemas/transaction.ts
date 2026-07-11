@@ -2,10 +2,13 @@ import { z } from 'zod';
 import Decimal from 'decimal.js';
 import { MARKETS } from '../enums/markets.js';
 import { ASSET_TYPES } from '../enums/asset-types.js';
-import { expectedCurrencyForMarket } from '../markets/marketConsistency.js';
+import {
+  CRYPTO_TRANSACTION_CURRENCIES,
+  expectedCurrencyForMarket,
+} from '../markets/marketConsistency.js';
 
-/** MVP 幣別範圍：schema 預留多幣別，但 MVP 交易只收 USD / TWD（planning doc §2 / §5）。 */
-const MVP_CURRENCIES = ['USD', 'TWD'] as const;
+/** MVP 幣別範圍：schema 預留多幣別，MVP 交易收 USD / TWD ＋ USDT（僅限 CRYPTO，見下方允許集）。 */
+const MVP_CURRENCIES = ['USD', 'TWD', 'USDT'] as const;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -73,8 +76,9 @@ export const transactionInputSchema = z
     tax: nonNegativeDecimal('交易稅').default('0'),
     notes: z.string().default(''),
   })
-  // 市場×幣別一致性（guard-transaction-market-consistency）：TW↔TWD、US↔USD 硬擋，
-  // CRYPTO/OTHER 不約束。擋在 schema 層使未來所有寫入端（批次匯入等）同受保護。
+  // 市場×幣別一致性（guard-transaction-market-consistency）：TW↔TWD、US↔USD 硬擋；
+  // CRYPTO 限允許集 USD/USDT/TWD（enable-crypto-quotes）；OTHER 不約束。
+  // 擋在 schema 層使未來所有寫入端（批次匯入等）同受保護。
   .superRefine((v, ctx) => {
     const expected = expectedCurrencyForMarket(v.market);
     if (expected !== null && v.currency !== expected) {
@@ -82,6 +86,16 @@ export const transactionInputSchema = z
         code: z.ZodIssueCode.custom,
         path: ['currency'],
         message: v.market === 'TW' ? '台股交易幣別須為 TWD' : `美股交易幣別須為 ${expected}（USD）`,
+      });
+    }
+    if (
+      v.market === 'CRYPTO' &&
+      !(CRYPTO_TRANSACTION_CURRENCIES as readonly string[]).includes(v.currency)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['currency'],
+        message: '加密貨幣交易幣別限 USD / USDT / TWD',
       });
     }
   });

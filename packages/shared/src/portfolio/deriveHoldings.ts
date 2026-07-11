@@ -60,10 +60,11 @@ function chronological(transactions: TransactionDocument[]): TransactionDocument
 }
 
 /**
- * 單趟時序掃描：累積每個 (market, symbol) 的持有量/成本/已實現，並逐筆 SELL 產生已實現事件。
+ * 單趟時序掃描：累積每個 (market, symbol, currency) 的持有量/成本/已實現，並逐筆 SELL 產生已實現事件。
  * BUY：量與成本累加；SELL：均價不變，成本依 avgCost×soldQty 等比遞減、已實現入帳。
  * 全數賣出後量與成本歸零 → 後續 BUY 視為新週期（§4）。超賣 fail loud（ADR-0007）。
- * 同一 (market, symbol) 混幣別由 Money 運算丟 CurrencyMismatchError。
+ * 同標的不同交易幣別為**獨立 lot**（enable-crypto-quotes design D7：混幣別記帳不擲錯，
+ * Money 運算永不跨幣別；SELL 只沖銷同幣別 lot）。
  */
 function scan(transactions: TransactionDocument[]): ScanResult {
   const lots = new Map<string, Lot>();
@@ -73,7 +74,7 @@ function scan(transactions: TransactionDocument[]): ScanResult {
     if (tx.transaction_type !== 'BUY' && tx.transaction_type !== 'SELL') continue;
 
     const currency = tx.currency;
-    const key = `${tx.market}_${tx.symbol}`;
+    const key = `${tx.market}_${tx.symbol}_${currency}`;
     // 缺欄位 fail-soft（pre-ADR-0005 舊 doc 可能缺值）：缺/非法視為 0，不丟 DecimalError。
     const safeQty = toSafeDecimalString(tx.quantity);
     const qty = Money.fromDecimalString(safeQty, currency);
@@ -134,7 +135,8 @@ function scan(transactions: TransactionDocument[]): ScanResult {
 
 /**
  * 從 TransactionDocument[] 動態推導**當前**持倉（純函式、deterministic）。
- * 處理 BUY/SELL（時序），全數賣出（qty=0）之 (market, symbol) **不**列入（非當前持倉）。
+ * 處理 BUY/SELL（時序），全數賣出（qty=0）之 lot **不**列入（非當前持倉）。
+ * 同標的混幣別記帳 → 每幣別各一筆 position（D7；同 market/symbol 依 currency 排序穩定）。
  */
 export function deriveHoldings(transactions: TransactionDocument[]): Position[] {
   const { lots } = scan(transactions);
@@ -151,11 +153,11 @@ export function deriveHoldings(transactions: TransactionDocument[]): Position[] 
       txCount: lot.txCount,
       realizedPnl: lot.realized.toDecimalString(),
     }))
-    .sort((p1, p2) =>
-      p1.market === p2.market
-        ? p1.symbol.localeCompare(p2.symbol)
-        : p1.market.localeCompare(p2.market),
-    );
+    .sort((p1, p2) => {
+      if (p1.market !== p2.market) return p1.market.localeCompare(p2.market);
+      if (p1.symbol !== p2.symbol) return p1.symbol.localeCompare(p2.symbol);
+      return p1.currency.localeCompare(p2.currency);
+    });
 }
 
 /** 從交易事件流推導每筆 SELL 的已實現損益事件（時序，§4）。純函式。 */
@@ -164,15 +166,19 @@ export function deriveRealizedEvents(transactions: TransactionDocument[]): Reali
 }
 
 /**
- * 某 (market, symbol) 當下可賣股數（= 目前持有股數；無持倉回 "0.0000000000"）。
+ * 某 (market, symbol, currency) 當下可賣股數（= 目前同幣別 lot 持有股數；無持倉回 "0.0000000000"）。
+ * SELL 只沖銷同幣別 lot（D7）——幣別選錯時可賣 0，由既有不可超賣驗證自然擋下。
  * 供 SELL 表單做「不可超賣」驗證的單一事實來源。
  */
 export function sellableQuantity(
   transactions: TransactionDocument[],
   market: Market,
   symbol: string,
+  currency: Currency,
 ): string {
-  const pos = deriveHoldings(transactions).find((p) => p.market === market && p.symbol === symbol);
+  const pos = deriveHoldings(transactions).find(
+    (p) => p.market === market && p.symbol === symbol && p.currency === currency,
+  );
   return pos ? pos.quantity : '0.0000000000';
 }
 
@@ -187,11 +193,13 @@ export function sellableQuantityForAccount(
   accountId: string,
   market: Market,
   symbol: string,
+  currency: Currency,
 ): string {
   return sellableQuantity(
     transactions.filter((t) => t.account_id === accountId),
     market,
     symbol,
+    currency,
   );
 }
 
@@ -228,6 +236,15 @@ export function deriveHoldingsForAccountSafe(
     transactions.filter((t) => t.account_id === accountId),
     `account ${accountId}`,
   );
+}
+
+/**
+ * **全域**持倉的逐-symbol 容錯衍生（enable-crypto-quotes design D8；HoldingsOverview /
+ * Analysis 顯示層用）：單一 symbol 爛資料（超賣 / orphan SELL）只跳過該 symbol、收進
+ * `skipped` + warn，**不得清空整個投資組合**。原 `deriveHoldings` 維持 fail-loud（ADR-0007）。
+ */
+export function deriveHoldingsSafe(transactions: TransactionDocument[]): SafeHoldingsResult {
+  return safeHoldingsFromTxs(transactions, '總覽');
 }
 
 /**

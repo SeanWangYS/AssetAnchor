@@ -110,7 +110,8 @@ export function computeHoldingsHero(
       todayKnown = false;
       continue;
     }
-    const price = new Money(q.price, p.currency);
+    // 報價幣別由市場決定（enable-crypto-quotes D9）：以 q.currency 定價，與成本幣別分離。
+    const price = new Money(q.price, q.currency);
     const mv = toDisplay(price.multiply(p.quantity), rates, displayCcy);
     const c = toDisplay(Money.fromDecimalString(p.totalCost, p.currency), rates, displayCcy);
     if (mv === null || c === null) {
@@ -126,7 +127,7 @@ export function computeHoldingsHero(
     if (!fresh) anyStale = true;
     if (fresh && q.prevClose) {
       const ch = toDisplay(
-        price.subtract(new Money(q.prevClose, p.currency)).multiply(p.quantity),
+        price.subtract(new Money(q.prevClose, q.currency)).multiply(p.quantity),
         rates,
         displayCcy,
       );
@@ -182,13 +183,32 @@ export interface PositionValuation {
  * 單一持倉估值（供帳戶詳情/列表的持股列與市值合計用）。原幣別、不做顯示換算
  * （換算交呼叫端以 `toDisplay` 處理）。缺報價回 `null` → 呼叫端降級為「更新中…」。純函式。
  */
+/**
+ * 報價金額（price / prevClose）以報價幣別建 Money，必要時換算到指定幣別（rates 優先、
+ * 退 demo FX）；無法換算回 null（呼叫端降級「更新中…」）。報價幣別 vs 成本幣別分離的
+ * 單一換算入口（enable-crypto-quotes D9），持倉列 / 個股明細 / 估值共用。
+ */
+export function quoteMoneyIn(
+  value: string,
+  quote: QuoteEntry,
+  to: Currency,
+  rates: RateMap | null,
+): Money | null {
+  const m = new Money(value, quote.currency);
+  return quote.currency === to ? m : toDisplay(m, rates, to);
+}
+
 export function positionValuation(
   position: Position,
   quote: QuoteEntry | undefined,
   nowMs: number,
+  rates: RateMap | null = null,
 ): PositionValuation | null {
   if (!quote) return null;
-  const price = new Money(quote.price, position.currency);
+  // 報價幣別由市場決定（D9）；與 lot 幣別不同時先換算到 lot 幣別（rates 優先、退 demo FX），
+  // 無法換算 → null（呼叫端降級「更新中…」），維持本函式「原幣別輸出」契約。
+  const price = quoteMoneyIn(quote.price, quote, position.currency, rates);
+  if (price === null) return null;
   const marketValue = price.multiply(position.quantity);
   const cost = Money.fromDecimalString(position.totalCost, position.currency);
   const avg = Money.fromDecimalString(position.averageCost, position.currency);

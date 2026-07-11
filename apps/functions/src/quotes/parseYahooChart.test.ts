@@ -56,6 +56,17 @@ describe('parseYahooChart', () => {
     expect(q.price).toBe(100);
     expect(q.volume).toBeNull();
   });
+
+  it('exposes meta.symbol as yahooSymbol（標的身分護欄的比對來源）', () => {
+    expect(parseYahooChart(AAPL_FIXTURE)!.yahooSymbol).toBe('AAPL');
+  });
+
+  it('yahooSymbol is null when meta.symbol missing or non-string（缺值不擋、由 provider 跳過比對）', () => {
+    const j = { chart: { result: [{ meta: { regularMarketPrice: 10 } }] } };
+    expect(parseYahooChart(j)!.yahooSymbol).toBeNull();
+    const j2 = { chart: { result: [{ meta: { regularMarketPrice: 10, symbol: 123 } }] } };
+    expect(parseYahooChart(j2)!.yahooSymbol).toBeNull();
+  });
 });
 
 describe('toYahooSymbol', () => {
@@ -64,5 +75,12 @@ describe('toYahooSymbol', () => {
   });
   it('leaves US symbols as-is', () => {
     expect(toYahooSymbol('US', 'AAPL')).toBe('AAPL');
+  });
+  it('suffixes CRYPTO symbols with -USD（寫死 USD——Yahoo 無 BTC-USDT pair；報價幣別恆 USD）', () => {
+    expect(toYahooSymbol('CRYPTO', 'BTC')).toBe('BTC-USD');
+    expect(toYahooSymbol('CRYPTO', 'ETH')).toBe('ETH-USD');
+  });
+  it('leaves OTHER market symbols as-is', () => {
+    expect(toYahooSymbol('OTHER', 'FOO')).toBe('FOO');
   });
 });

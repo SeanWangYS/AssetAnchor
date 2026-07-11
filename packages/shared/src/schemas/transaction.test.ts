@@ -92,13 +92,47 @@ describe('transactionInputSchema', () => {
     ).toBe(false);
   });
 
-  it('OTHER / CRYPTO 市場不受幣別一致性約束', () => {
+  it('OTHER 市場不受幣別一致性約束', () => {
     expect(
       transactionInputSchema.safeParse({ ...valid, market: 'OTHER', currency: 'USD' }).success,
     ).toBe(true);
+  });
+
+  it('CRYPTO 市場允許 USD / USDT / TWD（enable-crypto-quotes）', () => {
+    for (const currency of ['USD', 'USDT', 'TWD'] as const) {
+      expect(
+        transactionInputSchema.safeParse({ ...valid, market: 'CRYPTO', symbol: 'BTC', currency })
+          .success,
+      ).toBe(true);
+    }
+  });
+
+  it('rejects US market × USDT（USDT 僅限 CRYPTO 交易幣別）', () => {
+    const r = transactionInputSchema.safeParse({
+      ...valid,
+      market: 'US',
+      symbol: 'VOO',
+      currency: 'USDT',
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.includes('currency'))).toBe(true);
+    }
+  });
+
+  it('rejects TW market × USDT', () => {
+    expect(transactionInputSchema.safeParse({ ...valid, currency: 'USDT' }).success).toBe(false);
+  });
+
+  it('rejects CRYPTO × 集合外幣別（JPY——即使未來進 MVP 白名單也被允許集擋）', () => {
     expect(
-      transactionInputSchema.safeParse({ ...valid, market: 'CRYPTO', currency: 'TWD' }).success,
-    ).toBe(true);
+      transactionInputSchema.safeParse({
+        ...valid,
+        market: 'CRYPTO',
+        symbol: 'BTC',
+        currency: 'JPY',
+      }).success,
+    ).toBe(false);
   });
 
   it('rejects malformed transaction_date (not YYYY-MM-DD)', () => {

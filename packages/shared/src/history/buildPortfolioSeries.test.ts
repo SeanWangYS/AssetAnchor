@@ -12,7 +12,7 @@ function tx(
   opts: {
     symbol: string;
     market: Market;
-    currency: 'USD' | 'TWD';
+    currency: 'USD' | 'TWD' | 'USDT';
     quantity: string;
     price: string;
     date: string;
@@ -270,5 +270,27 @@ describe('buildPortfolioSeries', () => {
         displayCurrency: 'TWD',
       }),
     ).toEqual([]);
+  });
+
+  it('USDT 部位以 1:1 釘 USD 換算（enable-crypto-quotes D3）：USDT 市值 × USD_TWD', () => {
+    const series = buildPortfolioSeries({
+      transactions: [
+        tx('BUY', {
+          symbol: 'ETH',
+          market: 'CRYPTO',
+          currency: 'USDT',
+          quantity: '2',
+          price: '3000',
+          date: '2025-01-02',
+        }),
+      ],
+      closesBySymbol: {
+        CRYPTO_ETH: { '2025-01-02': D('3000') },
+      },
+      fxUsdTwdCloses: { '2025-01-02': D('32') },
+      displayCurrency: 'TWD',
+    });
+    // 2 × 3000 USDT ≒ 6000 USD × 32 = 192,000 TWD（不得因缺 USDT_TWD 鍵而整日剔除）
+    expect(series[0]?.value.toDecimalString()).toBe(D('192000'));
   });
 });

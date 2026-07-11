@@ -3,7 +3,13 @@ import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { create } from 'zustand';
 import { doc, getDoc } from '@react-native-firebase/firestore';
-import { isFresh, type Currency, type Market, type QuoteErrorCode } from '@assetanchor/shared';
+import {
+  isFresh,
+  quoteCurrencyForMarket,
+  type Currency,
+  type Market,
+  type QuoteErrorCode,
+} from '@assetanchor/shared';
 import { db, functionsBaseUrl } from '../firebase';
 import { buildFetchQuotesUrl, parseFetchQuotesResponse, resolveBatchTargets } from './quotesBatch';
 import { logQuoteError } from './quotesLog';
@@ -75,7 +81,8 @@ async function triggerFetchQuotes(
         entries[id] = {
           price: p.price,
           prevClose: p.prevClose,
-          currency: t.currency,
+          // 報價幣別由市場決定（enable-crypto-quotes D9）：CRYPTO 恆 USD，不抄 target/交易幣別。
+          currency: quoteCurrencyForMarket(t.market, t.currency),
           fetchedAtMs: p.fetchedAtMs,
         };
       }
@@ -118,7 +125,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
         const id = keyOf(t.market, t.symbol);
         const inMem = get().quotes[id];
         if (!force && inMem && isFresh(inMem.fetchedAtMs, now)) return;
-        const cached = await readFirestoreCache(id, t.currency);
+        const cached = await readFirestoreCache(id, quoteCurrencyForMarket(t.market, t.currency));
         if (!force && cached && isFresh(cached.fetchedAtMs, now)) {
           updates[id] = cached;
           return;

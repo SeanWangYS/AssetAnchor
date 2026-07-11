@@ -8,6 +8,8 @@ import type { RawQuote } from '@assetanchor/shared';
  */
 export interface ParsedYahooQuote extends RawQuote {
   sourceTimestampSec: number | null;
+  /** Yahoo 回傳的標的代號（`meta.symbol`，缺為 null）——標的身分護欄的比對來源。 */
+  yahooSymbol: string | null;
 }
 
 function num(v: unknown): number | null {
@@ -32,10 +34,17 @@ export function parseYahooChart(json: unknown): ParsedYahooQuote | null {
     prevClose: num(meta.chartPreviousClose) ?? num(meta.previousClose),
     volume: num(meta.regularMarketVolume),
     sourceTimestampSec: num(meta.regularMarketTime),
+    yahooSymbol: typeof meta.symbol === 'string' ? meta.symbol : null,
   };
 }
 
-/** market + symbol → Yahoo 代號（台股加 `.TW`；美股原樣）。 */
+/**
+ * market + symbol → Yahoo 代號（台股加 `.TW`；crypto 加 `-USD`；其餘原樣）。
+ * CRYPTO 後綴寫死 `-USD`（報價幣別恆 USD）：Yahoo 無 `BTC-USDT` 類 pair，
+ * 且交易幣別（可 USDT/TWD）與報價幣別是兩個概念——不可從 symbol.currency 組。
+ */
 export function toYahooSymbol(market: string, symbol: string): string {
-  return market === 'TW' ? `${symbol}.TW` : symbol;
+  if (market === 'TW') return `${symbol}.TW`;
+  if (market === 'CRYPTO') return `${symbol}-USD`;
+  return symbol;
 }

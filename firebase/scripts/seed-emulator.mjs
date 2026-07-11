@@ -538,15 +538,24 @@ async function main() {
   }
 
   // 7) exchange_rates/{date} (so the cross-currency TWD grand total renders).
-  //    Mock rate: 1 USD = 30.95 TWD (design §3.2 / §5). Store both directions.
+  //    Mock rate: 1 USD = 30.95 TWD (design §3.2 / §5). Store both directions,
+  //    plus the USDT 1:1-peg keys (enable-crypto-quotes; mirrors buildDailyRates).
   const rateDate = '2025-06-13';
   const usdTwd = '30.95';
   const twdUsd = new Decimal(1).div(new Decimal(usdTwd)).toFixed(STORAGE_DECIMALS);
+  const one = new Decimal(1).toFixed(STORAGE_DECIMALS);
   await db.doc(`exchange_rates/${rateDate}`).set({
     date: rateDate,
     source: 'BOT',
     rate_type: 'spot_sell',
-    rates: { USD_TWD: dec(usdTwd), TWD_USD: twdUsd },
+    rates: {
+      USD_TWD: dec(usdTwd),
+      TWD_USD: twdUsd,
+      USDT_TWD: dec(usdTwd),
+      TWD_USDT: twdUsd,
+      USDT_USD: one,
+      USD_USDT: one,
+    },
     fetched_at: FieldValue.serverTimestamp(),
     is_estimated: false,
   });

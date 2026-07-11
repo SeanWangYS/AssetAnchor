@@ -84,14 +84,16 @@ export function mockPrice(position: Position): Money {
   return mockMarketValue(position).divide(position.quantity);
 }
 
-/** 幣別前綴（NT$ / US$）。 */
+/** 幣別前綴（NT$ / US$；其餘幣別退幣別代碼，如 USDT）。 */
 export function currencyPrefix(currency: Currency): string {
-  return currency === 'USD' ? 'US$' : 'NT$';
+  if (currency === 'USD') return 'US$';
+  if (currency === 'TWD') return 'NT$';
+  return currency;
 }
 
-/** 顯示小數位：USD 2 位、TWD 0 位（對齊 prototype nf 慣例）。 */
+/** 顯示小數位：USD / USDT 2 位、TWD 0 位（對齊 prototype nf 慣例）。 */
 export function displayDecimals(currency: Currency): number {
-  return currency === 'USD' ? 2 : 0;
+  return currency === 'USD' || currency === 'USDT' ? 2 : 0;
 }
 
 /** 金額顯示字（含千分位、依幣別小數位；不含正負號 / 前綴）。 */

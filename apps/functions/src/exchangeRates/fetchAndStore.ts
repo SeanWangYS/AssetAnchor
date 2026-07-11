@@ -3,8 +3,8 @@ import { onRequest } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { Money } from '@assetanchor/shared';
 import { parseYahooFxRate } from './parseYahooFxRate';
+import { buildDailyRates } from './buildDailyRates';
 
 /**
  * 匯率源：Yahoo v8 chart `TWD=X`（1 USD = N TWD 市場價）。
@@ -34,10 +34,6 @@ export async function fetchAndStoreUsdRate(): Promise<{ date: string }> {
   }
   const { date, rate } = parseYahooFxRate(await res.json());
 
-  // 1 USD = N TWD（market）；反向 TWD_USD 預存（互為倒數）。皆 10 位小數 string。
-  const usdTwd = new Money(rate, 'TWD').toDecimalString();
-  const twdUsd = new Money('1', 'TWD').divide(rate).toDecimalString();
-
   await getFirestore()
     .collection('exchange_rates')
     .doc(date)
@@ -45,7 +41,8 @@ export async function fetchAndStoreUsdRate(): Promise<{ date: string }> {
       date,
       source: 'YAHOO',
       rate_type: 'market',
-      rates: { USD_TWD: usdTwd, TWD_USD: twdUsd },
+      // USD/TWD 雙向 + USDT 1:1 peg 四鍵（enable-crypto-quotes），皆 10 位小數 string。
+      rates: buildDailyRates(rate),
       fetched_at: FieldValue.serverTimestamp(),
       is_estimated: false,
     });

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import {
-  deriveHoldings,
+  deriveHoldingsSafe,
   deriveRealizedEvents,
   type Position,
   type RealizedEvent,
@@ -12,16 +12,22 @@ import { useTransactionsStore } from '../transactions/transactionsStore';
  * 由既有 transactionsStore（onSnapshot）的資料以 useMemo 動態推導持倉。
  * 不新增 Firestore 監聽（design D3）；跨 feature 讀 store 為 codebase 既有慣例。
  *
- * deriveHoldings 對資料不一致（如超賣）採 fail-loud throw（ADR-0007 §5b，刻意保留）。
- * 此 hook 在 render 期間呼叫，若 throw 冒泡會白屏整個畫面，故在此 mobile 消費邊界
- * fail-soft：捕捉、warn、回空陣列讓畫面降級。回傳型別維持 Position[]（向後相容，
- * 不破壞既有 destructuring）；不更動 shared 的 throw 行為。
+ * 全域總覽改用 `deriveHoldingsSafe`（enable-crypto-quotes D8）：逐-(market,symbol) 容錯，
+ * 單一 symbol 爛資料（超賣 / orphan SELL）只跳過該 symbol、不清空整個投資組合。
+ * skipped 非空時上報留跡（silent-severe）。外層 try/catch 為最後防線（理論上不再觸發）。
+ * 回傳型別維持 Position[]（向後相容，不破壞既有 destructuring）。
  */
 export function useHoldings(): Position[] {
   const transactions = useTransactionsStore((s) => s.transactions);
   return useMemo(() => {
     try {
-      return deriveHoldings(transactions);
+      const { positions, skipped } = deriveHoldingsSafe(transactions);
+      if (skipped.length > 0) {
+        reportHandledError('holdings:symbols_skipped', {
+          skipped: skipped.map((x) => `${x.market}_${x.symbol}`).join(','),
+        });
+      }
+      return positions;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.warn('[holdings] deriveHoldings 推導失敗，降級為空持倉：', message);

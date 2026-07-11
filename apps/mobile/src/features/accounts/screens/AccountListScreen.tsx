@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Money, type AccountDocument, type Currency } from '@assetanchor/shared';
 import type { AccountsStackScreenProps } from '../../../core/navigation/types';
 import { useAccountsStore } from '../accountsStore';
+import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { Avatar, EmptyState, ErrorState, Fab, Icon, ListItem, LoadingView } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
@@ -26,6 +27,7 @@ export default function AccountListScreen({ navigation }: AccountsStackScreenPro
   const loading = useAccountsStore((s) => s.loading);
   const error = useAccountsStore((s) => s.error);
   const transactions = useTransactionsStore((s) => s.transactions);
+  const rates = useExchangeRatesStore((s) => s.rates);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -72,7 +74,7 @@ export default function AccountListScreen({ navigation }: AccountsStackScreenPro
     const byCcy = new Map<Currency, Money>();
     let pending = 0;
     for (const p of positions) {
-      const v = positionValuation(p, quoteFor(quotes, p.market, p.symbol), Date.now());
+      const v = positionValuation(p, quoteFor(quotes, p.market, p.symbol), Date.now(), rates);
       if (!v) {
         pending += 1;
         continue;
