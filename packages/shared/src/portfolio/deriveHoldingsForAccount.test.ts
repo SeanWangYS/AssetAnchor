@@ -60,7 +60,7 @@ describe('sellableQuantityForAccount', () => {
         accountId: 'acc_a',
       }),
     ];
-    expect(sellableQuantityForAccount(txs, 'acc_a', 'TW', '2330')).toBe('2500.0000000000');
+    expect(sellableQuantityForAccount(txs, 'acc_a', 'TW', '2330', 'TWD')).toBe('2500.0000000000');
   });
 
   it('does NOT share sellable quantity across accounts (same symbol, different account)', () => {
@@ -83,8 +83,8 @@ describe('sellableQuantityForAccount', () => {
         accountId: 'acc_b',
       }),
     ];
-    expect(sellableQuantityForAccount(txs, 'acc_a', 'TW', '2330')).toBe('1000.0000000000');
-    expect(sellableQuantityForAccount(txs, 'acc_b', 'TW', '2330')).toBe('500.0000000000');
+    expect(sellableQuantityForAccount(txs, 'acc_a', 'TW', '2330', 'TWD')).toBe('1000.0000000000');
+    expect(sellableQuantityForAccount(txs, 'acc_b', 'TW', '2330', 'TWD')).toBe('500.0000000000');
   });
 
   it('returns 0 when the account never held the symbol (even if another account holds it)', () => {
@@ -99,7 +99,7 @@ describe('sellableQuantityForAccount', () => {
       }),
     ];
     // acc_b 從未持有 AAPL → 可賣 0（不可借 acc_a 的持倉）。
-    expect(sellableQuantityForAccount(txs, 'acc_b', 'US', 'AAPL')).toBe('0.0000000000');
+    expect(sellableQuantityForAccount(txs, 'acc_b', 'US', 'AAPL', 'USD')).toBe('0.0000000000');
   });
 
   it('returns 0 after the account fully sold its position', () => {
@@ -123,7 +123,7 @@ describe('sellableQuantityForAccount', () => {
         date: '2024-02-01',
       }),
     ];
-    expect(sellableQuantityForAccount(txs, 'acc_a', 'TW', '2330')).toBe('0.0000000000');
+    expect(sellableQuantityForAccount(txs, 'acc_a', 'TW', '2330', 'TWD')).toBe('0.0000000000');
   });
 
   it('only counts the same account, reflecting partial sells', () => {
@@ -157,7 +157,7 @@ describe('sellableQuantityForAccount', () => {
         date: '2024-01-01',
       }),
     ];
-    expect(sellableQuantityForAccount(txs, 'acc_a', 'TW', '2330')).toBe('1500.0000000000');
+    expect(sellableQuantityForAccount(txs, 'acc_a', 'TW', '2330', 'TWD')).toBe('1500.0000000000');
   });
 });
 
@@ -293,7 +293,7 @@ describe('deriveHoldingsForAccountSafe', () => {
     expect(skipped).toEqual([{ market: 'US', symbol: 'NVDA' }]);
   });
 
-  it('skips a symbol whose group mixes currencies (corrupt data) without dropping the rest', () => {
+  it('mixed currencies within a symbol are independent lots, not corrupt data（enable-crypto-quotes D7）', () => {
     const txs = [
       buy({
         symbol: 'AAPL',
@@ -303,9 +303,9 @@ describe('deriveHoldingsForAccountSafe', () => {
         price: '180',
         accountId: 'acc_a',
       }),
-      // 同 (US, BAD) 混幣別 → deriveHoldings throw CurrencyMismatch。
+      // 同 (US, MIX) 混幣別 → 依幣別各成一 lot（不再視為爛資料）。
       buy({
-        symbol: 'BAD',
+        symbol: 'MIX',
         market: 'US',
         currency: 'USD',
         quantity: '1',
@@ -313,7 +313,7 @@ describe('deriveHoldingsForAccountSafe', () => {
         accountId: 'acc_a',
       }),
       buy({
-        symbol: 'BAD',
+        symbol: 'MIX',
         market: 'US',
         currency: 'TWD',
         quantity: '1',
@@ -322,7 +322,11 @@ describe('deriveHoldingsForAccountSafe', () => {
       }),
     ];
     const { positions, skipped } = deriveHoldingsForAccountSafe(txs, 'acc_a');
-    expect(positions.map((p) => p.symbol)).toEqual(['AAPL']);
-    expect(skipped).toEqual([{ market: 'US', symbol: 'BAD' }]);
+    expect(positions.map((p) => `${p.symbol}:${p.currency}`)).toEqual([
+      'AAPL:USD',
+      'MIX:TWD',
+      'MIX:USD',
+    ]);
+    expect(skipped).toEqual([]);
   });
 });

@@ -135,7 +135,7 @@ describe('TRANSACTION_TYPES enum', () => {
 
 describe('CURRENCIES enum', () => {
   it('contains MVP currencies', () => {
-    expect(CURRENCIES).toEqual(expect.arrayContaining(['TWD', 'USD']));
+    expect(CURRENCIES).toEqual(expect.arrayContaining(['TWD', 'USD', 'USDT']));
   });
 
   it('reserves slots for phase 2 currencies', () => {
@@ -148,7 +148,7 @@ describe('CURRENCIES enum', () => {
   });
 
   it('matches the full whitelist exactly (no accidental additions)', () => {
-    expect(CURRENCIES).toEqual(['TWD', 'USD', 'JPY', 'EUR', 'HKD', 'CNY']);
+    expect(CURRENCIES).toEqual(['TWD', 'USD', 'USDT', 'JPY', 'EUR', 'HKD', 'CNY']);
   });
 });
 

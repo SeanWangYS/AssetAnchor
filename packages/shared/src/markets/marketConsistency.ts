@@ -12,6 +12,32 @@ export function expectedCurrencyForMarket(market: Market): Currency | null {
   return null;
 }
 
+/**
+ * 表單「選市場自動帶幣別」的預設值（enable-crypto-quotes design D5）：
+ * 與硬擋（expectedCurrencyForMarket）分離——CRYPTO 預設 USD 但允許 USDT/TWD，
+ * 故不能放進硬擋函式。OTHER 回 null（表單不動）。
+ */
+export function defaultCurrencyForMarket(market: Market): Currency | null {
+  if (market === 'CRYPTO') return 'USD';
+  return expectedCurrencyForMarket(market);
+}
+
+/**
+ * CRYPTO 市場的交易幣別允許集（enable-crypto-quotes）：報價幣別恆 USD（symbol.currency），
+ * 交易/記帳幣別限 USD / USDT / TWD；USDT 換算基準 1:1 釘 USD（peg 寫在 functions 匯率層）。
+ */
+export const CRYPTO_TRANSACTION_CURRENCIES = Object.freeze(['USD', 'USDT', 'TWD'] as const);
+
+/**
+ * 報價幣別（enable-crypto-quotes design D9）：由**市場**決定、與交易/記帳幣別分離——
+ * TW→TWD、US→USD、CRYPTO→恆 USD（Yahoo ticker 恆 `-USD`）；OTHER 無市場級約定，
+ * 沿用呼叫端 fallback（通常為 position/交易幣別）。quotes 文件與估值定價一律用本函式。
+ */
+export function quoteCurrencyForMarket(market: Market, fallback: Currency): Currency {
+  if (market === 'CRYPTO') return 'USD';
+  return expectedCurrencyForMarket(market) ?? fallback;
+}
+
 /** 台股樣式代號：數字開頭（0050、2330、00631L…）。 */
 const TW_STYLE_RE = /^\d/;
 /** 美股樣式代號：純英文字母（含 BRK.B 這類帶點的 class 股）。 */

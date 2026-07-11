@@ -1,6 +1,11 @@
-import { deriveHoldings, deriveRealizedEvents, sellableQuantity } from './deriveHoldings.js';
+import {
+  deriveHoldings,
+  deriveHoldingsSafe,
+  deriveRealizedEvents,
+  sellableQuantity,
+} from './deriveHoldings.js';
 import { buildTransactionDoc } from '../transactions/buildTransactionDoc.js';
-import { CurrencyMismatchError, InvalidMoneyValueError } from '../money/index.js';
+import { InvalidMoneyValueError } from '../money/index.js';
 import type { Market } from '../enums/index.js';
 import type { FirestoreTimestamp, TransactionDocument } from '../types/index.js';
 
@@ -11,7 +16,7 @@ let seq = 0;
 interface TxOpts {
   symbol: string;
   market: Market;
-  currency: 'USD' | 'TWD';
+  currency: 'USD' | 'TWD' | 'USDT';
   quantity: string;
   price: string;
   fee?: string;
@@ -188,12 +193,41 @@ describe('deriveHoldings', () => {
     expect(() => deriveHoldings([broken])).toThrow(InvalidMoneyValueError);
   });
 
-  it('fails loud on mixed currencies within one (market, symbol)', () => {
+  it('mixed currencies within one (market, symbol) form independent lots（enable-crypto-quotes）', () => {
     const txs = [
-      buy({ symbol: '2330', market: 'TW', currency: 'TWD', quantity: '100', price: '500' }),
-      buy({ symbol: '2330', market: 'TW', currency: 'USD', quantity: '100', price: '16' }),
+      buy({ symbol: 'BTC', market: 'CRYPTO', currency: 'TWD', quantity: '0.15', price: '84000' }),
+      buy({ symbol: 'BTC', market: 'CRYPTO', currency: 'USD', quantity: '1', price: '64000' }),
     ];
-    expect(() => deriveHoldings(txs)).toThrow(CurrencyMismatchError);
+    const positions = deriveHoldings(txs);
+    expect(positions).toHaveLength(2);
+    const twd = positions.find((p) => p.currency === 'TWD')!;
+    const usd = positions.find((p) => p.currency === 'USD')!;
+    expect(twd.quantity).toBe('0.1500000000');
+    expect(twd.totalCost).toBe('12600.0000000000');
+    expect(usd.quantity).toBe('1.0000000000');
+    expect(usd.totalCost).toBe('64000.0000000000');
+  });
+
+  it('SELL 只沖銷同幣別 lot（跨幣別 SELL 視為對不存在 lot 超賣 → fail loud）', () => {
+    const txs = [
+      buy({
+        symbol: 'BTC',
+        market: 'CRYPTO',
+        currency: 'TWD',
+        quantity: '0.15',
+        price: '84000',
+        date: '2024-01-01',
+      }),
+      sell({
+        symbol: 'BTC',
+        market: 'CRYPTO',
+        currency: 'USD',
+        quantity: '0.1',
+        price: '64000',
+        date: '2024-02-01',
+      }),
+    ];
+    expect(() => deriveHoldings(txs)).toThrow(/oversell/);
   });
 
   it('BUY-only position has realizedPnl 0', () => {
@@ -399,11 +433,11 @@ describe('deriveRealizedEvents', () => {
 
 describe('sellableQuantity', () => {
   it('returns held quantity for a held symbol', () => {
-    expect(sellableQuantity(tsmcFixture(), 'TW', '2330')).toBe('2500.0000000000');
+    expect(sellableQuantity(tsmcFixture(), 'TW', '2330', 'TWD')).toBe('2500.0000000000');
   });
 
   it('returns 0 for a symbol with no position', () => {
-    expect(sellableQuantity(tsmcFixture(), 'US', 'AAPL')).toBe('0.0000000000');
+    expect(sellableQuantity(tsmcFixture(), 'US', 'AAPL', 'USD')).toBe('0.0000000000');
   });
 
   it('returns 0 after a full sell (nothing left to sell)', () => {
@@ -425,7 +459,53 @@ describe('sellableQuantity', () => {
         date: '2024-02-01',
       }),
     ];
-    expect(sellableQuantity(txs, 'TW', '2330')).toBe('0.0000000000');
+    expect(sellableQuantity(txs, 'TW', '2330', 'TWD')).toBe('0.0000000000');
+  });
+
+  it('可賣數量以幣別為粒度：同幣別可賣、跨幣別為 0（enable-crypto-quotes）', () => {
+    const txs = [
+      buy({ symbol: 'BTC', market: 'CRYPTO', currency: 'TWD', quantity: '0.15', price: '84000' }),
+    ];
+    expect(sellableQuantity(txs, 'CRYPTO', 'BTC', 'TWD')).toBe('0.1500000000');
+    expect(sellableQuantity(txs, 'CRYPTO', 'BTC', 'USD')).toBe('0.0000000000');
+    expect(sellableQuantity(txs, 'CRYPTO', 'BTC', 'USDT')).toBe('0.0000000000');
+  });
+});
+
+describe('deriveHoldingsSafe（全域逐-symbol 容錯）', () => {
+  it('單一 symbol 爛資料只跳過該 symbol，不清空整包', () => {
+    const orphanSell = sell({
+      symbol: 'XYZ',
+      market: 'US',
+      currency: 'USD',
+      quantity: '10',
+      price: '5',
+    });
+    const txs = [...tsmcFixture(), orphanSell];
+    const { positions, skipped } = deriveHoldingsSafe(txs);
+    expect(positions).toHaveLength(1);
+    expect(positions[0]!.symbol).toBe('2330');
+    expect(skipped).toEqual([{ market: 'US', symbol: 'XYZ' }]);
+  });
+
+  it('無爛資料時與 deriveHoldings 結果一致（含排序）、skipped 為空', () => {
+    const txs = [
+      ...tsmcFixture(),
+      buy({ symbol: 'BTC', market: 'CRYPTO', currency: 'USD', quantity: '1', price: '64000' }),
+    ];
+    const { positions, skipped } = deriveHoldingsSafe(txs);
+    expect(positions).toEqual(deriveHoldings(txs));
+    expect(skipped).toEqual([]);
+  });
+
+  it('混幣別 symbol 不再視為爛資料（獨立 lots、不進 skipped）', () => {
+    const txs = [
+      buy({ symbol: 'BTC', market: 'CRYPTO', currency: 'TWD', quantity: '0.15', price: '84000' }),
+      buy({ symbol: 'BTC', market: 'CRYPTO', currency: 'USD', quantity: '1', price: '64000' }),
+    ];
+    const { positions, skipped } = deriveHoldingsSafe(txs);
+    expect(positions).toHaveLength(2);
+    expect(skipped).toEqual([]);
   });
 });
 
