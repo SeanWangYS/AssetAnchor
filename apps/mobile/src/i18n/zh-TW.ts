@@ -34,6 +34,8 @@ export const zhTW = {
   },
   holdings: {
     title: '持倉',
+    /** 落地頁 ScreenHeader 標題（holdings-overview-spec §3.1：「持倉總覽」；tab label 仍用 title）。 */
+    overviewTitle: '持倉總覽',
     detailTitle: '持倉詳情',
     empty: '尚無持倉，先到「交易」分頁記錄一筆買入',
     notFound: '找不到持倉',

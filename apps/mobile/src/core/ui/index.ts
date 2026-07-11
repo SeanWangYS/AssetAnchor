@@ -10,6 +10,7 @@ export { ListItem } from './List';
 
 // —— 版面 / 容器 ——
 export { default as Card } from './Card';
+export { default as ScreenHeader } from './ScreenHeader';
 
 // —— 控制元件 ——
 export { default as Segmented } from './Segmented';

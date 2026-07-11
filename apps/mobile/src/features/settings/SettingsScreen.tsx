@@ -5,7 +5,7 @@ import { useAuthStore } from '../auth/authStore';
 import { signOut } from '../auth/authService';
 import { useAccountsStore } from '../accounts/accountsStore';
 import { formatCashTotals } from '../accounts/accountDisplay';
-import { AABrandLockup, Card, ConfirmDialog, Icon, ListItem } from '../../core/ui';
+import { AABrandLockup, Card, ConfirmDialog, Icon, ListItem, ScreenHeader } from '../../core/ui';
 import { colors, fontFamily, fontSize, radius, spacing } from '../../core/theme';
 
 /** 可導航列右側的 chevron（弱色，1.8-stroke）。 */
@@ -38,6 +38,7 @@ export default function SettingsScreen({ navigation }: SettingsStackScreenProps<
 
   return (
     <>
+      <ScreenHeader title="設定" />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         {/* 我的帳號 card */}
         <Card glow style={styles.accountCard}>

@@ -19,10 +19,11 @@ export default function AnalysisStack() {
         contentStyle: { backgroundColor: colors.screen },
       }}
     >
+      {/* 落地頁自繪 ScreenHeader（unify-screen-headers）。 */}
       <Stack.Screen
         name="AnalysisOverview"
         component={AnalysisOverviewScreen}
-        options={{ title: '分析' }}
+        options={{ headerShown: false, title: '分析' }}
       />
     </Stack.Navigator>
   );

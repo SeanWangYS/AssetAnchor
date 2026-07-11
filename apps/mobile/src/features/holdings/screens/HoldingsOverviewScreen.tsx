@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   DISPLAY_CURRENCIES,
@@ -21,11 +21,13 @@ import {
   Icon,
   LoadingView,
   Pnl,
+  ScreenHeader,
   Segmented,
   TimeTabs,
   Toast,
 } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
+import { zhTW } from '../../../i18n/zh-TW';
 import { useHoldings, useRealizedEvents } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { usePreferencesStore } from '../../../services/preferences';
@@ -278,27 +280,24 @@ export default function HoldingsOverviewScreen({
     if (!ok) setCcyToast('更新失敗，已還原');
   }
 
-  // 持倉是唯一保留 header ＋ 的 tab（design §1）：新增交易 → Root modal AddTransaction。
-  // 同時放通知圓鈕（design §3.1 item 2）。
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <View style={styles.headerActions}>
-          <Pressable accessibilityRole="button" accessibilityLabel="通知" hitSlop={8}>
-            <Icon name="bell" color={colors.textSecondary} size={22} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="新增交易"
-            hitSlop={8}
-            onPress={() => navigation.navigate('AddTransaction')}
-          >
-            <Icon name="plus" color={colors.accent} size={24} />
-          </Pressable>
-        </View>
-      ),
-    });
-  }, [navigation]);
+  // 持倉是唯一保留標題列 ＋ 的 tab（design §1）：新增交易 → Root modal AddTransaction。
+  // 同時放通知圓鈕（design §3.1 item 2）。自繪 ScreenHeader（unify-screen-headers），
+  // a11y label「通知」「新增交易」維持原值（Maestro e2e 依此選取）。
+  const headerActions = (
+    <>
+      <Pressable accessibilityRole="button" accessibilityLabel="通知" hitSlop={8}>
+        <Icon name="bell" color={colors.textSecondary} size={22} />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="新增交易"
+        hitSlop={8}
+        onPress={() => navigation.navigate('AddTransaction')}
+      >
+        <Icon name="plus" color={colors.accent} size={24} />
+      </Pressable>
+    </>
+  );
 
   const sections = useMemo(
     () => buildSections(positions, mode, quotes, transactions, accounts, rates),
@@ -371,6 +370,7 @@ export default function HoldingsOverviewScreen({
 
   return (
     <>
+      <ScreenHeader title={zhTW.holdings.overviewTitle} right={headerActions} />
       <ScrollView
         style={styles.screen}
         contentContainerStyle={styles.content}
@@ -597,7 +597,6 @@ export default function HoldingsOverviewScreen({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.screen },
   content: { paddingHorizontal: spacing.page, paddingBottom: spacing.xl },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 
   // Hero
   hero: { paddingTop: spacing.sm },

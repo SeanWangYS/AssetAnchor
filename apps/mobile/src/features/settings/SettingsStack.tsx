@@ -26,7 +26,12 @@ export default function SettingsStack() {
         contentStyle: { backgroundColor: colors.screen },
       }}
     >
-      <Stack.Screen name="SettingsHome" component={SettingsScreen} options={{ title: '設定' }} />
+      {/* 落地頁自繪 ScreenHeader（unify-screen-headers）；子頁（Profile/About/Accounts）維持原生 header。 */}
+      <Stack.Screen
+        name="SettingsHome"
+        component={SettingsScreen}
+        options={{ headerShown: false, title: '設定' }}
+      />
       <Stack.Screen
         name="Accounts"
         component={AccountsStack}

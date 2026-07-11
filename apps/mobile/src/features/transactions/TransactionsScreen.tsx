@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { TransactionsStackScreenProps } from '../../core/navigation/types';
 import { useTransactionsStore } from './transactionsStore';
-import { EmptyState, ErrorState, Fab, Icon, LoadingView } from '../../core/ui';
-import { colors, fontFamily, fontSize, spacing } from '../../core/theme';
+import { EmptyState, ErrorState, Fab, Icon, LoadingView, ScreenHeader } from '../../core/ui';
+import { colors, fontFamily, spacing } from '../../core/theme';
 import TransactionList from './components/TransactionList';
 import { PRESET_LABEL, filterByPreset, useDateRangeStore } from './dateRangeStore';
 
@@ -32,17 +32,19 @@ export default function TransactionsScreen({
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.title}>交易紀錄</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="日期區間"
-          onPress={() => navigation.navigate('DateRange')}
-          style={({ pressed }) => [styles.calBtn, pressed ? styles.pressed : null]}
-        >
-          <Icon name="calendar" size={20} color={colors.textSecondary} />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="交易紀錄"
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="日期區間"
+            onPress={() => navigation.navigate('DateRange')}
+            style={({ pressed }) => [styles.calBtn, pressed ? styles.pressed : null]}
+          >
+            <Icon name="calendar" size={20} color={colors.textSecondary} />
+          </Pressable>
+        }
+      />
 
       <Pressable
         accessibilityRole="button"
@@ -94,20 +96,6 @@ export default function TransactionsScreen({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.screen },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.page,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-  },
-  title: {
-    flex: 1,
-    fontFamily: fontFamily.text.extrabold,
-    fontSize: fontSize.cardTitle,
-    color: colors.textPrimary,
-    letterSpacing: -0.2,
-  },
   calBtn: {
     width: 38,
     height: 38,

@@ -30,6 +30,7 @@ import {
   Icon,
   LoadingView,
   Pnl,
+  ScreenHeader,
   Segmented,
   Toast,
   type DualBarDatum,
@@ -165,25 +166,34 @@ export default function AnalysisOverviewScreen(
   };
 
   // —— 降級態（change design D3；語彙對齊持倉頁）——
+  // 自繪 ScreenHeader（unify-screen-headers）：原生 header 已關，
+  // 每個狀態（錯誤/載入/空/降級/資料）都要帶標題列，統一用 wrapper 包。
+  const screen = (children: ReactNode) => (
+    <View style={styles.screen}>
+      <ScreenHeader title="分析" />
+      {children}
+    </View>
+  );
+
   if (transactions.length === 0 && txError) {
-    return <ErrorState message="載入失敗" subtitle="請檢查網路後重新開啟" />;
+    return screen(<ErrorState message="載入失敗" subtitle="請檢查網路後重新開啟" />);
   }
   if (transactions.length === 0 && txLoading) {
-    return <LoadingView label="載入持倉中…" />;
+    return screen(<LoadingView label="載入持倉中…" />);
   }
   if (positions.length === 0) {
-    return (
+    return screen(
       <EmptyState
         title="尚無持倉"
         subtitle="先到「交易」分頁記錄一筆買入"
         icon={<Icon name="txn" size={26} color={colors.accent} />}
-      />
+      />,
     );
   }
   if (input.includedCount === 0 || !agg) {
     // 全部缺報價（冷啟動尚未回填）或匯率換算失敗：無資料可畫，顯示載入/降級態 + 重試。
     const pendingQuotes = input.includedCount === 0;
-    return (
+    return screen(
       <View style={styles.emptyWrap}>
         <Text style={styles.emptyText}>
           {pendingQuotes ? '報價載入中…' : '匯率尚未就緒，暫時無法換算分析數據'}
@@ -199,7 +209,7 @@ export default function AnalysisOverviewScreen(
           </Pressable>
         ) : null}
         <Toast visible={toastVisible} message="報價已更新" onHide={() => setToastVisible(false)} />
-      </View>
+      </View>,
     );
   }
 
@@ -276,6 +286,7 @@ export default function AnalysisOverviewScreen(
 
   return (
     <View style={styles.screen}>
+      <ScreenHeader title="分析" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* —— Hero（彙總）—— */}
         <Card glow style={styles.heroCard}>
