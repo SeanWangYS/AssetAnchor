@@ -23,10 +23,11 @@ export default function HoldingsStack() {
         contentStyle: { backgroundColor: colors.screen },
       }}
     >
+      {/* 落地頁自繪 ScreenHeader（unify-screen-headers）；title 供返回鍵文字/無障礙。 */}
       <Stack.Screen
         name="HoldingsOverview"
         component={HoldingsOverviewScreen}
-        options={{ title: zhTW.holdings.title }}
+        options={{ headerShown: false, title: zhTW.holdings.title }}
       />
       <Stack.Screen
         name="AssetDetail"
