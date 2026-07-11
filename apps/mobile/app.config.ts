@@ -4,7 +4,7 @@ const config: ExpoConfig = {
   name: 'AssetAnchor',
   slug: 'assetanchor',
   scheme: 'assetanchor',
-  version: '0.0.1',
+  version: '0.0.2',
   // App icon（owner 2026-07-07 拍板 v2：深色底＋accent 紫錨形標誌＋柔光，幾何取自 app 內品牌
   // 標誌 core/ui/AALogoMark.tsx——桌面 icon 與 in-app 品牌識別統一）。iOS icon 需不透明背景。
   icon: './assets/icon.png',
