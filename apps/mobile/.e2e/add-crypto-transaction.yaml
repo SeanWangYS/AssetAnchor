@@ -1,0 +1,131 @@
+# E2E：crypto 報價修復驗證（enable-crypto-quotes）。
+# ① BUY BTC（市場=加密貨幣）→ 幣別自動帶 USD → 送出 → 持倉出現 BTC 且非「查無報價代號」。
+# ② BUY ETH 以 USDT 記帳 → 送出成功（USDT 進交易幣別白名單）。
+#
+# ⚠️ dev-build 兩坑（同 regression-quote-not-found 的 devbuild-flaky 根因，runbook）：
+# 1. 市場 sheet 選擇會觸發幣別聯動 re-render → XCUITest a11y 快照過期：文字選項找不到、
+#    元素 frame 走位（打字會落錯欄位）。對策＝把「市場 sheet」排到所有打字/其他 sheet 之後、
+#    選項用座標 tap（Sheet bottom-anchored、版面固定），其後只做 id tap（submit 實測仍可用）。
+# 2. 鍵盤會蓋住下半欄位吃掉打字。對策＝打字緊接在 sheet 互動後（sheet 開合會收鍵盤）。
+# 幣別 picker value 不進 a11y tree（view-flattening）→ 幣別=USD/USDT 靠 takeScreenshot 對圖。
+# 送出成功以「新增買入 notVisible」守（防表單殘留造成 false positive）。
+appId: com.seanwangys.assetanchor
+---
+- runFlow: login.yaml
+# ---------- ① BTC（幣別預設 USD） ----------
+- tapOn: '新增交易'
+- extendedWaitUntil:
+    visible: '新增買入'
+    timeout: 15000
+- tapOn:
+    id: 'tx-symbol'
+- inputText: 'BTC'
+# 資產類型 sheet（文字 tap；開合順帶收鍵盤）
+- tapOn:
+    id: 'tx-asset-type'
+- waitForAnimationToEnd
+- tapOn: '加密貨幣'
+- waitForAnimationToEnd
+# 股數（鍵盤會使版面上移——打完靠下一個 sheet 收鍵盤歸位，勿直接 tap 下一欄）
+- tapOn:
+    id: 'tx-quantity'
+- inputText: '1'
+# 市場 sheet（開 sheet 收鍵盤+版面歸位；4 選項倒數第 2 → y≈89%；觸發幣別自動帶 USD）
+- tapOn:
+    id: 'tx-market'
+- waitForAnimationToEnd
+- tapOn:
+    point: '50%,89%'
+- waitForAnimationToEnd
+# 單價（此時鍵盤已收、版面在基準位）
+- tapOn:
+    id: 'tx-price'
+- inputText: '64000'
+# 收鍵盤：開幣別 sheet 再點 backdrop 關閉（不改值；sheet 開合必收鍵盤——tap-outside 對
+# RN 表單無效、scrollUntilVisible 又因 submit「幾何上可見」不捲動，實測唯一可靠路徑）
+- tapOn:
+    id: 'tx-currency'
+- waitForAnimationToEnd
+- tapOn:
+    point: '50%,15%'
+- waitForAnimationToEnd
+# 視覺驗證點：幣別應顯示 USD、股數 1、單價 64000
+- takeScreenshot: e2e-crypto-btc-form-filled
+- scrollUntilVisible:
+    element:
+      id: 'tx-submit'
+    direction: DOWN
+- tapOn:
+    id: 'tx-submit'
+# 送出成功＝modal 關閉（防表單殘留 false positive）→ 持倉 BTC 列 + 無「查無報價代號」
+- extendedWaitUntil:
+    notVisible: '新增買入'
+    timeout: 15000
+# BTC 列在 hero/走勢圖下方——捲到可見再驗
+# 持股列＝複合 a11y label（runbook 坑 #7）→ regex 部分比對
+- scrollUntilVisible:
+    element: '.*BTC.*'
+    direction: DOWN
+- extendedWaitUntil:
+    notVisible: '查無報價代號'
+    timeout: 30000
+- takeScreenshot: e2e-crypto-btc-holdings
+# ---------- ② ETH 以 USDT 記帳 ----------
+- tapOn: '新增交易'
+- extendedWaitUntil:
+    visible: '新增買入'
+    timeout: 15000
+- tapOn:
+    id: 'tx-symbol'
+- inputText: 'ETH'
+# 段② 快照已污染（段① 大量互動後），資產類型 sheet 也用座標 tap
+# （6 選項 bottom-anchored：個股 68%/ETF 73%/加密貨幣 79%/債券 84%/基金 89%/其他 95%）
+- tapOn:
+    id: 'tx-asset-type'
+- waitForAnimationToEnd
+- tapOn:
+    point: '50%,79%'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'tx-quantity'
+- inputText: '1'
+# 市場 sheet（開 sheet 收鍵盤；座標 tap 倒數第 2 → y≈89%）
+- tapOn:
+    id: 'tx-market'
+- waitForAnimationToEnd
+- tapOn:
+    point: '50%,89%'
+- waitForAnimationToEnd
+# 幣別 sheet → USDT（TWD/USD/USDT；bottom-anchored 最後一項 → y≈94%）
+- tapOn:
+    id: 'tx-currency'
+- waitForAnimationToEnd
+- tapOn:
+    point: '50%,94%'
+- waitForAnimationToEnd
+# 單價（鍵盤已收、版面基準位）
+- tapOn:
+    id: 'tx-price'
+- inputText: '3000'
+# 收鍵盤（同段①：sheet 開合；backdrop 關閉不改 USDT 選值）
+- tapOn:
+    id: 'tx-currency'
+- waitForAnimationToEnd
+- tapOn:
+    point: '50%,15%'
+- waitForAnimationToEnd
+# 視覺驗證點：幣別應顯示 USDT
+- takeScreenshot: e2e-crypto-eth-usdt-form-filled
+- scrollUntilVisible:
+    element:
+      id: 'tx-submit'
+    direction: DOWN
+- tapOn:
+    id: 'tx-submit'
+- extendedWaitUntil:
+    notVisible: '新增買入'
+    timeout: 15000
+- scrollUntilVisible:
+    element: '.*ETH.*'
+    direction: DOWN
+- takeScreenshot: e2e-crypto-eth-usdt-holdings
