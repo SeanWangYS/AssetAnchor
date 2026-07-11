@@ -90,7 +90,11 @@ export const useSymbolsStore = create<SymbolsState>((set, get) => ({
   },
 }));
 
-/** 由交易清單推導去重的 symbol 標的（含 asset_type / currency，供 enrich）。 */
+/**
+ * 由交易清單推導去重的 symbol 標的（含 asset_type / currency，供 enrich）。
+ * CRYPTO 的 currency 固定 USD（enable-crypto-quotes D4）：symbol.currency 是**報價幣別**
+ * （crypto 恆 USD），不得抄交易幣別（可 USDT/TWD）——後端 fetchSymbolMeta 亦同步 coerce。
+ */
 export function symbolTargetsFromTransactions(txs: TransactionDocument[]): SymbolTarget[] {
   const map = new Map<string, SymbolTarget>();
   for (const t of txs) {
@@ -100,7 +104,7 @@ export function symbolTargetsFromTransactions(txs: TransactionDocument[]): Symbo
         market: t.market,
         symbol: t.symbol,
         assetType: t.asset_type,
-        currency: t.currency,
+        currency: t.market === 'CRYPTO' ? 'USD' : t.currency,
       });
     }
   }

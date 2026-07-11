@@ -8,6 +8,7 @@ import {
   type DisplayCurrency,
   type Market,
   type Position,
+  type RateMap,
   type TransactionDocument,
 } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
@@ -36,6 +37,7 @@ import {
   useRefreshQuotesOnFocus,
   type QuoteEntry,
 } from '../../../services/quotes';
+import { quoteMoneyIn } from '../../../services/valuation';
 import { useSymbols, symbolNameOf, symbolTargetsFromTransactions } from '../../../services/symbols';
 import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { useCountUp } from '../useCountUp';
@@ -78,7 +80,11 @@ interface GroupSection {
 }
 
 /** 該組原幣別市值小計（混幣別時各幣別分列）；以真實報價計，缺報價者排除並標「N 檔更新中」。 */
-function subtotalText(positions: Position[], quotes: Record<string, QuoteEntry>): string {
+function subtotalText(
+  positions: Position[],
+  quotes: Record<string, QuoteEntry>,
+  rates: RateMap | null,
+): string {
   const byCcy = new Map<Position['currency'], Money>();
   let pending = 0;
   for (const p of positions) {
@@ -87,7 +93,13 @@ function subtotalText(positions: Position[], quotes: Record<string, QuoteEntry>)
       pending += 1;
       continue;
     }
-    const mv = new Money(q.price, p.currency).multiply(p.quantity);
+    // 報價幣別由市場決定（D9）：先換算到 lot 幣別再乘股數；無法換算＝更新中。
+    const priceP = quoteMoneyIn(q.price, q, p.currency, rates);
+    if (!priceP) {
+      pending += 1;
+      continue;
+    }
+    const mv = priceP.multiply(p.quantity);
     byCcy.set(p.currency, (byCcy.get(p.currency) ?? Money.zero(p.currency)).add(mv));
   }
   const parts = [...byCcy.entries()].map(([ccy, sum]) => fmtMoney(sum, ccy));
@@ -101,6 +113,7 @@ function buildSections(
   quotes: Record<string, QuoteEntry>,
   transactions: TransactionDocument[],
   accounts: AccountRef[],
+  rates: RateMap | null,
 ): GroupSection[] {
   if (mode === '持股') {
     return [
@@ -121,7 +134,7 @@ function buildSections(
       label: g.accountName,
       count: g.positions.length,
       subtotal: [
-        subtotalText(g.positions, quotes),
+        subtotalText(g.positions, quotes, rates),
         g.skipped.length > 0 ? `${g.skipped.length} 檔資料異常` : '',
       ]
         .filter(Boolean)
@@ -140,7 +153,7 @@ function buildSections(
       key: market,
       label: `${marketLabel(market)} · ${ccy}`,
       count: list.length,
-      subtotal: subtotalText(list, quotes),
+      subtotal: subtotalText(list, quotes, rates),
       positions: list,
     };
   });
@@ -152,6 +165,7 @@ function HoldingRow({
   name,
   dense,
   quote,
+  rates,
   notFound,
   onPress,
 }: {
@@ -159,13 +173,14 @@ function HoldingRow({
   name: string;
   dense: boolean;
   quote: QuoteEntry | undefined;
+  rates: RateMap | null;
   /** 查無報價代號（symbol_not_found）：顯示明確標示而非「更新中…」。 */
   notFound?: boolean;
   onPress: () => void;
 }) {
   const avg = Money.fromDecimalString(position.averageCost, position.currency);
   // 報價就緒→真值市值/報酬%；未就緒→「更新中…」（與 Hero/AssetDetail 一致，不顯示 demo 假值）。
-  const priceM = quote ? new Money(quote.price, position.currency) : null;
+  const priceM = quote ? quoteMoneyIn(quote.price, quote, position.currency, rates) : null;
   const mv = priceM ? priceM.multiply(position.quantity) : null;
   const retPct =
     priceM && !avg.isZero()
@@ -286,8 +301,8 @@ export default function HoldingsOverviewScreen({
   }, [navigation]);
 
   const sections = useMemo(
-    () => buildSections(positions, mode, quotes, transactions, accounts),
-    [positions, mode, quotes, transactions, accounts],
+    () => buildSections(positions, mode, quotes, transactions, accounts, rates),
+    [positions, mode, quotes, transactions, accounts, rates],
   );
 
   // Hero / bento 彙總（報價）：部分渲染——有報價（新鮮或過期）的持倉先加總，缺者標「更新中」。
@@ -553,11 +568,12 @@ export default function HoldingsOverviewScreen({
               ) : null}
               {section.positions.map((p) => (
                 <HoldingRow
-                  key={`${p.market}_${p.symbol}`}
+                  key={`${p.market}_${p.symbol}_${p.currency}`}
                   position={p}
                   name={symbolNameOf(symbols, p.market, p.symbol)}
                   dense={mode !== '持股'}
                   quote={quoteFor(quotes, p.market, p.symbol)}
+                  rates={rates}
                   notFound={quoteErrorFor(quoteErrors, p.market, p.symbol) === 'symbol_not_found'}
                   onPress={() =>
                     navigation.navigate('AssetDetail', { market: p.market, symbol: p.symbol })

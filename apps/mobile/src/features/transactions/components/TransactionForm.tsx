@@ -7,7 +7,7 @@ import {
   ASSET_TYPES,
   MARKETS,
   Money,
-  expectedCurrencyForMarket,
+  defaultCurrencyForMarket,
   sellableQuantityForAccount,
   symbolLooksLikeMarketMismatch,
   transactionInputSchema,
@@ -30,7 +30,7 @@ import {
 } from '../../../core/theme';
 import { currencySymbol, formatMoney } from '../transactionsView';
 
-const MVP_CURRENCIES = ['TWD', 'USD'] as const;
+const MVP_CURRENCIES = ['TWD', 'USD', 'USDT'] as const;
 const ASSET_TYPE_LABEL: Record<string, string> = {
   STOCK: '個股',
   ETF: 'ETF',
@@ -165,16 +165,17 @@ export default function TransactionForm({
     [qty, price, fee, currency, isBuy],
   );
 
-  // 市場 → 幣別單向聯動（guard-transaction-market-consistency）：使用者改市場時自動帶對應幣別
-  // （TW→TWD、US→USD；CRYPTO/OTHER 不動）。僅在「變動」時同步一次（跳過 mount，
-  // 避免編輯既有不一致資料時被反向自動改掉——修正方向應由使用者選市場決定）。
+  // 市場 → 幣別單向聯動（guard-transaction-market-consistency）：使用者改市場時自動帶對應預設
+  // （TW→TWD、US→USD、CRYPTO→USD 預設可改 USDT/TWD、OTHER 不動；enable-crypto-quotes D5）。
+  // 僅在「變動」時同步一次（跳過 mount，避免編輯既有不一致資料時被反向自動改掉——
+  // 修正方向應由使用者選市場決定）。
   const prevMarketRef = useRef(market);
   useEffect(() => {
     if (market === prevMarketRef.current) return;
     prevMarketRef.current = market;
     if (!(MARKETS as readonly string[]).includes(market)) return;
-    const expected = expectedCurrencyForMarket(market as Market);
-    if (expected) setValue('currency', expected, { shouldValidate: true });
+    const preset = defaultCurrencyForMarket(market as Market);
+    if (preset) setValue('currency', preset, { shouldValidate: true });
   }, [market, setValue]);
 
   // 代號樣式 vs 市場的軟警告（非阻擋；啟發式有誤報可能，故僅提示「請確認」）。
@@ -197,8 +198,9 @@ export default function TransactionForm({
     return symbolSuggestionsAll.filter((s) => s.symbol.toUpperCase().startsWith(upper)).slice(0, 5);
   }, [symbolSuggestionsAll, symbolQuery]);
 
-  // SELL 不可超賣：可賣股數＝**所選帳戶**之 (market, symbol) 衍生持倉（帳戶層級，shared 單一事實來源）。
-  // 只能賣該帳戶實際持有的股；同 symbol 於他帳戶的持倉不計入。切帳戶即重算（deps 含 accountId）。
+  // SELL 不可超賣：可賣股數＝**所選帳戶**之 (market, symbol, currency) 衍生持倉（帳戶層級，
+  // shared 單一事實來源；D7：SELL 只沖銷同幣別 lot，幣別選錯可賣即為 0）。
+  // 只能賣該帳戶實際持有的股；同 symbol 於他帳戶的持倉不計入。切帳戶/幣別即重算。
   const sellable = useMemo(() => {
     if (isBuy || !accountId || !market || !symbolRaw.trim()) return null;
     return sellableQuantityForAccount(
@@ -206,8 +208,9 @@ export default function TransactionForm({
       accountId,
       market as Market,
       symbolRaw.trim().toUpperCase(),
+      currency,
     );
-  }, [isBuy, accountId, market, symbolRaw, transactions]);
+  }, [isBuy, accountId, market, symbolRaw, transactions, currency]);
   const noHolding = sellable !== null && new Money(sellable, currency).isZero();
   const oversell = useMemo(() => {
     if (sellable === null) return false;

@@ -58,3 +58,50 @@ describe('positionValuation', () => {
     expect(v!.returnPct).toBe(0);
   });
 });
+
+describe('positionValuation — 報價幣別 vs 成本幣別分離（enable-crypto-quotes D9）', () => {
+  const btcTwdLot = pos({
+    symbol: 'BTC',
+    market: 'CRYPTO',
+    currency: 'TWD',
+    quantity: '0.1500000000',
+    totalCost: '12600.0000000000',
+    averageCost: '84000.0000000000',
+  });
+  const usdQuote: QuoteEntry = {
+    price: '64000.0000000000',
+    prevClose: null,
+    currency: 'USD',
+    fetchedAtMs: FRESH,
+  };
+
+  it('USD 報價 × TWD lot：以 rates 換算到 lot 幣別再計市值/損益', () => {
+    const rates = { USD_TWD: '32.0000000000', TWD_USD: '0.03125' };
+    const v = positionValuation(btcTwdLot, usdQuote, NOW, rates);
+    expect(v).not.toBeNull();
+    // 64000 USD × 32 = 2,048,000 TWD；× 0.15 = 307,200 TWD（非把 USD 當 TWD 的 9,600）
+    expect(v!.marketValue.currency).toBe('TWD');
+    expect(v!.marketValue.toNumber()).toBeCloseTo(307200, 0);
+    expect(v!.unrealized.toNumber()).toBeCloseTo(307200 - 12600, 0);
+  });
+
+  it('無 rates → 退 demo FX（USD↔TWD 30.95）仍可估值', () => {
+    const v = positionValuation(btcTwdLot, usdQuote, NOW, null);
+    expect(v).not.toBeNull();
+    expect(v!.marketValue.toNumber()).toBeCloseTo(64000 * 30.95 * 0.15, 0);
+  });
+
+  it('同幣別（USD lot × USD 報價）不需 rates、行為不變', () => {
+    const usdLot = pos({
+      symbol: 'BTC',
+      market: 'CRYPTO',
+      currency: 'USD',
+      quantity: '1.0000000000',
+      totalCost: '64000.0000000000',
+      averageCost: '64000.0000000000',
+    });
+    const v = positionValuation(usdLot, usdQuote, NOW);
+    expect(v!.marketValue.currency).toBe('USD');
+    expect(v!.marketValue.toNumber()).toBe(64000);
+  });
+});

@@ -3,7 +3,7 @@ import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import {
   aggregateHoldings,
   buildAnalysisInput,
-  deriveHoldings,
+  deriveHoldingsSafe,
   type AssetType,
   type Money,
   type Position,
@@ -88,7 +88,8 @@ export default function AnalysisOverviewScreen(
   // fail-soft 邊界同 features/holdings/useHoldings（資料不一致時降級空持倉，不白屏）。
   const positions = useMemo<Position[]>(() => {
     try {
-      return deriveHoldings(transactions);
+      // 逐-symbol 容錯（enable-crypto-quotes D8）：單一 symbol 爛資料不清空整包。
+      return deriveHoldingsSafe(transactions).positions;
     } catch (err) {
       console.warn(
         '[analysis] deriveHoldings 推導失敗，降級為空持倉：',

@@ -16,9 +16,9 @@ export function currencySymbol(currency: Currency): string {
   return currency === 'USD' ? 'US$' : currency === 'TWD' ? 'NT$' : currency;
 }
 
-/** 顯示小數位：USD 2 位、TWD 整數（對齊 prototype txFmt）。 */
+/** 顯示小數位：USD / USDT 2 位、TWD 整數（對齊 prototype txFmt）。 */
 function displayDecimals(currency: Currency): number {
-  return currency === 'USD' ? 2 : 0;
+  return currency === 'USD' || currency === 'USDT' ? 2 : 0;
 }
 
 /** 千分位（整數部分）；小數位依幣別。輸入為 Money 10 位小數 canonical string。 */

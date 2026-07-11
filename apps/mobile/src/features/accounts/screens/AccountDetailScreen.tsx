@@ -363,7 +363,12 @@ export default function AccountDetailScreen({
           <View style={styles.holdings}>
             {positions.map((p) => {
               // 每列右側＝市值 + 報酬%（原幣別；均價留 subtitle）；缺報價降級不以成本冒充。
-              const v = positionValuation(p, quoteFor(quotes, p.market, p.symbol), Date.now());
+              const v = positionValuation(
+                p,
+                quoteFor(quotes, p.market, p.symbol),
+                Date.now(),
+                rates,
+              );
               const notFound =
                 quoteErrorFor(quoteErrors, p.market, p.symbol) === 'symbol_not_found';
               return (
