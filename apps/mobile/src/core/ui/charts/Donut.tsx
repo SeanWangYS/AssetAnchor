@@ -4,10 +4,10 @@ import Svg, { Path } from 'react-native-svg';
 
 /**
  * Donut —— 甜甜圈圖（aa-analysis-charts.jsx:42 `ADonut`），react-native-svg 自繪。
- * 用於資產類別佔比（個股 / ETF）。各段 stroke 弧 + 段間 gap；可塞中心內容。
+ * 用於資產類型佔比（個股 / ETF / 加密貨幣…）。各段 stroke 弧 + 段間 gap；可塞中心內容。
  *
  * 純展示：`segments[].value` 為相對權重（顯示佔比，內部換算 %，非 Money）；
- * `color` 由 screens 帶 theme `chartCategory`；中心金額 / 報酬率以 `center` 槽傳入。
+ * `color` 由 screens 帶 theme `assetTypeColor`；中心金額 / 報酬率以 `center` 槽傳入。
  */
 export interface DonutSegment {
   /** 相對權重（用於算佔比，非金額精度）。 */

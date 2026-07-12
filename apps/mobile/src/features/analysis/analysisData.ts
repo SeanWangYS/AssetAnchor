@@ -24,15 +24,12 @@ export const DEMO_RATES: RateMap = {
 /** 顯示幣別（全頁 Segmented）。 */
 export type DisplayCurrency = 'TWD' | 'USD';
 
-/** 分析顯示類別（個股 / ETF）。型別權威在 shared（`AnalysisClass`），此處別名維持既有命名。 */
-export type { AnalysisClass as AssetClass } from '@assetanchor/shared';
-
 /** 聚合結果型別 re-export（消費端 import 不變）。 */
 export type {
   AnalysisAggregate,
   AnalysisHolding,
   AnalysisTotals,
-  ClassRollup,
+  AssetTypeRollup,
 } from '@assetanchor/shared';
 
 /** 把 TWD 基準的 Money 換算成顯示幣別（TWD 原值返回 / USD 以匯率換算）。 */
