@@ -1,3 +1,8 @@
+## RENAMED Requirements
+
+- FROM: `### Requirement: 圓餅維度為資產類別`
+- TO: `### Requirement: 圓餅維度為資產類型`
+
 ## MODIFIED Requirements
 
 ### Requirement: 圓餅維度為資產類型
