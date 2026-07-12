@@ -22,7 +22,8 @@
 pnpm --filter @assetanchor/firebase emulators
 ```
 
-- Auth → `localhost:9099`、Firestore → `localhost:8080`、**Emulator UI → http://localhost:4000**
+- Auth → `localhost:9099`、Firestore → `localhost:8080`、**Emulator UI → http://localhost:4000**（port 速查表見 `CLAUDE.md`「本地開發環境」）。
+- ⚠️ 預設 `emulators` **不含 Cloud Functions**。需本地跑報價 / 匯率 / history（functions `localhost:5001`）時改用 `pnpm --filter @assetanchor/firebase emulators:fn`（起 auth + firestore + functions）。
 - 用 `.firebaserc` 預設 project `assetanchor-832df`。
 - 這個指令會做 **import/export**（從 `.emulator-data` 快照載入：1 測試帳號 + 4 帳戶 + 12 筆交易 + 匯率），關掉時把當前狀態存回，**資料會留存**。
 - ⚠️ **別用裸的 `firebase emulators:start`**——那個是純 in-memory，關掉就清空，看不到種子資料。要持久化 + 載種子請務必用上面這個 `emulators` 指令。
