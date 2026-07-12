@@ -157,7 +157,9 @@ export default function AccountDetailScreen({
   const holdingsValue = hero ? hero.value : positions.length === 0 ? 0 : null;
   const accountValue = holdingsValue === null ? null : holdingsValue + cashBase.toNumber();
 
-  const dp = base === 'USD' ? 2 : 0;
+  // hero 區塊金額一律顯示到小數第二位（含 TWD，對齊 toDisplayString 語意）。
+  // fmtNum/fmtBase/fmtBaseAbs 皆 hero 區塊專用；持股列另走 formatMoney，不受影響。
+  const dp = 2;
   const fmtNum = (n: number): string =>
     n.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
   const fmtBase = (n: number): string => `${currencyPrefix(base)} ${fmtNum(n)}`;
@@ -235,7 +237,13 @@ export default function AccountDetailScreen({
 
             <Text style={styles.heroLabel}>帳戶市值</Text>
             {accountValue !== null ? (
-              <Text style={styles.heroValue} numberOfLines={1}>
+              // 長金額自動縮放字級以完整單行呈現，不截斷；短金額維持大字級。
+              <Text
+                style={styles.heroValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
+              >
                 {fmtBase(accountValue)}
               </Text>
             ) : heroNotFound > 0 ? (

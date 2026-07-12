@@ -36,7 +36,8 @@ import {
   type DualBarDatum,
   type HBarRow,
 } from '../../../core/ui';
-import { chartCategory, colors, fontFamily, fontSize, radius, spacing } from '../../../core/theme';
+import { assetTypeColor, colors, fontFamily, fontSize, radius, spacing } from '../../../core/theme';
+import { assetTypeLabel } from '../../../core/assetTypes';
 import {
   DEMO_RATES,
   formatAmount,
@@ -45,7 +46,6 @@ import {
   fxFootnoteRate,
   toDisplay,
   type AnalysisAggregate,
-  type AssetClass,
   type DisplayCurrency,
 } from '../analysisData';
 
@@ -66,11 +66,6 @@ import {
 const DONUT_SIZE = 168;
 const DONUT_THICK = 28;
 const COUNT_UP_MS = 950;
-
-const CLASS_COLOR: Record<AssetClass, string> = {
-  個股: chartCategory.stock,
-  ETF: chartCategory.etf,
-};
 
 export default function AnalysisOverviewScreen(
   _props: AnalysisStackScreenProps<'AnalysisOverview'>,
@@ -215,12 +210,12 @@ export default function AnalysisOverviewScreen(
 
   const heroValue = toDisplay(agg.totals.value, display, rates);
 
-  // —— 圓餅資料（資產類別維度；單一類別時過濾 0 檔類別，避免空分段/空圖例列）——
-  const classRollups = agg.byClass.filter((c) => c.count > 0);
-  const donutSegments = classRollups.map((c) => ({
+  // —— 圓餅資料（資產類型維度，enum 驅動；過濾未持有的 0 檔類型，避免空分段/空圖例列）——
+  const typeRollups = agg.byAssetType.filter((c) => c.count > 0);
+  const donutSegments = typeRollups.map((c) => ({
     value: c.sharePct,
-    color: CLASS_COLOR[c.cls],
-    label: c.cls,
+    color: assetTypeColor(c.assetType),
+    label: assetTypeLabel(c.assetType),
   }));
 
   // —— 市值 vs 成本（直向雙柱；依市值排序；toNumber 為出圖逃生門）——
@@ -339,7 +334,7 @@ export default function AnalysisOverviewScreen(
         </View>
 
         {/* —— 卡 1：資產配置（圓餅 + 圖例）—— */}
-        <ChartCard title="資產配置" note="依資產類別" glow>
+        <ChartCard title="資產配置" note="依資產類型" glow>
           <Donut
             segments={donutSegments}
             size={DONUT_SIZE}
@@ -360,10 +355,12 @@ export default function AnalysisOverviewScreen(
             }
           />
           <View style={styles.legend}>
-            {classRollups.map((c, i) => (
-              <View key={c.cls} style={[styles.legendRow, i > 0 && styles.legendRowDivider]}>
-                <View style={[styles.legendDot, { backgroundColor: CLASS_COLOR[c.cls] }]} />
-                <Text style={styles.legendName}>{c.cls}</Text>
+            {typeRollups.map((c, i) => (
+              <View key={c.assetType} style={[styles.legendRow, i > 0 && styles.legendRowDivider]}>
+                <View
+                  style={[styles.legendDot, { backgroundColor: assetTypeColor(c.assetType) }]}
+                />
+                <Text style={styles.legendName}>{assetTypeLabel(c.assetType)}</Text>
                 <Text style={styles.legendCount}>{c.count} 檔</Text>
                 <Text style={styles.legendValue}>
                   {formatAmount(toDisplay(c.value, display, rates), display)}

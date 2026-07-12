@@ -29,16 +29,10 @@ import {
   spacing,
 } from '../../../core/theme';
 import { currencySymbol, formatMoney } from '../transactionsView';
+// 資產類型標籤＝分析頁圓餅圖共用的單一事實來源（core/assetTypes），避免兩處各寫一份而失同步。
+import { ASSET_TYPE_LABEL } from '../../../core/assetTypes';
 
 const MVP_CURRENCIES = ['TWD', 'USD', 'USDT'] as const;
-const ASSET_TYPE_LABEL: Record<string, string> = {
-  STOCK: '個股',
-  ETF: 'ETF',
-  CRYPTO: '加密貨幣',
-  BOND: '債券',
-  MUTUAL_FUND: '基金',
-  OTHER: '其他',
-};
 const MARKET_LABEL: Record<string, string> = {
   TW: '台股',
   US: '美股',
