@@ -1,5 +1,7 @@
 # 自主開發 Loop — 操作手冊（Loop engineer 模式）
 
+> ⚠️ **已由 [`goal-dev-cycle.md`](./goal-dev-cycle.md) 繼承取代（2026-07-12）。** 新的自主開發主驅動是 Claude 原生 `/goal`（條件驅動——做到 DoD 才停），比本檔的 `/loop`（固定時間間隔）更貼合「完成即止」，並補上 harness 兩層框架、完成條件防呆、軟/硬 gate 與 BLOCKED 訊號。**新工作請走 `goal-dev-cycle.md`**；本檔保留作歷史與 `/loop` 用法參考，不再更新。
+
 > 給「接著自動化開發剩餘 Sprint」的 AI session 用。可整檔當 prompt 餵給 `/loop`（自走、不設間隔），或新 session 直接說「讀 `docs/runbook/autonomous-dev-loop.md` 並執行循環」。
 > 權威來源是 `CLAUDE.md`「核心開發紀律（不變量）」+ `docs/portfolio_tracker_planning.md` §2.5；本檔只是把它們組成可執行的循環。
 
