@@ -14,6 +14,7 @@
  */
 
 import type { TextStyle } from 'react-native';
+import { ASSET_TYPES, type AssetType } from '@assetanchor/shared';
 
 /**
  * 顏色 token。
@@ -100,15 +101,32 @@ export const gradientDirection = {
 } as const;
 
 /**
- * 圖表類別色（§3：個股 = accent、ETF = 青）。charts 用 react-native-svg 自繪（D5）。
- * key 對齊 `asset_type` enum（`@assetanchor/shared`）。
+ * 資產類型圖表色盤（§3）。charts 用 react-native-svg 自繪（D5）。
+ * **enum 驅動、zero-touch**：色依 `ASSET_TYPES` 次序指派（`assetTypeColor`），
+ * 前三色沿用既有設計（個股 accent 紫 / ETF 青 / 加密貨幣 amber），其後為債券/基金/其他，
+ * 末端預留數色供未來新增 asset_type 自動取用（無需改配色碼）。
+ * 對齊 ASSET_TYPES = [STOCK, ETF, CRYPTO, BOND, MUTUAL_FUND, OTHER]。
  */
-export const chartCategory = {
-  /** 個股 = accent。 */
-  stock: '#7C6CF0',
-  /** ETF = 青（= 賣漸層尾色）。 */
-  etf: '#35C6EA',
-} as const;
+export const categoryPalette = [
+  '#7C6CF0', // STOCK 個股 — accent 紫
+  '#35C6EA', // ETF — 青（= 賣漸層尾色）
+  '#F5A623', // CRYPTO 加密貨幣 — amber
+  '#EC6F9B', // BOND 債券 — 玫紅
+  '#3DD68C', // MUTUAL_FUND 基金 — 綠
+  '#8A93A6', // OTHER 其他 — 石板灰
+  '#F2C94C', // 預留 — 黃
+  '#5B8DEF', // 預留 — 藍
+] as const;
+
+/**
+ * asset_type → 圓餅/圖例色。依 enum 次序取色盤，超出長度以 modulo 循環（防未來 enum 過長）。
+ * 新增 asset_type enum 值即自動取得下一色，無需在此手改。
+ */
+export function assetTypeColor(assetType: AssetType): string {
+  const i = ASSET_TYPES.indexOf(assetType);
+  const idx = i < 0 ? 0 : i;
+  return categoryPalette[idx % categoryPalette.length] ?? categoryPalette[0];
+}
 
 /** 8px 網格間距。既有鍵（xs/sm/md/lg/xl）保留；新增 page（頁面左右 padding）與細粒度。 */
 export const spacing = {
@@ -236,7 +254,7 @@ export const theme = {
   fontFamily,
   gradients,
   gradientDirection,
-  chartCategory,
+  categoryPalette,
   numericStyle,
   ACCENT_OPTIONS,
   ACCOUNT_COLORS,
