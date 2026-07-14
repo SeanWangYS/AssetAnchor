@@ -65,5 +65,8 @@ ui-debug.log
 # Local emulator persistence (import/export snapshot — never committed)
 .emulator-data/
 
-# Claude
-.claude/
+# Claude（僅精準放行 feynman-dojo skill；其餘含 openspec-* 本地 skill 照舊忽略）
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/feynman-dojo/
