@@ -37,5 +37,5 @@
 
 ## 5. 收尾
 
-- [ ] 5.1 commit → push → PR（owner 拍板項①②③④+D5b 列置頂 + 設計包編輯明示）
-- [ ] 5.2 CI 綠（owner-gated，不自 merge）→ `/opsx:archive`
+- [x] 5.1 commit → push → PR（owner 拍板項①②③④+D5b 列置頂 + 設計包編輯明示）
+- [x] 5.2 CI 綠（owner-gated，不自 merge）→ `/opsx:archive`
