@@ -5,7 +5,8 @@ import { useTransactionsStore } from './transactionsStore';
 import { EmptyState, ErrorState, Fab, Icon, LoadingView, ScreenHeader } from '../../core/ui';
 import { colors, fontFamily, spacing } from '../../core/theme';
 import TransactionList from './components/TransactionList';
-import { PRESET_LABEL, filterByPreset, useDateRangeStore } from './dateRangeStore';
+import { filterByPreset, presetDisplayLabel, useDateRangeStore } from './dateRangeStore';
+import { zhTW } from '../../i18n/zh-TW';
 
 /**
  * TransactionList 畫面 —— 交易 tab 落地頁（時間軸版型 B；transactions-page-spec）。
@@ -23,9 +24,13 @@ export default function TransactionsScreen({
   const loading = useTransactionsStore((s) => s.loading);
   const error = useTransactionsStore((s) => s.error);
   const preset = useDateRangeStore((s) => s.preset);
+  const custom = useDateRangeStore((s) => s.custom);
   const reset = useDateRangeStore((s) => s.reset);
 
-  const filtered = useMemo(() => filterByPreset(transactions, preset), [transactions, preset]);
+  const filtered = useMemo(
+    () => filterByPreset(transactions, preset, new Date(), custom),
+    [transactions, preset, custom],
+  );
 
   const hasAny = transactions.length > 0;
   const hasFiltered = filtered.length > 0;
@@ -33,7 +38,7 @@ export default function TransactionsScreen({
   return (
     <View style={styles.screen}>
       <ScreenHeader
-        title="交易紀錄"
+        title={zhTW.transactions.listTitle}
         right={
           <Pressable
             accessibilityRole="button"
@@ -52,7 +57,7 @@ export default function TransactionsScreen({
         onPress={() => navigation.navigate('DateRange')}
         style={({ pressed }) => [styles.rangePill, pressed ? styles.pressed : null]}
       >
-        <Text style={styles.rangePillText}>期間：{PRESET_LABEL[preset]}</Text>
+        <Text style={styles.rangePillText}>期間：{presetDisplayLabel(preset, custom)}</Text>
         <Text style={styles.caret}>▾</Text>
       </Pressable>
 

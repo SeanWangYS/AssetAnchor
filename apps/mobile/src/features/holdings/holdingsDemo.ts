@@ -116,7 +116,7 @@ export function fmtShares(quantity: string, currency: Currency): string {
 
 /** 持倉總覽 hero / bento 的整體 mock 摘要（TWD；prototype SUM）。需報價，故為示意。 */
 export const DEMO_SUMMARY = {
-  /** 總資產 TWD。 */
+  /** 持股市值 TWD。 */
   totalAssets: 1238540,
   /** 總報酬率 %。 */
   totalReturnPct: 7.66,

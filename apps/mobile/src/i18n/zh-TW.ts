@@ -57,6 +57,8 @@ export const zhTW = {
     },
   },
   transactions: {
+    /** 交易清單畫面標題：ScreenHeader 與 route title（返回鈕文字）共用，避免字串漂移。 */
+    listTitle: '交易紀錄',
     empty: '尚無交易，點右上角 ＋ 新增買入',
     noAccount: '請先到「帳戶」分頁建立一個帳戶，才能記錄交易',
     addTitle: '新增買入',

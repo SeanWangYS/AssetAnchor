@@ -15,10 +15,11 @@ const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
  */
 export const accountInputSchema = z.object({
   account_name: z.string().trim().min(1, '帳戶名稱必填'),
-  broker: z.enum(BROKERS),
-  account_type: z.enum(ACCOUNT_TYPES),
-  base_currency: z.enum(MVP_CURRENCIES),
-  market: z.enum(MARKETS),
+  // enum 欄位一律帶繁中訊息——zod 內建英文訊息會裸露 enum 內部值於 UI（visual-audit P0-1）
+  broker: z.enum(BROKERS, '請選擇券商'),
+  account_type: z.enum(ACCOUNT_TYPES, '請選擇帳戶類型'),
+  base_currency: z.enum(MVP_CURRENCIES, '請選擇基礎幣別'),
+  market: z.enum(MARKETS, '請選擇主要市場'),
   color: z.string().regex(HEX_COLOR, '需為 #RRGGBB 色碼'),
   notes: z.string().default(''),
 });

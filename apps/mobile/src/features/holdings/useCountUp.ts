@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * 數字 count-up（持倉總覽總資產 Hero；prototype `useCountUp`，design §3.1 item 3 / §4）。
+ * 數字 count-up（持倉總覽持股市值 Hero；prototype `useCountUp`，design §3.1 item 3 / §4）。
  *
  * 進場時從 0 ease-out 漲到 target（約 0.95s）。以 requestAnimationFrame 逐幀更新，
  * 並用 setTimeout 保底（背景節流時 rAF 可能停擺，時間到仍跳到最終值）。

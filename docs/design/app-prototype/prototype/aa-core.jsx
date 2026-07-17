@@ -43,7 +43,7 @@ const HOLD = [
 ];
 
 const SUM = {
-  total: 1238540,            // 總資產 TWD
+  total: 1238540,            // 持股市值 TWD（不含現金；2026-07-18 更名，原「總資產」）
   totalPct: 7.66,            // 總報酬率
   unrealized: 88200,         // 總未實現損益 TWD
   today: 3420, todayPct: 0.28,

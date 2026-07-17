@@ -1,4 +1,4 @@
-import { transactionInputSchema, type TransactionInput } from './transaction.js';
+import { transactionInputSchema, isRealDate, type TransactionInput } from './transaction.js';
 
 const valid = {
   account_id: 'acc_123',
@@ -187,5 +187,40 @@ describe('transactionInputSchema', () => {
   it('infers TransactionInput matching the schema output', () => {
     const typed: TransactionInput = transactionInputSchema.parse(valid);
     expect(typed.transaction_type).toBe('BUY');
+  });
+
+  // enum 欄位未選（空字串）→ 繁中訊息，不得裸露 zod 英文與 enum 內部值（visual-audit P0-1）
+  describe('enum 欄位繁中錯誤訊息', () => {
+    const cases = [
+      ['market', '請選擇市場'],
+      ['asset_type', '請選擇資產類型'],
+      ['transaction_type', '請選擇交易類型'],
+      ['currency', '請選擇幣別'],
+    ] as const;
+
+    it.each(cases)('%s 為空字串時訊息為「%s」', (field, message) => {
+      const r = transactionInputSchema.safeParse({ ...valid, [field]: '' });
+      expect(r.success).toBe(false);
+      if (!r.success) {
+        const issue = r.error.issues.find((i) => i.path.includes(field));
+        expect(issue?.message).toBe(message);
+        expect(issue?.message).not.toMatch(/Invalid option|expected one of/);
+      }
+    });
+  });
+});
+
+// export 供 UI 層（期間篩選自訂起訖）複用（visual-audit P1-3）
+describe('isRealDate', () => {
+  it('accepts real YYYY-MM-DD dates', () => {
+    for (const ok of ['2024-01-15', '2024-02-29', '2025-12-31']) {
+      expect(isRealDate(ok)).toBe(true);
+    }
+  });
+
+  it('rejects malformed or impossible dates', () => {
+    for (const bad of ['', '2024-13-01', '2024-01-32', '2023-02-29', '2024/01/15', '01-15-2024']) {
+      expect(isRealDate(bad)).toBe(false);
+    }
   });
 });

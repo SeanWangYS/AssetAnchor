@@ -174,7 +174,7 @@ function Home({ onRow, onAdd, onTab, onToast, onTxRow, onAccounts, onLogout, use
       <div style={{ padding: '0 20px' }}>
         {/* hero */}
         <div style={{ position: 'relative', paddingTop: 6 }}>
-          <div style={{ color: T.sub, fontSize: 12.5 }}>總資產（TWD）</div>
+          <div style={{ color: T.sub, fontSize: 12.5 }}>持股市值（TWD）</div>
           <div className="num" style={{ color: T.ink, fontSize: 38, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1.05, marginTop: 3 }}>NT$ {nf(Math.round(total))}</div>
           <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
             <PnlAmt amt={SUM.unrealized} size={14} />
