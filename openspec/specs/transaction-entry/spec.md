@@ -269,3 +269,12 @@ Firestore rules SHALL 確保使用者僅能讀寫自己 `users/{uid}/transaction
 
 - **WHEN** 使用者只輸入起日（訖為空）且目前選取為 custom
 - **THEN** 套用鈕 disabled；SHALL NOT 發生「輸入被靜默忽略、實際套用其他 preset」
+
+### Requirement: 交易清單月分組恆帶年份
+
+交易清單的月分組標題 SHALL 恆帶西元年（如「七月 · 2026」），不因當年而省略——避免同畫面出現兩個無法區分的相同月份標題。
+
+#### Scenario: 當年分組也帶年
+
+- **WHEN** 清單同時含 2026-07 與 2024-07 的交易
+- **THEN** 兩組標題 SHALL 分別為「七月 · 2026」與「七月 · 2024」，SHALL NOT 出現無年份的「七月」
