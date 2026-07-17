@@ -104,7 +104,7 @@ export default function SettingsScreen({ navigation }: SettingsStackScreenProps<
         visible={confirmLogout}
         danger
         title="登出"
-        message="確定要登出嗎？下次需重新輸入帳號密碼。"
+        message="確定要登出嗎？"
         confirmLabel="登出"
         onClose={() => setConfirmLogout(false)}
         onConfirm={() => {

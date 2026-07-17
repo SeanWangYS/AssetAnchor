@@ -91,19 +91,25 @@ export default function SignInScreen({ navigation }: AuthStackScreenProps<'SignI
 
           {/* 表單（沉於下半） */}
           <View style={styles.form}>
-            {banner ? (
-              <View style={styles.banner}>
-                <Icon name="alert" size={18} color={colors.down} />
-                <Text style={styles.bannerText}>{banner}</Text>
-              </View>
-            ) : null}
+            {/* 常駐固定高度 slot（visual-audit P2-10：橫幅出現不推移表單）；
+                無錯誤時渲染空佔位（勿 opacity:0——內容會留在 a11y tree）。 */}
+            <View style={styles.bannerSlot}>
+              {banner ? (
+                <View style={styles.banner}>
+                  <Icon name="alert" size={18} color={colors.down} />
+                  <Text style={styles.bannerText}>{banner}</Text>
+                </View>
+              ) : null}
+            </View>
 
             <Input
               testID="signin-email"
-              label="Email"
+              label="電子郵件"
               placeholder="you@example.com"
               autoCapitalize="none"
               autoComplete="email"
+              autoCorrect={false}
+              spellCheck={false}
               keyboardType="email-address"
               textContentType="emailAddress"
               value={email}
@@ -192,14 +198,18 @@ export default function SignInScreen({ navigation }: AuthStackScreenProps<'SignI
                 <Text style={styles.link}>建立帳號</Text>
               </Pressable>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={onSkip}
-              style={styles.skipWrap}
-            >
-              <Text style={styles.skip}>略過登入，直接看 Demo →</Text>
-            </Pressable>
+            {__DEV__ ? (
+              // __DEV__ only（visual-audit P2-12）：spec 明定正式版移除；
+              // 本地 emulator 驗證仍需 → dev build 保留、release 編譯期死碼移除。
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={onSkip}
+                style={styles.skipWrap}
+              >
+                <Text style={styles.skip}>略過登入，直接看 Demo →</Text>
+              </Pressable>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -224,6 +234,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   form: { gap: spacing.lg, marginTop: spacing.xxl },
+  // 單行 banner 實高 ≈ 44（padding 12×2 + 字行 ~18 + border）；多行可長高。
+  bannerSlot: { minHeight: 44, justifyContent: 'flex-end' },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -241,7 +253,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.footnote,
     color: colors.down,
   },
-  forgotWrap: { alignSelf: 'flex-end', marginTop: -spacing.sm },
+  forgotWrap: {
+    alignSelf: 'flex-end',
+    marginTop: -spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
   link: { fontFamily: fontFamily.text.bold, fontSize: fontSize.footnote, color: colors.accent },
   divider: {
     flexDirection: 'row',
@@ -256,12 +273,12 @@ const styles = StyleSheet.create({
     color: colors.textWeak,
   },
   footer: { marginTop: 'auto', paddingTop: spacing.xxl, gap: spacing.lg, alignItems: 'center' },
-  signupRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  signupRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 44 },
   muted: {
     fontFamily: fontFamily.text.regular,
     fontSize: fontSize.footnote,
     color: colors.textSecondary,
   },
-  skipWrap: { paddingVertical: spacing.xs },
+  skipWrap: { paddingVertical: spacing.xs, minHeight: 44, justifyContent: 'center' },
   skip: { fontFamily: fontFamily.text.medium, fontSize: fontSize.footnote, color: colors.textWeak },
 });
