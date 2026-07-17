@@ -18,5 +18,5 @@
 
 ## 3. 收尾
 
-- [ ] 3.1 commit → push → PR（stacked on #62；owner 拍板：鈴鐺移除/提示文案/標題文案）
-- [ ] 3.2 CI 綠（owner-gated 不自 merge）→ `/opsx:archive`
+- [x] 3.1 commit → push → PR（stacked on #62；owner 拍板：鈴鐺移除/提示文案/標題文案）
+- [x] 3.2 CI 綠（owner-gated 不自 merge）→ `/opsx:archive`
