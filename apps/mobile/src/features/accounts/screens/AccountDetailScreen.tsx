@@ -1,7 +1,14 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Money, type AccountInput, type Currency, type RateMap } from '@assetanchor/shared';
+import {
+  Money,
+  formatPercent,
+  formatPrice,
+  type AccountInput,
+  type Currency,
+  type RateMap,
+} from '@assetanchor/shared';
 import type { AccountsStackScreenProps } from '../../../core/navigation/types';
 import { useAuthStore } from '../../auth/authStore';
 import { useAccountsStore } from '../accountsStore';
@@ -275,7 +282,7 @@ export default function AccountDetailScreen({
                 <Pnl value={hero.unrealized} display={fmtBaseAbs(hero.unrealized)} size={12} />
                 <Pnl
                   value={hero.returnPct}
-                  display={`${Math.abs(hero.returnPct).toFixed(2)}%`}
+                  display={formatPercent(hero.returnPct, { signed: false })}
                   signMode="plusminus"
                   size={12}
                 />
@@ -383,7 +390,7 @@ export default function AccountDetailScreen({
                 <ListItem
                   key={`${p.market}_${p.symbol}`}
                   title={p.symbol}
-                  subtitle={`${shares(p.quantity, p.currency)} 股 · 均價 ${Money.fromDecimalString(p.averageCost, p.currency).toDisplayString()}`}
+                  subtitle={`${shares(p.quantity, p.currency)} 股 · 均價 ${formatPrice(p.averageCost, p.currency)}`}
                   right={
                     v ? (
                       <View style={styles.holdingRight}>
@@ -392,7 +399,7 @@ export default function AccountDetailScreen({
                         </Text>
                         <Pnl
                           value={v.returnPct}
-                          display={`${Math.abs(v.returnPct).toFixed(2)}%`}
+                          display={formatPercent(v.returnPct, { signed: false })}
                           signMode="plusminus"
                           size={12}
                         />

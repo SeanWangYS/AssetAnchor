@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   aggregateHoldings,
+  allocatePercentages,
+  amountDisplayDecimals,
   buildAnalysisInput,
+  currencyPrefix,
   deriveHoldingsSafe,
+  formatPercent as sharedFormatPercent,
   type AssetType,
   type Money,
   type Position,
@@ -217,6 +221,11 @@ export default function AnalysisOverviewScreen(
     color: assetTypeColor(c.assetType),
     label: assetTypeLabel(c.assetType),
   }));
+  // 圖例佔比顯示值走 largest-remainder（加總恆 100.0，P3-4）；donut 弧形角度維持原始值。
+  const legendPcts = allocatePercentages(
+    typeRollups.map((c) => c.sharePct),
+    1,
+  );
 
   // —— 市值 vs 成本（直向雙柱；依市值排序；toNumber 為出圖逃生門）——
   const vcData: DualBarDatum[] = [...agg.holdings]
@@ -260,23 +269,28 @@ export default function AnalysisOverviewScreen(
     });
 
   // —— 市值佔比（橫條，accent 單色，依市值排序）——
+  // 顯示佔比走 largest-remainder（與圖例各自為獨立 partition，各自加總恆 100.0）；
+  // 長條 fraction 維持原始比例（幾何連續量）。
   const totalValueNum = agg.totals.value.toNumber() || 1;
+  const shareSorted = [...agg.holdings].sort((a, b) => b.value.toNumber() - a.value.toNumber());
+  const sharePcts = allocatePercentages(
+    shareSorted.map((h) => h.value.toNumber()),
+    1,
+  );
   const shareMax = Math.max(...agg.holdings.map((h) => h.value.toNumber() / totalValueNum), 0.0001);
-  const shareRows: HBarRow[] = [...agg.holdings]
-    .sort((a, b) => b.value.toNumber() - a.value.toNumber())
-    .map((h) => {
-      const p = h.value.toNumber() / totalValueNum;
-      return {
-        label: h.symbol,
-        sublabel: h.name,
-        fraction: p / shareMax,
-        barColor: colors.accent,
-        rightText: formatPercent(p * 100),
-        rightColor: colors.textPrimary,
-      };
-    });
+  const shareRows: HBarRow[] = shareSorted.map((h, i) => {
+    const p = h.value.toNumber() / totalValueNum;
+    return {
+      label: h.symbol,
+      sublabel: h.name,
+      fraction: p / shareMax,
+      barColor: colors.accent,
+      rightText: sharedFormatPercent(sharePcts[i] ?? 0, { decimals: 1, signed: false }),
+      rightColor: colors.textPrimary,
+    };
+  });
 
-  const prefix = display === 'USD' ? 'US$' : 'NT$';
+  const prefix = currencyPrefix(display);
   const showDisclosure = input.pendingCount > 0 || input.anyStale;
 
   return (
@@ -286,7 +300,12 @@ export default function AnalysisOverviewScreen(
         {/* —— Hero（彙總）—— */}
         <Card glow style={styles.heroCard}>
           <Text style={styles.heroLabel}>持股市值（{display}）</Text>
-          <CountUpAmount value={heroValue} prefix={prefix} resetKey={`${display}-${refreshKey}`} />
+          <CountUpAmount
+            value={heroValue}
+            prefix={prefix}
+            decimals={amountDisplayDecimals(display)}
+            resetKey={`${display}-${refreshKey}`}
+          />
           <View style={styles.heroPnlRow}>
             <Pnl
               value={agg.totals.pnl.toNumber()}
@@ -365,7 +384,9 @@ export default function AnalysisOverviewScreen(
                 <Text style={styles.legendValue}>
                   {formatAmount(toDisplay(c.value, display, rates), display)}
                 </Text>
-                <Text style={styles.legendPct}>{formatPercent(c.sharePct)}</Text>
+                <Text style={styles.legendPct}>
+                  {sharedFormatPercent(legendPcts[i] ?? 0, { decimals: 1, signed: false })}
+                </Text>
               </View>
             ))}
           </View>
@@ -397,23 +418,29 @@ export default function AnalysisOverviewScreen(
   );
 }
 
-/** Hero 大數字 count-up（~0.95s）。換幣別 / 刷新時以 resetKey 重跑。 */
+/**
+ * Hero 大數字 count-up（~0.95s）。換幣別 / 刷新時以 resetKey 重跑。
+ * 最終顯示依幣別小數位固定格式化（TWD 0 / USD 2，與 donut 中心一致）；
+ * 動畫過程用 number 屬顯示逃生門（ADR-0005）。
+ */
 function CountUpAmount({
   value,
   prefix,
+  decimals,
   resetKey,
 }: {
   value: Money;
   prefix: string;
+  decimals: number;
   resetKey: string;
 }) {
-  const target = Math.round(Math.abs(value.toNumber()));
+  const target = Math.abs(value.toNumber());
   const [shown, setShown] = useState(target);
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     anim.setValue(0);
-    const id = anim.addListener(({ value: t }) => setShown(Math.round(target * t)));
+    const id = anim.addListener(({ value: t }) => setShown(target * t));
     Animated.timing(anim, {
       toValue: 1,
       duration: COUNT_UP_MS,
@@ -425,7 +452,11 @@ function CountUpAmount({
 
   return (
     <Text style={styles.heroValue} numberOfLines={1}>
-      {prefix} {shown.toLocaleString('en-US')}
+      {prefix}{' '}
+      {shown.toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      })}
     </Text>
   );
 }

@@ -26,7 +26,11 @@ function mostRecent(transactions: TransactionDocument[]): TransactionDocument | 
   );
 }
 
-/** TransactionDocument → 表單字串初值（編輯帶值；金額以 display 精度回填，去尾零）。 */
+/**
+ * TransactionDocument → 表單字串初值（編輯帶值）。
+ * price 循規則表「單價一律 2 位」：恆 2 位、不掉尾零（512.30 顯示 512.30）；
+ * quantity/fee/tax 維持 ≤4 位去尾零回填。
+ */
 function toFormDefaults(t: TransactionDocument): TransactionFormDefaults {
   const trim = (s: string): string => {
     const fixed = Money.fromDecimalString(s, t.currency).toDisplayString(4);
@@ -41,7 +45,7 @@ function toFormDefaults(t: TransactionDocument): TransactionFormDefaults {
     transaction_date: t.transaction_date,
     currency: t.currency,
     quantity: trim(t.quantity),
-    price: trim(t.price),
+    price: Money.fromDecimalString(t.price, t.currency).toDisplayString(2),
     fee: trim(t.fee),
     tax: trim(t.tax),
     notes: t.notes,
