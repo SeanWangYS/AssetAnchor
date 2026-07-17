@@ -16,5 +16,5 @@
 
 ## 3. 收尾
 
-- [ ] 3.1 commit → push → PR（**base=main，不 stack**——與 #61-64 零檔案重疊；owner 拍板：**DEV**/登出文案/scrim 0.75/already-in-use 全文）
-- [ ] 3.2 CI 綠（owner-gated 不自 merge）→ `/opsx:archive`
+- [x] 3.1 commit → push → PR（**base=main，不 stack**——與 #61-64 零檔案重疊；owner 拍板：**DEV**/登出文案/scrim 0.75/already-in-use 全文）
+- [x] 3.2 CI 綠（owner-gated 不自 merge）→ `/opsx:archive`
