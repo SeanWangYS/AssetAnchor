@@ -3,10 +3,10 @@
 appId: com.seanwangys.assetanchor
 ---
 - runFlow: login.yaml
-# 持倉頁 header 的「＋」（accessibilityLabel＝新增交易）→ 開新增買入 modal
+# 持倉頁 header 的「＋」（accessibilityLabel＝新增交易）→ 開新增交易 modal（開/關以表單欄「股票代號」守門——標題與 ＋ 鈕 a11y label 同字，不可用標題）
 - tapOn: '新增交易'
 - extendedWaitUntil:
-    visible: '新增買入'
+    visible: '股票代號'
     timeout: 15000
 # 代號（testID；modal 欄位）
 - tapOn:

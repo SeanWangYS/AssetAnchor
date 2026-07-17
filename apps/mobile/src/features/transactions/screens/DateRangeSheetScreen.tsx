@@ -19,6 +19,7 @@ import {
   PRESET_ORDER,
   filterByPreset,
   isValidCustomRange,
+  presetRange,
   useDateRangeStore,
   type DateRangePreset,
 } from '../dateRangeStore';
@@ -42,20 +43,23 @@ export default function DateRangeSheetScreen({ navigation }: RootStackScreenProp
   const setCustomRange = useDateRangeStore((s) => s.setCustomRange);
   const transactions = useTransactionsStore((s) => s.transactions);
 
-  // 重開 sheet 保留 custom（visual-audit 設計稽核必改點：原本 custom 會被退回 all）
+  // 重開 sheet 保留 custom；非 custom 也以 presetRange 回填起訖（P3-9：與「選 preset 即回填」一致）
+  const initialRange = current === 'custom' ? storedCustom : presetRange(current);
   const [sel, setSel] = useState<DateRangePreset>(current);
-  const [start, setStart] = useState(current === 'custom' ? storedCustom.start : '');
-  const [end, setEnd] = useState(current === 'custom' ? storedCustom.end : '');
+  const [start, setStart] = useState(initialRange?.start ?? '');
+  const [end, setEnd] = useState(initialRange?.end ?? '');
 
   const range = { start: start.trim(), end: end.trim() };
   const bothValid = isRealDate(range.start) && isRealDate(range.end);
   const rangeError = bothValid && range.start > range.end;
-  const canApply = sel !== 'custom' || isValidCustomRange(range);
 
   const count = useMemo(
     () => filterByPreset(transactions, sel, new Date(), range).length,
     [transactions, sel, range.start, range.end],
   );
+
+  // P3-9：命中 0 筆不可套用（按下必得空清單）；「全部」豁免＝清除篩選恆可執行。
+  const canApply = sel === 'all' || ((sel !== 'custom' || isValidCustomRange(range)) && count > 0);
 
   /** 起訖輸入：雙欄皆合法才自動切 custom；已在 custom 則停留（由套用鈕 disable 把關）。 */
   function onChangeDate(which: '起' | '訖', value: string) {
@@ -68,9 +72,11 @@ export default function DateRangeSheetScreen({ navigation }: RootStackScreenProp
 
   function onSelectPreset(p: DateRangePreset) {
     setSel(p);
-    // 選 preset 清空自訂輸入（spec delta：兩者互斥）
-    setStart('');
-    setEnd('');
+    // P3-9：回填該 preset 的實際日曆區間（期末訖端）；「全部」清空。
+    // setStart/setEnd 不經 onChangeDate，不會誤切 custom。
+    const r = presetRange(p);
+    setStart(r?.start ?? '');
+    setEnd(r?.end ?? '');
   }
 
   function apply() {

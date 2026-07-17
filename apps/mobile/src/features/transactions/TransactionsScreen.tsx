@@ -135,6 +135,6 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.page,
-    paddingBottom: 96,
+    paddingBottom: 128,
   },
 });

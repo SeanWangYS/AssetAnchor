@@ -129,7 +129,6 @@ export default function TransactionDetailScreen({
         onPress={() => navigation.navigate('EditTransaction', { transactionId: t.transaction_id })}
       />
       <ActionButton label="刪除交易" color={colors.down} onPress={() => setConfirmDelete(true)} />
-      <Text style={styles.hint}>編輯會開啟與「新增交易」相同的 sheet 並帶入原值</Text>
 
       <ConfirmDialog
         visible={confirmDelete}
@@ -245,11 +244,4 @@ const styles = StyleSheet.create({
   },
   actionPressed: { opacity: 0.7 },
   actionLabel: { fontFamily: fontFamily.text.bold, fontSize: fontSize.text },
-  hint: {
-    fontFamily: fontFamily.text.regular,
-    fontSize: 10.5,
-    color: colors.textWeak,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
 });
