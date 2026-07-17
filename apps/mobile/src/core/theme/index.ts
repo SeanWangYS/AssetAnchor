@@ -220,7 +220,7 @@ export const fontSize = {
   cardTitle: 23,
   /** 畫面標題（四 tab 落地頁 ScreenHeader；spec 23px/800）。與 cardTitle 同值但語意獨立。 */
   screenTitle: 23,
-  /** Hero 數字（總資產 / 個股市值）。 */
+  /** Hero 數字（持股市值 / 個股市值）。 */
   hero: 38,
 } as const;
 

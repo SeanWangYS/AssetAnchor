@@ -341,7 +341,7 @@ export default function HoldingsOverviewScreen({
     return realizedInMonth(realizedEvents, monthPrefix, rates, displayCcy);
   }, [realizedEvents, rates, displayCcy]);
 
-  // 總資產 Hero count-up：報價就緒跑真值總市值，否則 0（顯示「報價載入中…」不跑數字）。
+  // 持股市值 Hero count-up：報價就緒跑真值總市值，否則 0（顯示「報價載入中…」不跑數字）。
   const totalAssets = useCountUp(hero?.value ?? 0);
 
   // 真實跨幣別「總成本」：以使用者顯示幣別偏好為基準，rates（或 demo 匯率退回）即時換算加總。
@@ -378,9 +378,9 @@ export default function HoldingsOverviewScreen({
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
         }
       >
-        {/* 總資產 Hero（報價真值；未就緒顯示載入中） */}
+        {/* 持股市值 Hero（報價真值、不含現金；未就緒顯示載入中）——visual-audit P1-4 */}
         <View style={styles.hero}>
-          <Text style={styles.heroLabel}>總資產（{displayCcy}）</Text>
+          <Text style={styles.heroLabel}>持股市值（{displayCcy}）</Text>
           {hero ? (
             <>
               <Text style={styles.heroValue} numberOfLines={1}>
@@ -434,7 +434,7 @@ export default function HoldingsOverviewScreen({
             </View>
           ) : null}
           <Text style={styles.demoNote}>
-            市值/今日為報價即時計算（延遲 15 分鐘）；成本與已實現來自實際交易
+            市值/今日為報價即時計算（延遲 15 分鐘）；不含現金；成本與已實現來自實際交易
           </Text>
         </View>
 

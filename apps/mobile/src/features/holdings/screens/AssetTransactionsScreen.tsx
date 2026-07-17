@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   Money,
   deriveHoldings,
+  transactionTotalWithFees,
   type Currency,
   type TransactionDocument,
   type TransactionType,
@@ -131,7 +132,7 @@ function TxRow({ tx }: { tx: TransactionDocument }) {
       <View style={styles.txTop}>
         <TypePill type={tx.transaction_type} />
         <Text style={styles.txDate}>{tx.transaction_date}</Text>
-        <Text style={styles.txTotal}>{fmt(tx.total, tx.currency)}</Text>
+        <Text style={styles.txTotal}>{fmt(transactionTotalWithFees(tx), tx.currency)}</Text>
       </View>
       <Text style={styles.txDetail} numberOfLines={1}>
         {fmtShares(tx.quantity, tx.currency)} 股 @ {fmt(tx.price, tx.currency)} · 手續費{' '}

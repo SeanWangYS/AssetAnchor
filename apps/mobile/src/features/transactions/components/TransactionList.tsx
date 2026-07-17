@@ -1,5 +1,6 @@
 import { Fragment, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { transactionTotalWithFees } from '@assetanchor/shared';
 import type { TransactionDocument } from '@assetanchor/shared';
 import { Pnl } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
@@ -15,7 +16,7 @@ import {
 /**
  * TransactionList —— 時間軸版型 B（transactions-page-spec T1/T3）。
  * 左日期欄（日大字＋月小字，同日合併）＋ 按月分組 header（含筆數）＋ 每列：
- * 買/賣漸層膠囊 + 代號 + 股數×單價（左側細線分隔），右側總金額（原幣別、含手續費），
+ * 買/賣漸層膠囊 + 代號 + 股數×單價（左側細線分隔），右側總金額（原幣別、含手續費與稅——經 transactionTotalWithFees，spec T3 / visual-audit P1-1），
  * 賣出加「已實現 ±」（漲跌色）。純列表、無頁面統計（T8）。
  *
  * 已實現損益：MVP 的 TransactionDocument 尚無 realized 欄位（SELL 聚合為 Sprint 5），
@@ -93,7 +94,7 @@ function Row({ t, showDate, onPress }: RowProps) {
 
       <View style={styles.amountCol}>
         <Text style={styles.total} numberOfLines={1}>
-          {formatMoney(t.total, t.currency)}
+          {formatMoney(transactionTotalWithFees(t), t.currency)}
         </Text>
         {realized !== undefined ? (
           <View style={styles.realizedWrap}>

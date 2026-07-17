@@ -3,6 +3,7 @@ import type { TransactionsStackParamList } from '../../core/navigation/types';
 import TransactionsScreen from './TransactionsScreen';
 import TransactionDetailScreen from './screens/TransactionDetailScreen';
 import { colors } from '../../core/theme';
+import { zhTW } from '../../i18n/zh-TW';
 
 const Stack = createNativeStackNavigator<TransactionsStackParamList>();
 
@@ -24,7 +25,9 @@ export default function TransactionsStack() {
       <Stack.Screen
         name="TransactionList"
         component={TransactionsScreen}
-        options={{ headerShown: false }}
+        // headerShown:false 仍需 title：native-stack 以此作為子頁返回鈕文字，
+        // 缺 title 會裸露 route 名「TransactionList」（visual-audit P1-5；同 HoldingsStack 慣例）
+        options={{ headerShown: false, title: zhTW.transactions.listTitle }}
       />
       <Stack.Screen
         name="TransactionDetail"

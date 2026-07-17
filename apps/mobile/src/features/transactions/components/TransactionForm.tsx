@@ -143,11 +143,13 @@ export default function TransactionForm({
     },
   });
 
-  // 即時計算預覽（單幣別 ADR-0005：total = 股數×單價 ± 手續費，不做 FX 換算）。
+  // 即時計算預覽（單幣別 ADR-0005：total = 股數×單價 ± 手續費 ± 稅，不做 FX 換算）。
+  // 含 tax 對齊全 app 總金額口徑（transactionTotalWithFees；visual-audit P1-1）。
   const txType = watch('transaction_type');
   const qty = watch('quantity');
   const price = watch('price');
   const fee = watch('fee');
+  const tax = watch('tax');
   const market = watch('market');
   const symbolRaw = watch('symbol');
   const accountId = watch('account_id');
@@ -155,8 +157,8 @@ export default function TransactionForm({
   const isBuy = txType !== 'SELL';
 
   const previewTotal = useMemo(
-    () => computeTotal(qty, price, fee, currency, isBuy),
-    [qty, price, fee, currency, isBuy],
+    () => computeTotal(qty, price, fee, tax, currency, isBuy),
+    [qty, price, fee, tax, currency, isBuy],
   );
 
   // 市場 → 幣別單向聯動（guard-transaction-market-consistency）：使用者改市場時自動帶對應預設
@@ -436,7 +438,9 @@ export default function TransactionForm({
       <Card glow padding={spacing.cardInnerLg} style={styles.preview}>
         <Text style={styles.previewLabel}>{isBuy ? '預估總成本' : '預估總收入'}</Text>
         <Text style={styles.previewValue}>{formatMoney(previewTotal, currency)}</Text>
-        <Text style={styles.previewNote}>股數 × 單價 {isBuy ? '＋' : '−'} 手續費（原幣別）</Text>
+        <Text style={styles.previewNote}>
+          股數 × 單價 {isBuy ? '＋' : '−'} 手續費 {isBuy ? '＋' : '−'} 稅（原幣別）
+        </Text>
       </Card>
 
       <Button testID="tx-submit" title={submitLabel} onPress={submit} loading={isSubmitting} />
@@ -445,24 +449,28 @@ export default function TransactionForm({
 }
 
 /**
- * 計算預估總額（10 位小數 canonical string）。total = qty×price ± fee。
+ * 計算預估總額（10 位小數 canonical string）。total = qty×price ± fee ± tax——
+ * 與 `transactionTotalWithFees` 同口徑（BUY 加、SELL 減；visual-audit P1-1）。
  * 任一欄位無效（空 / NaN）時以 0 計，預覽顯示為 0（不丟例外，UX 友善）。
  */
 function computeTotal(
   qty: string,
   price: string,
   fee: string,
+  tax: string,
   currency: Currency,
   isBuy: boolean,
 ): string {
   const q = safeMoney(qty, currency);
   const p = safeMoney(price, currency);
   const f = safeMoney(fee, currency);
+  const x = safeMoney(tax, currency);
   if (!q || !p) return Money.zero(currency).toDecimalString();
   // 以原始字串相乘，保留完整 decimal 精度（不經 toNumber 逃生門）。
   const gross = p.multiply(qty.trim());
   const feeM = f ?? Money.zero(currency);
-  const total = isBuy ? gross.add(feeM) : gross.subtract(feeM);
+  const taxM = x ?? Money.zero(currency);
+  const total = isBuy ? gross.add(feeM).add(taxM) : gross.subtract(feeM).subtract(taxM);
   return total.toDecimalString();
 }
 

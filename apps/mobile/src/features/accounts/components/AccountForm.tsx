@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   ACCOUNT_TYPES,
@@ -57,24 +57,43 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  // 首次送出後才開始隨輸入即時重驗——複刻交易表單（RHF 預設 mode:'onSubmit' +
+  // reValidateMode:'onChange'）語意，消除「欄位已修正但錯誤殘留」的假警報（visual-audit P1-2）。
+  const [submitted, setSubmitted] = useState(false);
+
+  const values = {
+    account_name: accountName,
+    broker,
+    account_type: accountType,
+    base_currency: baseCurrency,
+    market,
+    color,
+    notes,
+  };
+
+  /** 整份 safeParse → 逐欄錯誤 map（schema 無跨欄 refine，全量重驗不會產生幽靈錯誤）。 */
+  function fieldErrorsOf(v: typeof values): Record<string, string> {
+    const result = accountInputSchema.safeParse(v);
+    if (result.success) return {};
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of result.error.issues) {
+      const key = issue.path[0];
+      if (typeof key === 'string' && !(key in fieldErrors)) fieldErrors[key] = issue.message;
+    }
+    return fieldErrors;
+  }
+
+  // 送出過後任何欄位變動（含 picker/segmented/色塊）都重驗：已修正的錯誤即時消失。
+  useEffect(() => {
+    if (!submitted) return;
+    setErrors(fieldErrorsOf(values));
+  }, [submitted, accountName, broker, accountType, baseCurrency, market, color, notes]);
 
   async function handleSubmit() {
-    const result = accountInputSchema.safeParse({
-      account_name: accountName,
-      broker,
-      account_type: accountType,
-      base_currency: baseCurrency,
-      market,
-      color,
-      notes,
-    });
+    setSubmitted(true);
+    const result = accountInputSchema.safeParse(values);
     if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      for (const issue of result.error.issues) {
-        const key = issue.path[0];
-        if (typeof key === 'string' && !(key in fieldErrors)) fieldErrors[key] = issue.message;
-      }
-      setErrors(fieldErrors);
+      setErrors(fieldErrorsOf(values));
       return;
     }
     setErrors({});

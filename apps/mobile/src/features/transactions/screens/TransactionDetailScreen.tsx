@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Money, toSafeDecimalString, transactionTotalWithFees } from '@assetanchor/shared';
 import type { Market, TransactionDocument } from '@assetanchor/shared';
 import type { TransactionsStackScreenProps } from '../../../core/navigation/types';
 import { Avatar, Card, ConfirmDialog, EmptyState, Pnl } from '../../../core/ui';
@@ -61,6 +62,10 @@ export default function TransactionDetailScreen({
   const buy = t.transaction_type === 'BUY';
   const realized = realizedOf(t);
   const totalLabel = buy ? '總成本' : '總收入';
+  // 顯示口徑統一含 fee+tax（spec T6 / visual-audit P1-1）：BUY = total+fee+tax、SELL = total−fee−tax
+  const totalWithFees = transactionTotalWithFees(t);
+  // 交易稅列僅非零顯示（對齊 AssetTransactions TxRow 慣例），使畫面可對帳
+  const hasTax = !Money.fromDecimalString(toSafeDecimalString(t.tax), t.currency).isZero();
   const symbolColor = account?.color ?? colors.accent;
 
   function onDelete() {
@@ -98,9 +103,10 @@ export default function TransactionDetailScreen({
         <Kv k="股數" v={`${formatQuantity(t.quantity, t.currency)} 股`} />
         <Kv k="單價" v={formatPrice(t.price, t.currency)} />
         <Kv k="手續費" v={formatMoney(t.fee, t.currency)} />
+        {hasTax ? <Kv k="交易稅" v={formatMoney(t.tax, t.currency)} /> : null}
         <Kv
           k={totalLabel}
-          v={formatMoney(t.total, t.currency)}
+          v={formatMoney(totalWithFees, t.currency)}
           strong
           last={realized === undefined}
         />
