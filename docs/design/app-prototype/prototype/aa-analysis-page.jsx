@@ -33,7 +33,7 @@ function AnalysisHero({ ccy }) {
   return (
     <div style={{ paddingTop: 2 }}>
       <div style={{ color: T.sub, fontSize: 12.5 }}>持股市值（{ccy}）</div>
-      <div className="num" style={{ color: T.ink, fontSize: 32, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1.1, marginTop: 2 }}>{cy} {nf(Math.round(v))}</div>
+      <div className="num" style={{ color: T.ink, fontSize: 32, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1.1, marginTop: 2 }}>{cy} {nf(v, cy === 'US$' ? 2 : 0)}</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
         <PnlAmt amt={aCv(ATOT.pnl, ccy)} ccy={cy} size={13.5} />
         <Pnl pct={ATOT.ret} size={13} arrow={false} />

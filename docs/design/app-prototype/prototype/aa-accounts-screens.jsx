@@ -200,7 +200,7 @@ function AccountDetail({ cashEditing, onCashRender }) {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div className="num" style={{ color: T.ink, fontWeight: 700, fontSize: 13 }}>{accFmt(h.val, h.ccy)}</div>
-                <div style={{ marginTop: 2 }}><Pnl pct={h.pct} size={11} /></div>
+                <div style={{ marginTop: 2 }}><Pnl pct={h.pct} size={11} arrow={false} /></div>
               </div>
             </div>
           ))}
