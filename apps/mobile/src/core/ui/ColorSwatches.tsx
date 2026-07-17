@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import { ACCOUNT_COLORS, colors, radius, spacing } from '../theme';
+import { ACCOUNT_COLORS, ACCOUNT_COLOR_LABELS, colors, radius, spacing } from '../theme';
 
 /**
  * ColorSwatches —— 帳戶識別色選擇器（design.md §4「色票 ×6」）。
@@ -27,6 +27,7 @@ export default function ColorSwatches({
           <Pressable
             key={c}
             accessibilityRole="button"
+            accessibilityLabel={(ACCOUNT_COLOR_LABELS as Record<string, string>)[c] ?? c}
             accessibilityState={{ selected: on }}
             onPress={() => onChange(c)}
             style={[
