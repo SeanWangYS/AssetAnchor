@@ -4,6 +4,7 @@ import {
   Money,
   isFresh,
   deriveHoldingsByAccount,
+  formatDisplayDate,
   formatPercent,
   formatPrice,
   type Currency,
@@ -168,7 +169,12 @@ export default function AssetDetailScreen({
       {/* 現價 hero */}
       <Text style={styles.priceLabel}>目前股價</Text>
       {priceM ? (
-        <Text style={styles.priceValue} numberOfLines={1}>
+        <Text
+          style={styles.priceValue}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
+        >
           {priceCcyPrefix}{' '}
           {priceM.toNumber().toLocaleString('en-US', {
             minimumFractionDigits: 2,
@@ -176,7 +182,12 @@ export default function AssetDetailScreen({
           })}
         </Text>
       ) : (
-        <Text style={styles.priceValue} numberOfLines={1}>
+        <Text
+          style={styles.priceValue}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
+        >
           更新中…
         </Text>
       )}
@@ -204,7 +215,16 @@ export default function AssetDetailScreen({
       {/* 走勢圖 + 時間 tabs（真值：1D/1W 盤中、其餘日線；載入/空態不畫假線） */}
       <View style={styles.chart}>
         {trend.state === 'ready' ? (
-          <Chart data={trend.series} height={164} />
+          <Chart
+            data={trend.series}
+            height={164}
+            yTickFormat={(v) => v.toFixed(2)}
+            xLabels={
+              trend.startDate !== undefined && trend.endDate !== undefined
+                ? [formatDisplayDate(trend.startDate), formatDisplayDate(trend.endDate)]
+                : null
+            }
+          />
         ) : (
           <View style={styles.chartPlaceholder}>
             <Text style={styles.chartPlaceholderText}>

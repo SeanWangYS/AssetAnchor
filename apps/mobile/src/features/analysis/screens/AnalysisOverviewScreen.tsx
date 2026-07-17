@@ -4,6 +4,7 @@ import {
   aggregateHoldings,
   allocatePercentages,
   amountDisplayDecimals,
+  formatAxisTick,
   buildAnalysisInput,
   currencyPrefix,
   deriveHoldingsSafe,
@@ -361,7 +362,12 @@ export default function AnalysisOverviewScreen(
             center={
               <View style={styles.donutCenter}>
                 <Text style={styles.donutCenterLabel}>持股市值</Text>
-                <Text style={styles.donutCenterValue} numberOfLines={1}>
+                <Text
+                  style={styles.donutCenterValue}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.5}
+                >
                   {formatAmount(heroValue, display)}
                 </Text>
                 <Pnl
@@ -394,7 +400,7 @@ export default function AnalysisOverviewScreen(
 
         {/* —— 卡 2：市值 vs 投入成本（直向雙柱）—— */}
         <ChartCard title="市值 vs 投入成本" note={prefix}>
-          <DualBar data={vcData} />
+          <DualBar data={vcData} tickFormatter={(v) => formatAxisTick(v, display)} />
         </ChartCard>
 
         {/* —— 卡 3：報酬率（橫條，正負分色）—— */}
@@ -451,7 +457,7 @@ function CountUpAmount({
   }, [resetKey, target, anim]);
 
   return (
-    <Text style={styles.heroValue} numberOfLines={1}>
+    <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
       {prefix}{' '}
       {shown.toLocaleString('en-US', {
         minimumFractionDigits: decimals,
@@ -567,7 +573,7 @@ const styles = StyleSheet.create({
   },
 
   // —— Donut 中心 ——
-  donutCenter: { alignItems: 'center', gap: 2 },
+  donutCenter: { alignItems: 'center', gap: 2, maxWidth: DONUT_SIZE - DONUT_THICK * 2 - 8 },
   donutCenterLabel: {
     fontFamily: fontFamily.text.regular,
     fontSize: 10.5,
