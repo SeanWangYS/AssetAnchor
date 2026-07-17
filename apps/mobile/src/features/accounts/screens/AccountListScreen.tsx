@@ -7,7 +7,13 @@ import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { Avatar, EmptyState, ErrorState, Fab, Icon, ListItem, LoadingView } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
-import { accountMonogram, brokerLabel, formatMoney, holdingsForAccount } from '../accountDisplay';
+import {
+  accountMonogram,
+  accountTypeLabel,
+  formatMoney,
+  holdingsForAccount,
+  marketZhLabel,
+} from '../accountDisplay';
 import {
   quoteFor,
   useQuotes,
@@ -56,6 +62,7 @@ export default function AccountListScreen({ navigation }: AccountsStackScreenPro
     const seen = new Set<string>();
     const t: QuoteTarget[] = [];
     for (const acc of accounts) {
+      if (!acc.is_active) continue; // 停用帳戶清單顯示「—」（spec A3），不需報價
       for (const p of holdingsForAccount(transactions, acc.account_id).positions) {
         const k = `${p.market}_${p.symbol}`;
         if (seen.has(k)) continue;
@@ -68,9 +75,15 @@ export default function AccountListScreen({ navigation }: AccountsStackScreenPro
   const quotes = useQuotes(allTargets);
   useRefreshQuotesOnFocus(allTargets);
 
-  /** 右側市值（原幣別，真實報價）。多幣別各一列；缺報價標「N 檔更新中」；無持股顯示 — 。 */
-  function valueText(accountId: string): string {
-    const { positions } = holdingsForAccount(transactions, accountId);
+  /**
+   * 右側市值（原幣別，真實報價）。多幣別各一列；缺報價標「N 檔更新中」。
+   * 三態可區分（visual-audit P2-8）：停用「—」（spec A3）；啟用無持股「無持股」
+   * （現金帳戶不再像空帳戶；爛資料整檔 skipped 時維持「—」避免誤導）；有持股顯市值。
+   */
+  function valueText(a: AccountDocument): string {
+    if (!a.is_active) return '—';
+    const { positions, skipped } = holdingsForAccount(transactions, a.account_id);
+    if (positions.length === 0) return skipped.length > 0 ? '—' : '無持股';
     const byCcy = new Map<Currency, Money>();
     let pending = 0;
     for (const p of positions) {
@@ -91,13 +104,11 @@ export default function AccountListScreen({ navigation }: AccountsStackScreenPro
       <ListItem
         key={a.account_id}
         title={a.account_name}
-        subtitle={`${brokerLabel(a.broker)} · ${a.market}`}
+        subtitle={`${accountTypeLabel(a.account_type)} · ${marketZhLabel(a.market)}`}
         left={<Avatar symbol={accountMonogram(a.account_name)} color={a.color} size={40} />}
         dimmed={!a.is_active}
         right={
-          <Text style={[styles.value, !a.is_active ? styles.valueDim : null]}>
-            {valueText(a.account_id)}
-          </Text>
+          <Text style={[styles.value, !a.is_active ? styles.valueDim : null]}>{valueText(a)}</Text>
         }
         onPress={() => navigation.navigate('AccountDetail', { accountId: a.account_id })}
       />

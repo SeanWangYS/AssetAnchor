@@ -13,8 +13,8 @@ import Card from './Card';
 interface CashBalanceCardProps {
   twdValue: string;
   usdValue: string;
-  onChangeTwd: (v: string) => void;
-  onChangeUsd: (v: string) => void;
+  onChangeTwd?: (v: string) => void;
+  onChangeUsd?: (v: string) => void;
   /** 預格式化快照時間（e.g.「2026/06/14 21:30」）。 */
   updatedAt?: string;
   editable?: boolean;
@@ -28,6 +28,30 @@ export default function CashBalanceCard({
   updatedAt,
   editable = true,
 }: CashBalanceCardProps) {
+  // 檢視態（visual-audit P2-7）：無框 key-value 列（原型 CashCardLive 版式）——
+  // 不再拿 TextInput 當顯示元件；值由 screens 預格式化（千分位 + 2 位，帳戶頁慣例）。
+  if (!editable) {
+    return (
+      <Card>
+        <Text style={styles.heading}>現金餘額</Text>
+        {(
+          [
+            ['NT$', twdValue],
+            ['US$', usdValue],
+          ] as const
+        ).map(([ccy, value]) => (
+          <View key={ccy} style={styles.kvRow}>
+            <Text style={styles.ccy}>{ccy}</Text>
+            <Text style={[styles.kvValue, value === '' ? styles.kvEmpty : null]}>
+              {value === '' ? '0.00' : value}
+            </Text>
+          </View>
+        ))}
+        {updatedAt ? <Text style={styles.snapshot}>手動快照 · 更新於 {updatedAt}</Text> : null}
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <Text style={styles.heading}>現金餘額</Text>
@@ -37,7 +61,6 @@ export default function CashBalanceCard({
           style={styles.input}
           value={twdValue}
           onChangeText={onChangeTwd}
-          editable={editable}
           keyboardType="numeric"
           placeholder="0"
           placeholderTextColor={colors.textFaint}
@@ -50,7 +73,6 @@ export default function CashBalanceCard({
           style={styles.input}
           value={usdValue}
           onChangeText={onChangeUsd}
-          editable={editable}
           keyboardType="numeric"
           placeholder="0.00"
           placeholderTextColor={colors.textFaint}
@@ -97,6 +119,19 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontVariant: ['tabular-nums'],
   },
+  kvRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md - 2,
+  },
+  kvValue: {
+    fontFamily: fontFamily.num.bold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  kvEmpty: { color: colors.textFaint },
   snapshot: {
     fontFamily: fontFamily.text.regular,
     fontSize: fontSize.label,

@@ -232,17 +232,29 @@ export const numericStyle: TextStyle = {
   fontVariant: ['tabular-nums'],
 };
 
-/** 帳戶識別色預設色票（保留 8 色；皆符合 #RRGGBB）。對齊 §4「色票 ×6」+ 既有預設不縮。 */
+/**
+ * 帳戶識別色色票 ×6——採原型明定 hex（aa-v2-accounts.jsx；spec A7「swatches ×6」）。
+ * visual-audit P3-12：原 8 色僅數量偏離 spec；既有帳戶若存非清單色，Avatar 照 hex
+ * 渲染不受影響（編輯時重選才變）。
+ */
 export const ACCOUNT_COLORS = [
-  '#7C6CF0',
   '#4C6FE8',
-  '#35C6EA',
-  '#2FD37E',
+  '#7C6CF0',
   '#A368F0',
-  '#C24FD6',
-  '#FF5E62',
-  '#F5A623',
+  '#22C55E',
+  '#E8B14C',
+  '#FF7A45',
 ] as const;
+
+/** 色票 a11y 色名（P3-12：swatch accessibilityLabel；satisfies 鎖漏 label）。 */
+export const ACCOUNT_COLOR_LABELS = {
+  '#4C6FE8': '藍色',
+  '#7C6CF0': '紫色',
+  '#A368F0': '紫羅蘭色',
+  '#22C55E': '綠色',
+  '#E8B14C': '琥珀色',
+  '#FF7A45': '橘色',
+} satisfies Record<(typeof ACCOUNT_COLORS)[number], string>;
 
 /** 彙整匯出，方便 `import { theme } from '@/core/theme'` 整包取用。 */
 export const theme = {

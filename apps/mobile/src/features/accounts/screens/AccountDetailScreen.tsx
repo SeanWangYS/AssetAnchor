@@ -171,6 +171,11 @@ export default function AccountDetailScreen({
     n.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
   const fmtBase = (n: number): string => `${currencyPrefix(base)} ${fmtNum(n)}`;
   const fmtBaseAbs = (n: number): string => `${currencyPrefix(base)} ${fmtNum(Math.abs(n))}`;
+  /** 現金卡檢視態顯示值（P2-7：千分位 + hero 同 2 位慣例；空/零也顯示 0.00）。 */
+  const cashViewDisplay = (stored: string | undefined, ccy: 'USD' | 'TWD'): string => {
+    const raw = cashDisplay(stored, ccy);
+    return raw === '' ? '' : fmtNum(Money.fromDecimalString(stored ?? '0', ccy).toNumber());
+  };
 
   function startEdit() {
     setCashError(null);
@@ -273,19 +278,22 @@ export default function AccountDetailScreen({
               <Text style={styles.splitText}>現金 {fmtBase(cashBase.toNumber())}</Text>
             </View>
 
-            {/* 成本 / 未實現損益列（B 案；報價就緒才呈現，不以成本冒充市值）。 */}
+            {/* 成本 / 未實現損益列（B 案；報價就緒才呈現，不以成本冒充市值）。
+                「未實現」label+值+% 包成群組（P3-13：換行只能發生在群組間、不拆 label 與值）。 */}
             {hero ? (
               <View style={styles.pnlRow}>
                 <Text style={styles.splitText}>投入成本 {fmtBase(hero.cost)}</Text>
                 <Text style={styles.splitDot}>·</Text>
-                <Text style={styles.splitText}>未實現</Text>
-                <Pnl value={hero.unrealized} display={fmtBaseAbs(hero.unrealized)} size={12} />
-                <Pnl
-                  value={hero.returnPct}
-                  display={formatPercent(hero.returnPct, { signed: false })}
-                  signMode="plusminus"
-                  size={12}
-                />
+                <View style={styles.pnlGroup}>
+                  <Text style={styles.splitText}>未實現</Text>
+                  <Pnl value={hero.unrealized} display={fmtBaseAbs(hero.unrealized)} size={12} />
+                  <Pnl
+                    value={hero.returnPct}
+                    display={formatPercent(hero.returnPct, { signed: false })}
+                    signMode="plusminus"
+                    size={12}
+                  />
+                </View>
               </View>
             ) : null}
 
@@ -343,22 +351,23 @@ export default function AccountDetailScreen({
           ) : (
             <View>
               <View style={styles.cashHeaderRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="編輯現金餘額"
-                  hitSlop={8}
-                  style={styles.cashEditBtn}
-                  onPress={startEdit}
-                >
-                  <EditIcon size={16} color={colors.accent} />
-                  <Text style={styles.cashEditText}>編輯</Text>
-                </Pressable>
+                {/* 停用帳戶隱藏編輯入口（P3-13：停用態行為未定義 → 不提供）。 */}
+                {acct.is_active ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="編輯現金餘額"
+                    hitSlop={8}
+                    style={styles.cashEditBtn}
+                    onPress={startEdit}
+                  >
+                    <EditIcon size={16} color={colors.accent} />
+                    <Text style={styles.cashEditText}>編輯</Text>
+                  </Pressable>
+                ) : null}
               </View>
               <CashBalanceCard
-                twdValue={cashDisplay(acct.cash_balances.TWD, 'TWD')}
-                usdValue={cashDisplay(acct.cash_balances.USD, 'USD')}
-                onChangeTwd={() => undefined}
-                onChangeUsd={() => undefined}
+                twdValue={cashViewDisplay(acct.cash_balances.TWD, 'TWD')}
+                usdValue={cashViewDisplay(acct.cash_balances.USD, 'USD')}
                 editable={false}
                 {...snapshotProp}
               />
@@ -466,7 +475,7 @@ export default function AccountDetailScreen({
         visible={confirm === 'deactivate'}
         danger
         title="停用此帳戶？"
-        message="停用為軟刪除，可隨時重新啟用；該帳戶持股將不再列入啟用帳戶清單。"
+        message="停用後帳戶會收進「已停用」區、不再列入統計；可隨時重新啟用。"
         confirmLabel="停用"
         onConfirm={confirmAction}
         onClose={() => setConfirm(null)}
@@ -490,7 +499,7 @@ export default function AccountDetailScreen({
         message={
           hasTxns
             ? '此帳戶仍有交易紀錄。請先刪除或轉移相關交易，或改用「停用帳戶」。'
-            : '為保留資料完整性，請改用「停用帳戶」（軟刪除、可復原）。'
+            : '為保留資料完整性，請改用「停用帳戶」（可隨時重新啟用）。'
         }
         onClose={() => setConfirm(null)}
       />
@@ -611,6 +620,7 @@ const styles = StyleSheet.create({
     ...numericStyle,
   },
   splitDot: { color: colors.textWeak },
+  pnlGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 0 },
   pnlRow: {
     flexDirection: 'row',
     alignItems: 'center',
