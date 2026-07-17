@@ -4,6 +4,8 @@ import {
   DISPLAY_CURRENCIES,
   Money,
   deriveHoldingsByAccount,
+  formatPercent,
+  formatPrice,
   type AccountRef,
   type DisplayCurrency,
   type Market,
@@ -209,8 +211,7 @@ function HoldingRow({
         </View>
         <Text style={styles.rowSub} numberOfLines={1}>
           {fmtShares(position.quantity, position.currency)} 股 · 均價{' '}
-          {currencyPrefix(position.currency)}
-          {fmtAmount(avg, position.currency)}
+          {formatPrice(position.averageCost, position.currency)}
         </Text>
       </View>
       <View style={styles.rowRight}>
@@ -218,7 +219,12 @@ function HoldingRow({
           <>
             <Text style={styles.rowValue}>{fmtMoney(mv, position.currency)}</Text>
             {retPct !== null ? (
-              <Pnl value={retPct} display={`${Math.abs(retPct).toFixed(2)}%`} size={12} />
+              <Pnl
+                value={retPct}
+                display={formatPercent(retPct, { signed: false })}
+                signMode="plusminus"
+                size={12}
+              />
             ) : (
               <Text style={styles.rowPending}>—</Text>
             )}
@@ -394,7 +400,7 @@ export default function HoldingsOverviewScreen({
                 <Pnl value={hero.unrealized} display={fmtCcy(hero.unrealized)} size={14} />
                 <Pnl
                   value={hero.returnPct}
-                  display={`${Math.abs(hero.returnPct).toFixed(2)}%`}
+                  display={formatPercent(hero.returnPct, { signed: false })}
                   signMode="plusminus"
                   size={13}
                 />
@@ -446,7 +452,8 @@ export default function HoldingsOverviewScreen({
               {hero ? (
                 <Pnl
                   value={hero.returnPct}
-                  display={`${Math.abs(hero.returnPct).toFixed(2)}%`}
+                  display={formatPercent(hero.returnPct, { signed: false })}
+                  signMode="plusminus"
                   size={21}
                   weight="extrabold"
                 />
@@ -478,7 +485,7 @@ export default function HoldingsOverviewScreen({
               <View style={styles.bentoSub}>
                 <Pnl
                   value={hero.todayPct}
-                  display={`${Math.abs(hero.todayPct).toFixed(2)}%`}
+                  display={formatPercent(hero.todayPct, { signed: false })}
                   signMode="plusminus"
                   size={12}
                 />

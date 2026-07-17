@@ -1,5 +1,6 @@
 import { StyleSheet, Text } from 'react-native';
 import type { TextStyle } from 'react-native';
+import { signOf } from '@assetanchor/shared';
 import { colors, fontFamily } from '../theme';
 
 /**
@@ -12,7 +13,14 @@ import { colors, fontFamily } from '../theme';
  * - signMode `arrow`（預設）：▲ / ▼ 前綴。
  * - signMode `plusminus`：+ / − 前綴（百分比常用）。
  * - colorize=false：用次文字色（Tweaks 關損益色時）。
+ * - **零值中性**（visual-audit P2-4）：value 為 0、或 `display` 捨入後不含任何非零數字
+ *   （如 TWD 0 位下的 0.4 → 「NT$ 0」）→ 次文字色、無箭頭無正負號。
  */
+
+/** 顯示字串是否為「捨入後的零」：含數字且全為 0（「NT$ 0」「0.00%」true；「—」無數字也視為中性）。 */
+function isDisplayZero(display: string): boolean {
+  return !/[1-9]/.test(display);
+}
 interface PnlProps {
   /** 決定正負；>= 0 視為正（漲）。 */
   value: number;
@@ -33,9 +41,19 @@ export default function Pnl({
   size = 13,
   weight = 'bold',
 }: PnlProps) {
-  const up = value >= 0;
-  const color = colorize ? (up ? colors.up : colors.down) : colors.textSecondary;
-  const sign = signMode === 'arrow' ? (up ? '▲ ' : '▼ ') : up ? '+' : '−';
+  const dir = isDisplayZero(display) ? 'flat' : signOf(value);
+  const color =
+    colorize && dir !== 'flat' ? (dir === 'up' ? colors.up : colors.down) : colors.textSecondary;
+  const sign =
+    dir === 'flat'
+      ? ''
+      : signMode === 'arrow'
+        ? dir === 'up'
+          ? '▲ '
+          : '▼ '
+        : dir === 'up'
+          ? '+'
+          : '−';
 
   const dynamic: TextStyle = {
     color,

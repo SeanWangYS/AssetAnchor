@@ -1,6 +1,13 @@
 import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Money, isFresh, deriveHoldingsByAccount, type Currency } from '@assetanchor/shared';
+import {
+  Money,
+  isFresh,
+  deriveHoldingsByAccount,
+  formatPercent,
+  formatPrice,
+  type Currency,
+} from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
 import { Button, Card, Chart, EmptyState, Pnl, Segmented, TimeTabs } from '../../../core/ui';
 import { colors, fontFamily, numericStyle, spacing } from '../../../core/theme';
@@ -102,6 +109,16 @@ export default function AssetDetailScreen({
     };
   }, [nativeCurrency, rates, displayCcy]);
 
+  // 單價/均價語意：一律 2 位（規則表 formatPrice）；換算邏輯與 show 一致，僅格式不同。
+  const showPrice = useMemo(() => {
+    return (native: Money): string => {
+      const converted = toDisplay(native, rates, displayCcy);
+      const target = converted ?? native;
+      const ccy = converted ? displayCcy : nativeCurrency;
+      return formatPrice(target.toDecimalString(), ccy);
+    };
+  }, [nativeCurrency, rates, displayCcy]);
+
   if (!position) {
     return (
       <View style={styles.notFoundWrap}>
@@ -175,7 +192,7 @@ export default function AssetDetailScreen({
           />
           <Pnl
             value={todayPct}
-            display={`${Math.abs(todayPct).toFixed(2)}%`}
+            display={formatPercent(todayPct, { signed: false })}
             signMode="plusminus"
             size={13}
           />
@@ -209,10 +226,7 @@ export default function AssetDetailScreen({
       <Card style={styles.posCard}>
         <Text style={styles.posTitle}>我的持倉</Text>
         <Kv k="持有股數" v={`${fmtShares(position.quantity, position.currency)} 股`} />
-        <Kv
-          k="平均成本"
-          v={show(Money.fromDecimalString(position.averageCost, position.currency))}
-        />
+        <Kv k="平均成本" v={showPrice(avgCostM)} />
         <Kv k="市值" v={marketValue ? show(marketValue) : '更新中…'} />
         <Kv
           k="未實現損益"
@@ -226,7 +240,7 @@ export default function AssetDetailScreen({
                 />
                 <Pnl
                   value={retPct}
-                  display={`${Math.abs(retPct).toFixed(2)}%`}
+                  display={formatPercent(retPct, { signed: false })}
                   signMode="plusminus"
                   size={12}
                 />
