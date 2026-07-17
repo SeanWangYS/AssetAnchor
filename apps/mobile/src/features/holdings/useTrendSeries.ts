@@ -26,6 +26,9 @@ export type TrendState = 'loading' | 'ready' | 'empty';
 export interface TrendSeries {
   series: number[];
   state: TrendState;
+  /** 序列起訖日（YYYY-MM-DD；ready 的日線序列才有——intraday 1D/1W 無 date 粒度，省略）。 */
+  startDate?: string;
+  endDate?: string;
 }
 
 /** AssetDetail 走勢 timeframe（1D/1W 盤中粒度）。 */
@@ -136,10 +139,17 @@ export function useTrendSeries(
 
     const series = points.map((p) => p.value.toNumber());
     const lastDate = points[points.length - 1]?.date;
-    if (todayValue !== null && lastDate !== undefined && lastDate < today) {
-      series.push(todayValue);
+    const appendedToday = todayValue !== null && lastDate !== undefined && lastDate < today;
+    if (appendedToday) series.push(todayValue);
+    if (series.length >= 2) {
+      const startDate = points[0]?.date;
+      const endDate = appendedToday ? today : lastDate;
+      // exactOptionalPropertyTypes：無日期時省略 key、不得帶 undefined。
+      if (startDate !== undefined && endDate !== undefined) {
+        return { series, state: 'ready' as const, startDate, endDate };
+      }
+      return { series, state: 'ready' as const };
     }
-    if (series.length >= 2) return { series, state: 'ready' as const };
     const anyBackfilling = targets.some(
       (t) => backfilling[historyKeyOf(t.market, t.symbol)] === true,
     );
@@ -199,6 +209,8 @@ export function useSymbolTrendSeries(
     const today = localToday();
     // 邊界 fail-soft（同上）：壞 close 字串等資料問題降級為空，不白屏。
     let series: number[];
+    let startDate: string | undefined;
+    let endDate: string | undefined;
     try {
       const merged = closesOf(chunks, symbolId);
       const points = buildSymbolSeries([{ year: 0, closes: merged }], {
@@ -207,7 +219,10 @@ export function useSymbolTrendSeries(
       });
       series = points.map((p) => new Money(p.close, currency).toNumber());
       const lastDate = points[points.length - 1]?.date;
-      if (livePrice !== null && lastDate !== undefined && lastDate < today) series.push(livePrice);
+      const appendedToday = livePrice !== null && lastDate !== undefined && lastDate < today;
+      if (appendedToday) series.push(livePrice);
+      startDate = points[0]?.date;
+      endDate = appendedToday ? today : lastDate;
     } catch (err) {
       console.warn(
         '[trend] buildSymbolSeries 重建失敗，走勢圖降級為空：',
@@ -215,7 +230,12 @@ export function useSymbolTrendSeries(
       );
       return { series: [], state: 'empty' as const };
     }
-    if (series.length >= 2) return { series, state: 'ready' as const };
+    if (series.length >= 2) {
+      if (startDate !== undefined && endDate !== undefined) {
+        return { series, state: 'ready' as const, startDate, endDate };
+      }
+      return { series, state: 'ready' as const };
+    }
     return {
       series,
       state: backfilling[symbolId] === true ? ('loading' as const) : ('empty' as const),

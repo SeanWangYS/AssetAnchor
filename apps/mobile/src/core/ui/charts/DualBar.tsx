@@ -19,24 +19,20 @@ export interface DualBarDatum {
 
 interface DualBarProps {
   data: readonly DualBarDatum[];
+  /** 刻度格式（必填；visual-audit P2-13b——刻度單位由呼叫端依幣別分層，如 formatAxisTick）。 */
+  tickFormatter: (v: number) => string;
   height?: number;
   primaryColor?: string;
   primaryLabel?: string;
   secondaryLabel?: string;
 }
 
-const SECONDARY = 'rgba(255,255,255,0.20)';
-
-function shortNum(v: number): string {
-  if (v >= 1000) {
-    const k = v / 1000;
-    return `${k % 1 ? k.toFixed(1) : k}K`;
-  }
-  return String(Math.round(v));
-}
+// 投入成本柱/圖例（visual-audit P3-6：0.20 對比過低看不清 → 0.32）。
+const SECONDARY = 'rgba(255,255,255,0.32)';
 
 export default function DualBar({
   data,
+  tickFormatter,
   height = 126,
   primaryColor = colors.accent,
   primaryLabel = '目前市值',
@@ -51,7 +47,7 @@ export default function DualBar({
       <View style={[styles.plot, { height }]}>
         {[1, 0.5].map((f) => (
           <View key={f} style={[styles.gridLine, { top: (1 - f) * height }]}>
-            <Text style={styles.gridLabel}>{shortNum(ceiling * f)}</Text>
+            <Text style={styles.gridLabel}>{tickFormatter(ceiling * f)}</Text>
           </View>
         ))}
         <View style={styles.bars}>

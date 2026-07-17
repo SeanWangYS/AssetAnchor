@@ -31,6 +31,11 @@ interface PnlProps {
   size?: number;
   /** 字重（num 家族）。預設 bold。 */
   weight?: keyof typeof fontFamily.num;
+  /**
+   * opt-in autofit（visual-audit P2-1：關鍵大數不得截斷）——溢出時縮字完整顯示。
+   * 預設 false：列表 row 全域開會靜默縮字、視覺不穩，只給 hero/bento 場景。
+   */
+  fit?: boolean;
 }
 
 export default function Pnl({
@@ -40,6 +45,7 @@ export default function Pnl({
   colorize = true,
   size = 13,
   weight = 'bold',
+  fit = false,
 }: PnlProps) {
   const dir = isDisplayZero(display) ? 'flat' : signOf(value);
   const color =
@@ -62,7 +68,12 @@ export default function Pnl({
   };
 
   return (
-    <Text style={[styles.text, dynamic]} numberOfLines={1}>
+    <Text
+      style={[styles.text, dynamic]}
+      numberOfLines={1}
+      adjustsFontSizeToFit={fit}
+      minimumFontScale={fit ? 0.5 : undefined}
+    >
       {sign}
       {display}
     </Text>
