@@ -48,6 +48,19 @@ export default function AssetDetailScreen({
 
   // 帳戶分布（真實資料，取代已移除的 accountOf demo）：列出目前實際持有此 (market, symbol) 的帳戶名。
   const transactions = useTransactionsStore((s) => s.transactions);
+
+  // P3-11 預填用：該 (market, symbol) 最近一筆交易的 asset_type（無交易則 undefined）。
+  const latestAssetType = useMemo(() => {
+    let latest: { date: string; assetType: (typeof transactions)[number]['asset_type'] } | null =
+      null;
+    for (const t of transactions) {
+      if (t.market !== market || t.symbol !== symbol) continue;
+      if (latest === null || t.transaction_date > latest.date) {
+        latest = { date: t.transaction_date, assetType: t.asset_type };
+      }
+    }
+    return latest?.assetType;
+  }, [transactions, market, symbol]);
   const accounts = useAccountsStore((s) => s.accounts);
   const accountDistribution = useMemo(() => {
     const names = deriveHoldingsByAccount(transactions, accounts)
@@ -295,7 +308,15 @@ export default function AssetDetailScreen({
         <Button
           title="＋ 為此標的新增交易"
           variant="gradient"
-          onPress={() => navigation.navigate('AddTransaction')}
+          onPress={() =>
+            navigation.navigate('AddTransaction', {
+              symbol,
+              market,
+              currency: position.currency,
+              // P3-11：資產類型取該標的最近一筆交易（與表單代號補完同取值口徑）
+              ...(latestAssetType ? { asset_type: latestAssetType } : {}),
+            })
+          }
         />
         <Button
           title="查看完整交易歷史"
