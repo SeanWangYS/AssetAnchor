@@ -22,5 +22,5 @@
 
 ## 3. 收尾
 
-- [ ] 3.1 commit（`fix(firebase): seed 補 SELL 交易覆蓋已實現視覺路徑`）→ push → 開 PR
-- [ ] 3.2 CI 綠 → 低風險分級自 merge（PR 說明中明示分級依據）→ `/opsx:archive`
+- [x] 3.1 commit（`fix(firebase): seed 補 SELL 交易覆蓋已實現視覺路徑`）→ push → 開 PR
+- [x] 3.2 CI 綠 → 低風險分級自 merge（PR 說明中明示分級依據）→ `/opsx:archive`
