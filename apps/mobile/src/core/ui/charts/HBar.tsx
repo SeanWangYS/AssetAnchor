@@ -51,6 +51,8 @@ export default function HBar({ rows, rowHeight = 33 }: HBarProps) {
           <Text
             style={[styles.right, { color: r.rightColor ?? colors.textPrimary }]}
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
           >
             {r.rightText}
           </Text>
@@ -63,7 +65,7 @@ export default function HBar({ rows, rowHeight = 33 }: HBarProps) {
 const styles = StyleSheet.create({
   wrap: { marginTop: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  labels: { width: 82, minWidth: 0 },
+  labels: { width: 104, minWidth: 0 }, // visual-audit P3-6：82 → 104 緩解長名截斷
   label: {
     fontFamily: fontFamily.num.bold,
     fontSize: 11.5,

@@ -4,6 +4,8 @@ import {
   DISPLAY_CURRENCIES,
   Money,
   deriveHoldingsByAccount,
+  formatAxisTick,
+  formatDisplayDate,
   formatPercent,
   formatPrice,
   type AccountRef,
@@ -389,7 +391,12 @@ export default function HoldingsOverviewScreen({
           <Text style={styles.heroLabel}>持股市值（{displayCcy}）</Text>
           {hero ? (
             <>
-              <Text style={styles.heroValue} numberOfLines={1}>
+              <Text
+                style={styles.heroValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
+              >
                 {currencyPrefix(displayCcy)}{' '}
                 {totalAssets.toLocaleString('en-US', {
                   minimumFractionDigits: dp,
@@ -466,7 +473,7 @@ export default function HoldingsOverviewScreen({
             <Text style={styles.bentoLabel}>總未實現損益</Text>
             <View style={styles.bentoVal}>
               {hero ? (
-                <Pnl value={hero.unrealized} display={fmtCcy(hero.unrealized)} size={18} />
+                <Pnl value={hero.unrealized} display={fmtCcy(hero.unrealized)} size={18} fit />
               ) : (
                 <Text style={styles.bentoPending}>—</Text>
               )}
@@ -523,7 +530,16 @@ export default function HoldingsOverviewScreen({
           </View>
           <View style={styles.trendChart}>
             {trend.state === 'ready' ? (
-              <Chart data={trend.series} height={108} />
+              <Chart
+                data={trend.series}
+                height={108}
+                yTickFormat={(v) => formatAxisTick(v, displayCcy)}
+                xLabels={
+                  trend.startDate !== undefined && trend.endDate !== undefined
+                    ? [formatDisplayDate(trend.startDate), formatDisplayDate(trend.endDate)]
+                    : null
+                }
+              />
             ) : (
               <View style={styles.trendPlaceholder}>
                 <Text style={styles.trendPlaceholderText}>
