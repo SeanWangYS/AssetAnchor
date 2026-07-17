@@ -24,7 +24,7 @@ tags:
 - runFlow: login.yaml
 - tapOn: '新增交易'
 - extendedWaitUntil:
-    visible: '新增買入'
+    visible: '股票代號'
     timeout: 15000
 # 1) 市場改美股（#41 幣別聯動：自動切 USD）
 - tapOn:

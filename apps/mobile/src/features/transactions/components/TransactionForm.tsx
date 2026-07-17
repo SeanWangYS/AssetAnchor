@@ -183,6 +183,16 @@ export default function TransactionForm({
       : '代號看起來像美股代號，請確認市場選擇';
   }, [market, symbolRaw]);
 
+  // 帳戶-市場軟警告（visual-audit P2-11，非阻斷）：所選帳戶市場 ≠ 表單市場時提示。
+  // 複委託/跨市場為合法情境，不阻擋送出（prod 曾有 market 錯配→404 永遠載入中的同型事故）。
+  const accountMarketMismatchHint = useMemo(() => {
+    const account = accounts.find((a) => a.account_id === accountId);
+    if (!account) return null;
+    if (!(MARKETS as readonly string[]).includes(market)) return null;
+    if (account.market === market) return null;
+    return `所選帳戶為${MARKET_LABEL[account.market] ?? account.market}帳戶，交易市場為${MARKET_LABEL[market] ?? market}——若為複委託/跨市場交易請確認`;
+  }, [accounts, accountId, market]);
+
   // 代號自動補完：由歷史交易去重推導候選，以目前輸入做前綴比對（最多 5 筆）。
   const symbolSuggestionsAll = useMemo(() => deriveSymbolSuggestions(transactions), [transactions]);
   const symbolQuery = symbolRaw.trim();
@@ -291,14 +301,20 @@ export default function TransactionForm({
         control={control}
         name="account_id"
         render={({ field, fieldState }) => (
-          <PickerField
-            testID="tx-account"
-            label="帳戶"
-            value={field.value}
-            options={accountOptions}
-            onSelect={field.onChange}
-            error={fieldState.error?.message ?? null}
-          />
+          <View>
+            <PickerField
+              testID="tx-account"
+              label="帳戶"
+              value={field.value}
+              options={accountOptions}
+              onSelect={field.onChange}
+              error={fieldState.error?.message ?? null}
+            />
+            {/* 帳戶-市場軟警告（P2-11，非阻斷）：複委託合法，僅提示。 */}
+            {accountMarketMismatchHint ? (
+              <Text style={styles.marketMismatchHint}>{accountMarketMismatchHint}</Text>
+            ) : null}
+          </View>
         )}
       />
 

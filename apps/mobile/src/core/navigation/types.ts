@@ -1,7 +1,7 @@
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { Market } from '@assetanchor/shared';
+import type { AssetType, Currency, Market } from '@assetanchor/shared';
 
 // React Navigation requires param lists to carry an implicit string index
 // signature (ParamListBase). `interface` does not provide one, so these must
@@ -23,7 +23,15 @@ export type AuthStackParamList = {
 export type RootStackParamList = {
   MainTabs: undefined;
   AddAccount: undefined;
-  AddTransaction: undefined;
+  /** 個股頁入口帶標的預填（P3-11）；持倉 header ＋ / 交易 FAB 不帶（空白表單）。 */
+  AddTransaction:
+    | {
+        symbol?: string;
+        market?: Market;
+        asset_type?: AssetType;
+        currency?: Currency;
+      }
+    | undefined;
   // —— 預留（param list 先佔位，畫面 Phase 4 接）——
   EditTransaction: { transactionId: string };
   DateRange: undefined;

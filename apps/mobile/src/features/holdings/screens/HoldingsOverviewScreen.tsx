@@ -289,13 +289,10 @@ export default function HoldingsOverviewScreen({
   }
 
   // 持倉是唯一保留標題列 ＋ 的 tab（design §1）：新增交易 → Root modal AddTransaction。
-  // 同時放通知圓鈕（design §3.1 item 2）。自繪 ScreenHeader（unify-screen-headers），
-  // a11y label「通知」「新增交易」維持原值（Maestro e2e 依此選取）。
+  // 通知鈴鐺已移除（visual-audit P2-14：通知未實作、死控制項不見客；owner 拍板項）。
+  // a11y label「新增交易」維持原值（Maestro e2e 依此選取）。
   const headerActions = (
     <>
-      <Pressable accessibilityRole="button" accessibilityLabel="通知" hitSlop={8}>
-        <Icon name="bell" color={colors.textSecondary} size={22} />
-      </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="新增交易"
@@ -513,6 +510,12 @@ export default function HoldingsOverviewScreen({
                 />
               )}
             </View>
+            {/* P3-10：區分「無資料」與「值為 0」——無賣出時明示原因 */}
+            {realized.count === 0 ? (
+              <View style={styles.bentoSub}>
+                <Text style={styles.bentoSubNote}>本月無賣出</Text>
+              </View>
+            ) : null}
           </Card>
         </View>
 
@@ -667,6 +670,7 @@ const styles = StyleSheet.create({
   bentoLabel: { fontFamily: fontFamily.text.medium, fontSize: 11.5, color: colors.textWeak },
   bentoVal: { marginTop: 7 },
   bentoSub: { marginTop: 3 },
+  bentoSubNote: { fontFamily: fontFamily.text.regular, fontSize: 11, color: colors.textFaint },
   bentoPending: {
     fontFamily: fontFamily.num.semibold,
     fontSize: 18,
