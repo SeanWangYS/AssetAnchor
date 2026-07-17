@@ -126,3 +126,12 @@ AssetDetail SHALL 提供 TWD/USD segmented 切換，即時以最新匯率換算�
 
 - **WHEN** 持倉 hero 同時顯示未實現金額與報酬率
 - **THEN** 金額 SHALL 用 ▲/▼、百分比 SHALL 用 +/−，兩者 SHALL NOT 交換或疊加
+
+### Requirement: 關鍵大數不得截斷
+
+hero 與 bento 卡的關鍵金額（持股市值、總未實現損益、分析 hero、個股現價）SHALL 於溢出時自動縮小字級完整顯示，SHALL NOT 以省略號截斷（縮放下限屬實作參數，見 design）。
+
+#### Scenario: 總未實現損益完整顯示
+
+- **WHEN** 總未實現損益為 NT$ 2,813,530 且卡片寬度不足
+- **THEN** SHALL 縮字完整顯示「▲ NT$ 2,813,530」，SHALL NOT 顯示「NT$ 2,813,5…」

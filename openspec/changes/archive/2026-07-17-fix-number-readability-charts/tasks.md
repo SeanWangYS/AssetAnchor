@@ -27,5 +27,5 @@
 
 ## 5. 收尾
 
-- [ ] 5.1 commit → push → PR（stacked on #61、註記 base merge 方式勿 squash；owner 拍板：萬/億制、P3-5 不實作）
-- [ ] 5.2 CI 綠（owner-gated 不自 merge）→ `/opsx:archive`
+- [x] 5.1 commit → push → PR（stacked on #61、註記 base merge 方式勿 squash；owner 拍板：萬/億制、P3-5 不實作）
+- [x] 5.2 CI 綠（owner-gated 不自 merge）→ `/opsx:archive`
