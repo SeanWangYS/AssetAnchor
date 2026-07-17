@@ -1,3 +1,4 @@
+import { Pressable, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import MainTabs from './MainTabs';
@@ -6,6 +7,9 @@ import AddTransactionScreen from '../../features/transactions/screens/AddTransac
 import DateRangeSheetScreen from '../../features/transactions/screens/DateRangeSheetScreen';
 import { colors } from '../theme';
 import { zhTW } from '../../i18n/zh-TW';
+
+/** 取消鈕文字樣式（headerLeft；模組層 const 避免每 render 重建）。 */
+const headerCancelStyle = { color: colors.textSecondary, fontSize: 15 } as const;
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -34,7 +38,20 @@ export default function RootStack() {
         <Stack.Screen
           name="AddAccount"
           component={AddAccountScreen}
-          options={{ title: '新增帳戶' }}
+          options={({ navigation }) => ({
+            title: '新增帳戶',
+            // P3-12：modal 需明示關閉（原型表單 header＝左取消；沿 headerLeft 慣例）。
+            headerLeft: () => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="取消"
+                hitSlop={8}
+                onPress={() => navigation.goBack()}
+              >
+                <Text style={headerCancelStyle}>取消</Text>
+              </Pressable>
+            ),
+          })}
         />
         <Stack.Screen
           name="AddTransaction"
