@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Icon, Input } from '../../../core/ui';
+import { AABrandLockup, Button, Icon, Input } from '../../../core/ui';
 import { colors, fontFamily, fontSize, radius, spacing } from '../../../core/theme';
 import type { AuthStackScreenProps } from '../../../core/navigation/types';
 import { sendPasswordReset } from '../authService';
@@ -103,6 +103,10 @@ export default function ForgotPasswordScreen({
           ) : (
             // —— 表單態 ——
             <View style={styles.formWrap}>
+              {/* 版式對齊 SignUp（visual-audit P3-18：補 lockup、標題置中）。 */}
+              <View style={styles.brand}>
+                <AABrandLockup markSize={40} wordSize={22} glow />
+              </View>
               <View style={styles.head}>
                 <Text style={styles.title}>忘記密碼</Text>
                 <Text style={styles.subtitle}>輸入註冊信箱，我們會寄送重設密碼連結給你。</Text>
@@ -117,10 +121,12 @@ export default function ForgotPasswordScreen({
                 ) : null}
 
                 <Input
-                  label="Email"
+                  label="電子郵件"
                   placeholder="you@example.com"
                   autoCapitalize="none"
                   autoComplete="email"
+                  autoCorrect={false}
+                  spellCheck={false}
                   keyboardType="email-address"
                   textContentType="emailAddress"
                   value={email}
@@ -176,7 +182,8 @@ const styles = StyleSheet.create({
 
   // 表單態
   formWrap: { flex: 1 },
-  head: { gap: spacing.sm, marginTop: spacing.lg },
+  brand: { alignItems: 'center', paddingTop: spacing.sm },
+  head: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl },
   title: {
     fontFamily: fontFamily.text.extrabold,
     fontSize: fontSize.title,
@@ -187,6 +194,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.text,
     color: colors.textSecondary,
     lineHeight: 22,
+    textAlign: 'center',
   },
   form: { gap: spacing.lg, marginTop: spacing.xxl },
   banner: {
@@ -258,5 +266,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     alignItems: 'center',
   },
-  reenterWrap: { paddingVertical: spacing.xs },
+  reenterWrap: { paddingVertical: spacing.xs, minHeight: 44, justifyContent: 'center' },
 });

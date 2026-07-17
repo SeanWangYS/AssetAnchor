@@ -2,16 +2,17 @@
 export function authErrorMessage(code: string): string {
   switch (code) {
     case 'auth/invalid-email':
-      return 'Email 格式不正確。';
+      return '電子郵件格式不正確。';
     case 'auth/user-disabled':
       return '此帳號已被停用。';
+    // spec 錯誤碼對照表把 user-not-found 併入帳密錯誤（auth-flow-spec L64）——
+    // 亦避免洩漏帳號存在性（visual-audit P3-18）。
     case 'auth/user-not-found':
-      return '查無此帳號。';
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
-      return 'Email 或密碼錯誤。';
+      return '電子郵件或密碼錯誤，請再試一次。';
     case 'auth/email-already-in-use':
-      return '此 Email 已被註冊。';
+      return '此電子郵件已被註冊，請改用其他信箱或直接登入。';
     case 'auth/weak-password':
       return '密碼強度不足（至少 6 碼）。';
     case 'auth/network-request-failed':

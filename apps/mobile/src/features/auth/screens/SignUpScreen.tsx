@@ -102,10 +102,12 @@ export default function SignUpScreen({ navigation }: AuthStackScreenProps<'SignU
             ) : null}
 
             <Input
-              label="Email"
+              label="電子郵件"
               placeholder="you@example.com"
               autoCapitalize="none"
               autoComplete="email"
+              autoCorrect={false}
+              spellCheck={false}
               keyboardType="email-address"
               textContentType="emailAddress"
               value={email}
