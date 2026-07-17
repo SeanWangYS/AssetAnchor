@@ -184,7 +184,7 @@ function ARetBars({ rowH }) {
     <AHBars rowH={rowH} rows={rows.map(h => {
       const up = h.ret >= 0;
       const c = pnlColor === false ? T.ink2 : up ? T.up : T.down;
-      return { sym: h.sym, name: h.name, w: Math.abs(h.ret) / m, grad: `linear-gradient(90deg, ${c}99, ${c})`, col: c, right: `${up ? '+' : '−'}${Math.abs(h.ret).toFixed(1)}%` };
+      return { sym: h.sym, name: h.name, w: Math.abs(h.ret) / m, grad: `linear-gradient(90deg, ${c}99, ${c})`, col: c, right: `${up ? '+' : '−'}${Math.abs(h.ret).toFixed(2)}%` };
     })} />
   );
 }
