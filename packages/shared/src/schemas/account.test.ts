@@ -79,4 +79,33 @@ describe('accountInputSchema', () => {
     const typed: AccountInput = accountInputSchema.parse(valid);
     expect(typed.broker).toBe('FIRSTRADE');
   });
+
+  // enum 欄位未選（空字串）→ 繁中訊息，不得裸露 zod 英文與 enum 內部值（visual-audit P0-1）
+  describe('enum 欄位繁中錯誤訊息', () => {
+    const cases = [
+      ['broker', '請選擇券商'],
+      ['account_type', '請選擇帳戶類型'],
+      ['base_currency', '請選擇基礎幣別'],
+      ['market', '請選擇主要市場'],
+    ] as const;
+
+    it.each(cases)('%s 為空字串時訊息為「%s」', (field, message) => {
+      const r = accountInputSchema.safeParse({ ...valid, [field]: '' });
+      expect(r.success).toBe(false);
+      if (!r.success) {
+        const issue = r.error.issues.find((i) => i.path.includes(field));
+        expect(issue?.message).toBe(message);
+      }
+    });
+
+    it.each(cases)('%s 為非法值時同樣回繁中訊息', (field, message) => {
+      const r = accountInputSchema.safeParse({ ...valid, [field]: 'NOT_A_VALUE' });
+      expect(r.success).toBe(false);
+      if (!r.success) {
+        const issue = r.error.issues.find((i) => i.path.includes(field));
+        expect(issue?.message).toBe(message);
+        expect(issue?.message).not.toMatch(/Invalid option|expected one of/);
+      }
+    });
+  });
 });

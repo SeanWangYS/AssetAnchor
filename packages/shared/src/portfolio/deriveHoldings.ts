@@ -1,4 +1,5 @@
 import { Money, toSafeDecimalString } from '../money/index.js';
+import { transactionTotalWithFees } from '../transactions/transactionTotalWithFees.js';
 import type { Currency } from '../enums/currencies.js';
 import type { Market } from '../enums/markets.js';
 import type { TransactionDocument } from '../types/transaction.js';
@@ -95,9 +96,8 @@ function scan(transactions: TransactionDocument[]): ScanResult {
     lot.txCount += 1;
 
     if (tx.transaction_type === 'BUY') {
-      const cost = Money.fromDecimalString(toSafeDecimalString(tx.total), currency)
-        .add(Money.fromDecimalString(toSafeDecimalString(tx.fee), currency))
-        .add(Money.fromDecimalString(toSafeDecimalString(tx.tax), currency));
+      // 含 fee+tax 口徑收斂至單一函式（與清單/詳情/表單預估顯示共用，visual-audit P1-1）
+      const cost = Money.fromDecimalString(transactionTotalWithFees(tx), currency);
       lot.quantity = lot.quantity.add(qty);
       lot.totalCost = lot.totalCost.add(cost);
     } else {
@@ -110,9 +110,8 @@ function scan(transactions: TransactionDocument[]): ScanResult {
       const avgCost = lot.quantity.isZero()
         ? Money.zero(currency)
         : lot.totalCost.divide(lot.quantity.toDecimalString());
-      const proceeds = Money.fromDecimalString(toSafeDecimalString(tx.total), currency)
-        .subtract(Money.fromDecimalString(toSafeDecimalString(tx.fee), currency))
-        .subtract(Money.fromDecimalString(toSafeDecimalString(tx.tax), currency));
+      // 淨收入 = total − fee − tax，收斂至單一口徑函式（visual-audit P1-1）
+      const proceeds = Money.fromDecimalString(transactionTotalWithFees(tx), currency);
       const costOfSold = avgCost.multiply(safeQty);
       const realized = proceeds.subtract(costOfSold);
 
