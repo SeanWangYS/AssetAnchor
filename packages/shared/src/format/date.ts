@@ -18,3 +18,9 @@ export function formatDisplayDateTime(date: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}/${p(date.getMonth() + 1)}/${p(date.getDate())} ${p(date.getHours())}:${p(date.getMinutes())}`;
 }
+
+/** `HH:mm`（本地時間、補零）——報價 as-of 等時間戳短格式（visual-audit P3-7）。 */
+export function formatDisplayTime(date: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(date.getHours())}:${p(date.getMinutes())}`;
+}
