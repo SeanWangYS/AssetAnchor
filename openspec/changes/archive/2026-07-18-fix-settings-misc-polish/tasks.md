@@ -13,9 +13,9 @@
 - [x] 2.1 設計稽核：2 獨立子代理（邏輯 / 簡潔）——7 必改全採納（P3-15 兩文件統一為「帳號」、spec 同名措辭收斂、as-of guards/並存文案、設計包同步、expo-constants 事實更正）
 - [x] 2.2 typecheck / lint / prettier / shared coverage / mobile test 全綠
 - [x] 2.3 模擬器對照：個股/交易歷史「均價（含費）」、持倉註腳最後更新、設定三處字面、Profile 唯讀樣式、About 0.0.2+crypto
-- [ ] 2.4 隱私政策 owner-hold 記入總結報告
+- [x] 2.4 隱私政策 owner-hold 記入總結報告
 
 ## 3. 收尾
 
-- [ ] 3.1 commit → push → PR（stacked on #64；owner 拍板：名稱/用語/版本來源）
-- [ ] 3.2 CI 綠（owner-gated 不自 merge）→ `/opsx:archive`
+- [x] 3.1 commit → push → PR（stacked on #64；owner 拍板：名稱/用語/版本來源）
+- [x] 3.2 CI 綠（owner-gated 不自 merge）→ `/opsx:archive`
