@@ -1,4 +1,4 @@
-import { formatDisplayDate, formatDisplayDateTime } from './date.js';
+import { formatDisplayDate, formatDisplayDateTime, formatDisplayTime } from './date.js';
 
 describe('formatDisplayDate（YYYY-MM-DD → YYYY/MM/DD）', () => {
   it('ISO 轉 slash、保留前導零', () => {
@@ -17,5 +17,12 @@ describe('formatDisplayDateTime（YYYY/MM/DD HH:mm）', () => {
   it('補零', () => {
     expect(formatDisplayDateTime(new Date(2026, 6, 17, 23, 4))).toBe('2026/07/17 23:04');
     expect(formatDisplayDateTime(new Date(2026, 0, 3, 9, 5))).toBe('2026/01/03 09:05');
+  });
+});
+
+describe('formatDisplayTime（HH:mm）', () => {
+  it('補零', () => {
+    expect(formatDisplayTime(new Date(2026, 6, 18, 9, 5))).toBe('09:05');
+    expect(formatDisplayTime(new Date(2026, 6, 18, 23, 42))).toBe('23:42');
   });
 });
