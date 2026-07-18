@@ -44,10 +44,10 @@ export const zhTW = {
     rateNotReady: '匯率未就緒',
     fxAsOfNote: '依最新匯率換算',
     shares: '股',
-    avgCost: '均價',
+    avgCost: '均價（含費）',
     fields: {
       quantity: '總股數',
-      averageCost: '加權均價',
+      averageCost: '均價（含費）',
       totalCost: '總成本',
       currency: '幣別',
     },

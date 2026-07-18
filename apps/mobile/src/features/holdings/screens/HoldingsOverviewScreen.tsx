@@ -6,6 +6,7 @@ import {
   deriveHoldingsByAccount,
   formatAxisTick,
   formatDisplayDate,
+  formatDisplayTime,
   formatPercent,
   formatPrice,
   type AccountRef,
@@ -269,6 +270,16 @@ export default function HoldingsOverviewScreen({
     currency: p.currency,
   }));
   const quotes = useQuotes(quoteTargets);
+  // 報價 as-of（visual-audit P3-7）：只看當前 targets（勿掃全 store——舊持股報價會污染 max）；
+  // fetchedAtMs＝抓取時間 ≠ 報價時刻 → 與「延遲 15 分鐘」並存、不替換。
+  const quotesAsOf = useMemo(() => {
+    let maxMs = 0;
+    for (const t of quoteTargets) {
+      const q = quoteFor(quotes, t.market, t.symbol);
+      if (q && q.fetchedAtMs > maxMs) maxMs = q.fetchedAtMs;
+    }
+    return maxMs > 0 ? `最後更新 ${formatDisplayTime(new Date(maxMs))} · 延遲 15 分鐘` : null;
+  }, [quotes, quoteTargets]);
   // per-symbol 報價錯誤（symbol_not_found → 查無代號降級；成功即清除）。
   const quoteErrors = useQuotesStore((s) => s.errors);
   // 「每次打開」都檢查新鮮度：切回分頁 focus + App 回前景（非 force、TTL 去抖）。
@@ -444,7 +455,8 @@ export default function HoldingsOverviewScreen({
             </View>
           ) : null}
           <Text style={styles.demoNote}>
-            市值/今日為報價即時計算（延遲 15 分鐘）；不含現金；成本與已實現來自實際交易
+            市值/今日為報價即時計算（{quotesAsOf ?? '延遲 15 分鐘'}
+            ）；不含現金；成本與已實現來自實際交易
           </Text>
         </View>
 
