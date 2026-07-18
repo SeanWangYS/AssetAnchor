@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   Money,
   deriveHoldings,
+  formatDisplayDate,
+  formatPrice,
   transactionTotalWithFees,
   type Currency,
   type TransactionDocument,
@@ -108,7 +110,7 @@ export default function AssetTransactionsScreen({
               {symbolNameOf(symbols, market, symbol)} · {marketLabel(market)}
             </Text>
             <Kv k="持有股數" v={`${fmtShares(summary.qty, summary.ccy)} 股`} />
-            <Kv k="加權均價" v={fmt(summary.avg, summary.ccy)} />
+            <Kv k="加權均價" v={formatPrice(summary.avg, summary.ccy)} />
             <Kv k="總成本" v={fmt(summary.cost, summary.ccy)} />
             <Kv k="交易筆數" v={`買 ${summary.buyCount} · 賣 ${summary.sellCount}`} last />
           </Card>
@@ -131,11 +133,11 @@ function TxRow({ tx }: { tx: TransactionDocument }) {
     <View style={styles.txRow}>
       <View style={styles.txTop}>
         <TypePill type={tx.transaction_type} />
-        <Text style={styles.txDate}>{tx.transaction_date}</Text>
+        <Text style={styles.txDate}>{formatDisplayDate(tx.transaction_date)}</Text>
         <Text style={styles.txTotal}>{fmt(transactionTotalWithFees(tx), tx.currency)}</Text>
       </View>
       <Text style={styles.txDetail} numberOfLines={1}>
-        {fmtShares(tx.quantity, tx.currency)} 股 @ {fmt(tx.price, tx.currency)} · 手續費{' '}
+        {fmtShares(tx.quantity, tx.currency)} 股 @ {formatPrice(tx.price, tx.currency)} · 手續費{' '}
         {fmt(tx.fee, tx.currency)}
         {Money.fromDecimalString(tx.tax, tx.currency).isZero()
           ? ''

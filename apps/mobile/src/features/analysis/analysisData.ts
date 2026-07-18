@@ -1,4 +1,11 @@
-import { convertMoney, type Money, type RateMap } from '@assetanchor/shared';
+import {
+  convertMoney,
+  formatFxRate,
+  formatMoney as sharedFormatMoney,
+  formatPercent as sharedFormatPercent,
+  type Money,
+  type RateMap,
+} from '@assetanchor/shared';
 
 /**
  * 分析頁的本地顯示層 helpers（features/analysis 私有）——demo 匯率 fallback + 格式化。
@@ -38,30 +45,37 @@ export function toDisplay(twd: Money, display: DisplayCurrency, rates: RateMap):
 }
 
 /**
- * Hero 註腳用的實際 USD/TWD 匯率標籤（取代寫死 30.95）：
- * 顯示層字串（四捨五入至 2 位、去尾零），非金錢運算（ADR-0005 toNumber 逃生門範圍）。
+ * ⚠️ adapter only——格式規則的唯一實作點在 `packages/shared` format 模組
+ * （fix-display-formatting 規則表）；以下委派**禁止任何格式規則**。
+ * @deprecated 畫面改直接 import shared（backlog：刪 shim）。
  */
+
+/** Hero 註腳用的實際 USD/TWD 匯率標籤：RateMap 取值留此、格式委派 shared（固定 2 位，P2-6）。 */
 export function fxFootnoteRate(rates: RateMap): string {
   const raw = rates['USD_TWD'] ?? DEMO_RATES['USD_TWD'] ?? '30.95';
-  const n = Number(raw);
-  return Number.isFinite(n) ? String(Math.round(n * 100) / 100) : '—';
+  return formatFxRate(raw);
 }
 
-/** 金額顯示字串：前綴 NT$ / US$ + 千分位、無小數（對齊原型 fA）。 */
+/**
+ * 金額顯示字串（**保留 Math.abs 語意**——消費端把本函式輸出餵 `Pnl` 的 `display`，
+ * Pnl 契約要求絕對值字串；委派 shared 後小數位循幣別規則：TWD 0 / USD 2）。
+ */
 export function formatAmount(money: Money, display: DisplayCurrency): string {
-  const prefix = display === 'USD' ? 'US$' : 'NT$';
-  const n = Math.abs(money.toNumber());
-  return `${prefix} ${Math.round(n).toLocaleString('en-US')}`;
+  const abs = money.toDecimalString().replace(/^-/, '');
+  return sharedFormatMoney(abs, display);
 }
 
-/** 帶正負號的金額（▲▼ 由 Pnl 元件處理；此處供 HBar 右側字串用，+/− 前綴）。 */
+/** 帶正負號的金額（HBar 右側字串用；零值不帶號——零值中性規則）。 */
 export function formatSignedAmount(money: Money, display: DisplayCurrency): string {
+  if (money.isZero()) return formatAmount(money, display);
   const sign = money.isNegative() ? '−' : '+';
   return `${sign}${formatAmount(money, display)}`;
 }
 
-/** 報酬率字串（百分比帶正負號，一位小數）。 */
+/**
+ * 報酬率字串（**保留 positional 簽名與 signed 預設 false**——shared 預設 signed:true，
+ * 直接 re-export 會讓 Pnl display 出現雙符號）。精度循規則表：報酬率 2 位（P3-3）。
+ */
 export function formatPercent(pct: number, signed = false): string {
-  const sign = signed ? (pct >= 0 ? '+' : '−') : '';
-  return `${sign}${Math.abs(pct).toFixed(1)}%`;
+  return sharedFormatPercent(pct, { decimals: 2, signed });
 }

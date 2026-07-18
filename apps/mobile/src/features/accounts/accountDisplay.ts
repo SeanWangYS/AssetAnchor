@@ -1,4 +1,10 @@
-import { Money, deriveHoldingsForAccountSafe } from '@assetanchor/shared';
+import {
+  Money,
+  deriveHoldingsForAccountSafe,
+  currencyPrefix as sharedCurrencyPrefix,
+  formatAmount as sharedFormatAmount,
+  formatDisplayDateTime,
+} from '@assetanchor/shared';
 import type {
   AccountDocument,
   AccountType,
@@ -71,28 +77,26 @@ export function accountTypeLabel(type: AccountType): string {
   return ACCOUNT_TYPE_LABELS[type] ?? type;
 }
 
-/** 幣別前綴（§5：NT$ / US$）。 */
+/**
+ * ⚠️ adapter only——格式規則的唯一實作點在 `packages/shared` format 模組
+ * （fix-display-formatting 規則表）；以下委派**禁止任何格式規則**。
+ * @deprecated 畫面改直接 import shared（backlog：刪 shim）。
+ */
 export function currencyPrefix(currency: Currency): string {
-  return currency === 'TWD' ? 'NT$' : currency === 'USD' ? 'US$' : `${currency} `;
+  return sharedCurrencyPrefix(currency);
 }
 
-/** 顯示用小數位：USD 2 位、其餘（TWD 等）0 位（對齊 holdings displayDecimals / 設計 mock）。 */
-function displayDecimalsFor(currency: Currency): number {
-  return currency === 'USD' ? 2 : 0;
-}
-
-/** 帶千分位的金額字串（toNumber 為顯示逃生門，對齊 app 其他畫面的 toLocaleString 慣例）。 */
+/** Money 型輸入 adapter（本檔多處以 Money 呼叫）。 */
 function formatAmount(money: Money, currency: Currency): string {
-  const dp = displayDecimalsFor(currency);
-  return money.toNumber().toLocaleString('en-US', {
-    minimumFractionDigits: dp,
-    maximumFractionDigits: dp,
-  });
+  return sharedFormatAmount(money.toDecimalString(), currency);
 }
 
-/** 以 Money 格式化（千分位；USD 2 位 / TWD 0 位）+ 幣別前綴。 */
+/**
+ * 帶前綴金額（委派 shared 規則表：千分位、TWD 0 位 / USD·USDT 2 位、恆一空格）。
+ * @deprecated 畫面改直接 import shared `formatMoney`（backlog：刪 shim）。
+ */
 export function formatMoney(value: string, currency: Currency): string {
-  return `${currencyPrefix(currency)} ${formatAmount(Money.fromDecimalString(value, currency), currency)}`;
+  return `${sharedCurrencyPrefix(currency)} ${sharedFormatAmount(value, currency)}`;
 }
 
 /**
@@ -149,12 +153,14 @@ export function formatCashTotals(accounts: AccountDocument[]): string {
     .join(' · ');
 }
 
-/** 把 Firestore timestamp（或可被 Date 解析的值）格式化為「YYYY/MM/DD HH:mm」快照字串。 */
+/**
+ * 把 Firestore timestamp（或可被 Date 解析的值）格式化為「YYYY/MM/DD HH:mm」快照字串。
+ * Timestamp unwrap（IO 邊界）留在此；字串格式委派 shared 規則表。
+ */
 export function formatSnapshot(updatedAt: unknown): string | undefined {
   const d = toDate(updatedAt);
   if (!d) return undefined;
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  return formatDisplayDateTime(d);
 }
 
 function toDate(value: unknown): Date | null {

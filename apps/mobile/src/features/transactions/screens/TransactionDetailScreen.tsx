@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Money, toSafeDecimalString, transactionTotalWithFees } from '@assetanchor/shared';
+import {
+  Money,
+  formatDisplayDate,
+  toSafeDecimalString,
+  transactionTotalWithFees,
+} from '@assetanchor/shared';
 import type { Market, TransactionDocument } from '@assetanchor/shared';
 import type { TransactionsStackScreenProps } from '../../../core/navigation/types';
 import { Avatar, Card, ConfirmDialog, EmptyState, Pnl } from '../../../core/ui';
@@ -15,12 +20,6 @@ import { formatMoney, formatPrice, formatQuantity } from '../transactionsView';
 /** TW→台股、US→美股、其餘原碼（forward-compatible）。 */
 function marketLabel(market: Market): string {
   return market === 'TW' ? '台股' : market === 'US' ? '美股' : market;
-}
-
-/** YYYY-MM-DD → 「2026 / 06 / 12」。 */
-function formatDate(date: string): string {
-  const [y, m, d] = date.split('-');
-  return y && m && d ? `${y} / ${m} / ${d}` : date;
 }
 
 function realizedOf(t: TransactionDocument): string | undefined {
@@ -99,7 +98,7 @@ export default function TransactionDetailScreen({
 
       <Card style={styles.card}>
         <Text style={styles.cardTitle}>交易內容</Text>
-        <Kv k="交易日期" v={formatDate(t.transaction_date)} />
+        <Kv k="交易日期" v={formatDisplayDate(t.transaction_date)} />
         <Kv k="股數" v={`${formatQuantity(t.quantity, t.currency)} 股`} />
         <Kv k="單價" v={formatPrice(t.price, t.currency)} />
         <Kv k="手續費" v={formatMoney(t.fee, t.currency)} />

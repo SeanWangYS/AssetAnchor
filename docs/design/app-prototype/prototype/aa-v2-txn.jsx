@@ -113,7 +113,7 @@ function VtFilterSheet({ range, onClose, onApply }) {
           })}
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          {[['起', '2026 / 01 / 01'], ['訖', '2026 / 06 / 12']].map(([k, v]) => (
+          {[['起', '2026/01/01'], ['訖', '2026/06/12']].map(([k, v]) => (
             <div key={k} style={{ flex: 1 }}>
               <div style={{ color: T.sub, fontSize: 11.5, marginBottom: 6 }}>{k}</div>
               <div className="aa-field"><span className="num" style={{ color: T.ink, fontSize: 13, fontWeight: 600 }}>{v}</span><Icon id="cal" color={T.faint} size={16} /></div>
@@ -171,9 +171,9 @@ function TxDetailScreen({ t, onClose, onEdit, onDelete }) {
 
         <Card style={{ marginTop: 16 }}>
           <div style={{ color: T.ink, fontWeight: 700, fontSize: 14, marginBottom: 4 }}>交易內容</div>
-          <VtKv k="交易日期" v={`2026 / ${t.d.replace('/', ' / ')}`} />
+          <VtKv k="交易日期" v={`2026/${t.d}`} />
           <VtKv k="股數" v={`${nf(t.qty)} 股`} />
-          <VtKv k="單價" v={txFmt(t.px, ccy, t.px % 1 ? 2 : 0)} />
+          <VtKv k="單價" v={txFmt(t.px, ccy, 2)} />
           <VtKv k="手續費" v={txFmt(t.fee, ccy)} />
           <VtKv k={buy ? '總成本' : '總收入'} v={txFmt(total, ccy)} strong last={t.realized === undefined} />
           {t.realized !== undefined && (

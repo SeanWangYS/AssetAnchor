@@ -39,7 +39,7 @@ const txHold = (t) => HOLD.find(h => h.sym === t.sym);
 const txCcy = (t) => txHold(t).ccy;
 const txTotal = (t) => t.qty * t.px + (t.type === 'BUY' ? t.fee : -t.fee);
 const txFmt = (v, ccy, d) => `${ccy} ${nf(v, d !== undefined ? d : (ccy === 'US$' ? 2 : 0))}`;
-const txQtyPx = (t) => `${nf(t.qty)} 股 × ${txFmt(t.px, txCcy(t), t.px % 1 ? 2 : 0)}`;
+const txQtyPx = (t) => `${nf(t.qty)} 股 × ${txFmt(t.px, txCcy(t), 2)}`;
 
 /* 買/賣 小膠囊 */
 function TxPill({ type, size = 10 }) {

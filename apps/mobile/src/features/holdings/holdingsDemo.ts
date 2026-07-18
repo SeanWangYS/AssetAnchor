@@ -1,4 +1,14 @@
-import { Money, type Currency, type Market, type Position } from '@assetanchor/shared';
+import {
+  Money,
+  amountDisplayDecimals,
+  currencyPrefix as sharedCurrencyPrefix,
+  formatAmount as sharedFormatAmount,
+  formatMoney as sharedFormatMoney,
+  formatQuantity,
+  type Currency,
+  type Market,
+  type Position,
+} from '@assetanchor/shared';
 
 // toDisplay / DEMO_USD_TWD 已上移 services/valuation（change account-detail-market-value）；
 // 此處 re-export 維持既有 `import { toDisplay } from './holdingsDemo'` 相容。
@@ -84,34 +94,33 @@ export function mockPrice(position: Position): Money {
   return mockMarketValue(position).divide(position.quantity);
 }
 
-/** 幣別前綴（NT$ / US$；其餘幣別退幣別代碼，如 USDT）。 */
+/**
+ * ⚠️ adapter only——格式規則的唯一實作點在 `packages/shared` format 模組
+ * （fix-display-formatting 規則表）；以下委派**禁止任何格式規則**。
+ * @deprecated 畫面改直接 import shared（backlog：刪 shim）。
+ */
 export function currencyPrefix(currency: Currency): string {
-  if (currency === 'USD') return 'US$';
-  if (currency === 'TWD') return 'NT$';
-  return currency;
+  return sharedCurrencyPrefix(currency);
 }
 
-/** 顯示小數位：USD / USDT 2 位、TWD 0 位（對齊 prototype nf 慣例）。 */
+/** @deprecated 同上。 */
 export function displayDecimals(currency: Currency): number {
-  return currency === 'USD' || currency === 'USDT' ? 2 : 0;
+  return amountDisplayDecimals(currency);
 }
 
-/** 金額顯示字（含千分位、依幣別小數位；不含正負號 / 前綴）。 */
+/** 金額顯示字（Money 型輸入 adapter；裸數字、依幣別小數位）。 */
 export function fmtAmount(amount: Money, currency: Currency): string {
-  return amount.toNumber().toLocaleString('en-US', {
-    minimumFractionDigits: displayDecimals(currency),
-    maximumFractionDigits: displayDecimals(currency),
-  });
+  return sharedFormatAmount(amount.toDecimalString(), currency);
 }
 
 /** 帶前綴金額（NT$ 1,238,540 / US$ 1,712.88）。 */
 export function fmtMoney(amount: Money, currency: Currency): string {
-  return `${currencyPrefix(currency)} ${fmtAmount(amount, currency)}`;
+  return sharedFormatMoney(amount.toDecimalString(), currency);
 }
 
-/** 股數顯示（整數股不帶小數、零股保留小數）。 */
-export function fmtShares(quantity: string, currency: Currency): string {
-  return Money.fromDecimalString(quantity, currency).toNumber().toLocaleString('en-US');
+/** 股數顯示（≤4 位去尾零 + 千分位；currency 僅為簽名相容、內部丟棄）。 */
+export function fmtShares(quantity: string, _currency: Currency): string {
+  return formatQuantity(quantity);
 }
 
 /** 持倉總覽 hero / bento 的整體 mock 摘要（TWD；prototype SUM）。需報價，故為示意。 */

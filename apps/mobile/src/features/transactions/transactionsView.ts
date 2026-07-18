@@ -1,66 +1,60 @@
-import { Money, type Currency, type TransactionDocument } from '@assetanchor/shared';
+import {
+  currencyPrefix,
+  formatAmount as sharedFormatAmount,
+  formatMoney as sharedFormatMoney,
+  formatPrice as sharedFormatPrice,
+  formatQuantity as sharedFormatQuantity,
+  type Currency,
+  type TransactionDocument,
+} from '@assetanchor/shared';
 
 /**
- * 交易顯示層純函式（feature-local）。
+ * 交易顯示層（feature-local）。
  *
- * 設計稿（transactions-page-spec §4）原規劃把「日期分組邏輯」放 `packages/shared`，
- * 但本 WP 只准動 `features/transactions/**`（不可改 shared）。故暫置於此 feature-local
- * 模組；待後續 sprint 再抽到 shared 並補單元測試（見回報 flag）。
- *
- * 金額一律經 `Money`（ADR-0005 單幣別事件：交易只記原幣別、顯示不換算）。
- * native number 僅用於 `Pnl` 的正負判斷（不參與金額運算）。
+ * ⚠️ adapter only——格式規則的唯一實作點在 `packages/shared` format 模組
+ * （fix-display-formatting 規則表）；本檔僅保留簽名相容的委派，**禁止任何格式規則**。
+ * 日期分組邏輯（groupByMonth）仍屬本 feature。
  */
 
-/** 幣別顯示前綴（§5：NT$ / US$）。 */
+/**
+ * 幣別顯示前綴（委派 shared 規則表）。
+ * @deprecated 畫面改直接 import `currencyPrefix`（backlog：刪 shim）。
+ */
 export function currencySymbol(currency: Currency): string {
-  return currency === 'USD' ? 'US$' : currency === 'TWD' ? 'NT$' : currency;
-}
-
-/** 顯示小數位：USD / USDT 2 位、TWD 整數（對齊 prototype txFmt）。 */
-function displayDecimals(currency: Currency): number {
-  return currency === 'USD' || currency === 'USDT' ? 2 : 0;
-}
-
-/** 千分位（整數部分）；小數位依幣別。輸入為 Money 10 位小數 canonical string。 */
-export function formatAmount(value: string, currency: Currency): string {
-  const fixed = Money.fromDecimalString(value, currency).toDisplayString(displayDecimals(currency));
-  const [intPart = '0', frac] = fixed.split('.');
-  const sign = intPart.startsWith('-') ? '-' : '';
-  const digits = sign ? intPart.slice(1) : intPart;
-  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return frac ? `${sign}${grouped}.${frac}` : `${sign}${grouped}`;
-}
-
-/** 「NT$ 88,200」帶幣別前綴的完整金額字串。 */
-export function formatMoney(value: string, currency: Currency): string {
-  return `${currencySymbol(currency)} ${formatAmount(value, currency)}`;
-}
-
-/** 股數顯示：整數不帶小數、含千分位（價格類精度交給 formatAmount）。 */
-export function formatQuantity(value: string, currency: Currency): string {
-  const n = Money.fromDecimalString(value, currency);
-  // 股數通常為整數；有小數時最多顯示到 4 位（去尾零）。
-  const raw = n.toDisplayString(4);
-  const trimmed = raw.replace(/\.?0+$/, '');
-  const [intPart = '0', frac] = trimmed.split('.');
-  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return frac ? `${grouped}.${frac}` : grouped;
+  return currencyPrefix(currency);
 }
 
 /**
- * 單價顯示：有小數→2 位、整數→0 位（對齊 prototype `t.px % 1 ? 2 : 0`），帶幣別前綴。
- * e.g. 台股 1100 → 「NT$ 1,100」；美股 214.1 → 「US$ 214.10」。
+ * 千分位金額（裸數字，依幣別小數位）。
+ * @deprecated 畫面改直接 import shared `formatAmount`（backlog：刪 shim）。
+ */
+export function formatAmount(value: string, currency: Currency): string {
+  return sharedFormatAmount(value, currency);
+}
+
+/**
+ * 「NT$ 88,200」帶幣別前綴的完整金額字串。
+ * @deprecated 畫面改直接 import shared `formatMoney`（backlog：刪 shim）。
+ */
+export function formatMoney(value: string, currency: Currency): string {
+  return sharedFormatMoney(value, currency);
+}
+
+/**
+ * 股數顯示（≤4 位去尾零 + 千分位）。保留 2-arg 簽名（消費端以 2 參數呼叫）；
+ * 股數與幣別無關，currency 僅為相容而收、內部丟棄。
+ * @deprecated 畫面改直接 import shared `formatQuantity`（backlog：刪 shim）。
+ */
+export function formatQuantity(value: string, _currency: Currency): string {
+  return sharedFormatQuantity(value);
+}
+
+/**
+ * 單價顯示：規則表「單價/均價一律 2 位」＋幣別前綴（visual-audit P2-2）。
+ * @deprecated 畫面改直接 import shared `formatPrice`（backlog：刪 shim）。
  */
 export function formatPrice(value: string, currency: Currency): string {
-  const m = Money.fromDecimalString(value, currency);
-  const isInteger = m.equals(Money.fromDecimalString(m.toDisplayString(0), currency));
-  const fixed = m.toDisplayString(isInteger ? 0 : 2);
-  const [intPart = '0', frac] = fixed.split('.');
-  const sign = intPart.startsWith('-') ? '-' : '';
-  const digits = sign ? intPart.slice(1) : intPart;
-  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const body = frac ? `${sign}${grouped}.${frac}` : `${sign}${grouped}`;
-  return `${currencySymbol(currency)} ${body}`;
+  return sharedFormatPrice(value, currency);
 }
 
 const MONTH_LABELS = [
@@ -81,7 +75,7 @@ const MONTH_LABELS = [
 export interface TransactionMonthGroup {
   /** 分組鍵（YYYY-MM）— 排序與 React key 用。 */
   key: string;
-  /** 顯示標題（繁中月份；跨年時帶西元年）。 */
+  /** 顯示標題（繁中月份 + 西元年，恆帶年）。 */
   label: string;
   items: TransactionDocument[];
 }
@@ -95,11 +89,10 @@ export function dayOfMonth(date: string): string {
 /**
  * 按月分組（版型 B：每月一個 header）。輸入假設已依 transaction_date desc 排序
  * （transactionsStore 的 query 已 orderBy desc）；本函式穩定保留該順序，僅切組。
- * 跨年時 label 帶西元年（如「12月 · 2025」），避免不同年同月混淆。
+ * 標題**恆帶西元年**（visual-audit P3-1：當年省略年會讓同畫面出現兩個「七月」）。
  */
 export function groupByMonth(transactions: TransactionDocument[]): TransactionMonthGroup[] {
   const groups: TransactionMonthGroup[] = [];
-  const currentYear = new Date().getFullYear();
 
   for (const t of transactions) {
     const ym = t.transaction_date.slice(0, 7); // YYYY-MM
@@ -108,8 +101,7 @@ export function groupByMonth(transactions: TransactionDocument[]): TransactionMo
       const year = Number(ym.slice(0, 4));
       const monthIdx = Number(ym.slice(5, 7)) - 1;
       const monthLabel = MONTH_LABELS[monthIdx] ?? ym;
-      const label = year === currentYear ? monthLabel : `${monthLabel} · ${year}`;
-      groups.push({ key: ym, label, items: [t] });
+      groups.push({ key: ym, label: `${monthLabel} · ${year}`, items: [t] });
     } else {
       last.items.push(t);
     }

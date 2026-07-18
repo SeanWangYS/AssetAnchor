@@ -65,7 +65,7 @@ function Row({ h, onClick, dense }) {
       </div>
       <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
         <div className="num" style={{ color: T.ink, fontWeight: 700, fontSize: dense ? 14 : 15, whiteSpace: 'nowrap' }}>{money(h)}</div>
-        <div style={{ marginTop: 2 }}><Pnl pct={h.pct} size={12} /></div>
+        <div style={{ marginTop: 2 }}><Pnl pct={h.pct} size={12} arrow={false} /></div>
       </div>
     </button>
   );
@@ -186,7 +186,7 @@ function Home({ onRow, onAdd, onTab, onToast, onTxRow, onAccounts, onLogout, use
         {/* 2x2 摘要 bento */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
           <StatCell label="總報酬率" accentGlow>
-            <Pnl pct={SUM.totalPct} size={21} weight={800} />
+            <Pnl pct={SUM.totalPct} size={21} weight={800} arrow={false} />
           </StatCell>
           <StatCell label="總未實現損益">
             <PnlAmt amt={SUM.unrealized} size={18} />
