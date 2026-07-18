@@ -5,6 +5,7 @@ import {
   isFresh,
   deriveHoldingsByAccount,
   formatDisplayDate,
+  formatDisplayTime,
   formatPercent,
   formatPrice,
   type Currency,
@@ -157,12 +158,7 @@ export default function AssetDetailScreen({
   const quoteFresh = quote ? isFresh(quote.fetchedAtMs, Date.now()) : false;
   const asOfLabel =
     quote && !quoteFresh
-      ? `最後更新 ${new Date(quote.fetchedAtMs).getHours().toString().padStart(2, '0')}:${new Date(
-          quote.fetchedAtMs,
-        )
-          .getMinutes()
-          .toString()
-          .padStart(2, '0')} · 延遲`
+      ? `最後更新 ${formatDisplayTime(new Date(quote.fetchedAtMs))} · 延遲`
       : null;
   // 今日漲跌（每股）：現價 − 前收（僅新鮮報價）。缺 prevClose 或過期則不顯示今日列。
   const prevCloseM =
@@ -259,7 +255,7 @@ export default function AssetDetailScreen({
       <Card style={styles.posCard}>
         <Text style={styles.posTitle}>我的持倉</Text>
         <Kv k="持有股數" v={`${fmtShares(position.quantity, position.currency)} 股`} />
-        <Kv k="平均成本" v={showPrice(avgCostM)} />
+        <Kv k="均價（含費）" v={showPrice(avgCostM)} />
         <Kv k="市值" v={marketValue ? show(marketValue) : '更新中…'} />
         <Kv
           k="未實現損益"

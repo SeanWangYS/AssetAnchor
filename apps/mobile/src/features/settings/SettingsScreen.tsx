@@ -17,8 +17,8 @@ function rowChevron() {
  * SettingsScreen（SettingsHome）—— 設定落地頁（design.md §1 / analysis-page-spec §3.2）。
  *
  * 由上到下：
- * 1. 「我的帳號」card —— AABrandLockup（圓環錨點品牌）+ 使用者 email。
- * 2. 分組清單：帳戶（帳戶管理 / 現金餘額）/ 偏好（個人資料）/ 其他（關於），列尾 chevron。
+ * 1. 「登入帳號」card —— AABrandLockup（圓環錨點品牌）+ 使用者 email。
+ * 2. 分組清單：帳戶（帳戶管理 / 現金餘額（合計））/ 帳號（個人資料）/ 其他（關於），列尾 chevron。
  *    （顯示幣別切換已移至持倉頁＝偏好控制；原「顯示偏好」子頁移除。）
  * 3. 破壞性「登出」 → 置中 ConfirmDialog（破壞性紅，auth-flow-spec §6）。
  *
@@ -40,11 +40,11 @@ export default function SettingsScreen({ navigation }: SettingsStackScreenProps<
     <>
       <ScreenHeader title="設定" />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        {/* 我的帳號 card */}
+        {/* 登入帳號 card */}
         <Card glow style={styles.accountCard}>
           <AABrandLockup markSize={40} wordSize={22} glow />
           <View style={styles.accountMeta}>
-            <Text style={styles.accountLabel}>我的帳號</Text>
+            <Text style={styles.accountLabel}>登入帳號</Text>
             <Text style={styles.accountEmail} numberOfLines={1}>
               {email ?? '尚未登入'}
             </Text>
@@ -61,14 +61,14 @@ export default function SettingsScreen({ navigation }: SettingsStackScreenProps<
           />
           {/* 現金餘額：唯讀展示列（不可點、無 chevron），右側為跨帳戶現金總計（對齊原型 mock）。 */}
           <ListItem
-            title="現金餘額"
+            title="現金餘額（合計）"
             right={<Text style={styles.cashTotal}>{cashTotal}</Text>}
             divider={false}
           />
         </View>
 
         {/* 偏好 */}
-        <Text style={styles.groupLabel}>偏好</Text>
+        <Text style={styles.groupLabel}>帳號</Text>
         <View style={styles.group}>
           <ListItem
             title="個人資料"
