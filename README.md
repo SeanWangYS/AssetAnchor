@@ -78,7 +78,7 @@ pnpm --filter @assetanchor/firebase test:rules     # Firestore rules（自動起
 - **CI**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)，GitHub-hosted runner）：PR→main 與 push main 觸發，四個平行 job——`lint`（prettier + eslint）、`typecheck`、`test`（shared+mobile coverage）、`rules`（JDK 21 + Firestore emulator 跑 rules 測試）。四項皆為 main 的 **required checks**（strict：分支須基於最新 main）。
 - **Git 工作流**：GitHub Flow——單一 `main` 恆可發布、短命 `feature/*`／`fix/*` 分支、一律 PR、CI 綠即快速 merge（誰 merge 依 [`CLAUDE.md`](CLAUDE.md) 分級授權）。⚠️ Stacked PR 注意：**保留 base 分支時 GitHub 不會自動把子 PR 轉向 main**（只有刪除 base 分支才會）——依序 merge 後務必確認內容真的進了 main。
 - **CD＝刻意手動**（花錢／部署屬人類介入 gate）：
-  - **iOS**：定期從 main 切 TestFlight build——EAS `build`/`submit`，流程見 [`docs/runbook/testflight-release.md`](docs/runbook/testflight-release.md)；發版打 `x.y.z-release` tag（記錄錨點，不觸發自動化）
+  - **iOS**：定期從 main 切 TestFlight build——從 main 打 `x.y.z-release` tag 即觸發 [`release-ios.yml`](.github/workflows/release-ios.yml)（驗證 tag 在 main 上＋版號＝package.json → EAS 雲端 build + auto-submit）；手動 EAS CLI 備援與細節見 [`docs/runbook/testflight-release.md`](docs/runbook/testflight-release.md)
   - **後端**：`firebase deploy`（functions / rules / indexes）手動執行
 - **版號單一來源**：`apps/mobile/package.json` 的 `version`——`app.config.ts` 與 About 頁皆 import 之；iOS build number 由 EAS remote `autoIncrement` 管理，不入 repo。
 
