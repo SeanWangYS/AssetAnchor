@@ -4,6 +4,8 @@ import {
   Money,
   isFresh,
   deriveHoldingsByAccount,
+  formatDisplayDate,
+  formatDisplayTime,
   formatPercent,
   formatPrice,
   type Currency,
@@ -47,6 +49,19 @@ export default function AssetDetailScreen({
 
   // 帳戶分布（真實資料，取代已移除的 accountOf demo）：列出目前實際持有此 (market, symbol) 的帳戶名。
   const transactions = useTransactionsStore((s) => s.transactions);
+
+  // P3-11 預填用：該 (market, symbol) 最近一筆交易的 asset_type（無交易則 undefined）。
+  const latestAssetType = useMemo(() => {
+    let latest: { date: string; assetType: (typeof transactions)[number]['asset_type'] } | null =
+      null;
+    for (const t of transactions) {
+      if (t.market !== market || t.symbol !== symbol) continue;
+      if (latest === null || t.transaction_date > latest.date) {
+        latest = { date: t.transaction_date, assetType: t.asset_type };
+      }
+    }
+    return latest?.assetType;
+  }, [transactions, market, symbol]);
   const accounts = useAccountsStore((s) => s.accounts);
   const accountDistribution = useMemo(() => {
     const names = deriveHoldingsByAccount(transactions, accounts)
@@ -143,12 +158,7 @@ export default function AssetDetailScreen({
   const quoteFresh = quote ? isFresh(quote.fetchedAtMs, Date.now()) : false;
   const asOfLabel =
     quote && !quoteFresh
-      ? `最後更新 ${new Date(quote.fetchedAtMs).getHours().toString().padStart(2, '0')}:${new Date(
-          quote.fetchedAtMs,
-        )
-          .getMinutes()
-          .toString()
-          .padStart(2, '0')} · 延遲`
+      ? `最後更新 ${formatDisplayTime(new Date(quote.fetchedAtMs))} · 延遲`
       : null;
   // 今日漲跌（每股）：現價 − 前收（僅新鮮報價）。缺 prevClose 或過期則不顯示今日列。
   const prevCloseM =
@@ -168,7 +178,12 @@ export default function AssetDetailScreen({
       {/* 現價 hero */}
       <Text style={styles.priceLabel}>目前股價</Text>
       {priceM ? (
-        <Text style={styles.priceValue} numberOfLines={1}>
+        <Text
+          style={styles.priceValue}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
+        >
           {priceCcyPrefix}{' '}
           {priceM.toNumber().toLocaleString('en-US', {
             minimumFractionDigits: 2,
@@ -176,7 +191,12 @@ export default function AssetDetailScreen({
           })}
         </Text>
       ) : (
-        <Text style={styles.priceValue} numberOfLines={1}>
+        <Text
+          style={styles.priceValue}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
+        >
           更新中…
         </Text>
       )}
@@ -204,7 +224,16 @@ export default function AssetDetailScreen({
       {/* 走勢圖 + 時間 tabs（真值：1D/1W 盤中、其餘日線；載入/空態不畫假線） */}
       <View style={styles.chart}>
         {trend.state === 'ready' ? (
-          <Chart data={trend.series} height={164} />
+          <Chart
+            data={trend.series}
+            height={164}
+            yTickFormat={(v) => v.toFixed(2)}
+            xLabels={
+              trend.startDate !== undefined && trend.endDate !== undefined
+                ? [formatDisplayDate(trend.startDate), formatDisplayDate(trend.endDate)]
+                : null
+            }
+          />
         ) : (
           <View style={styles.chartPlaceholder}>
             <Text style={styles.chartPlaceholderText}>
@@ -226,7 +255,7 @@ export default function AssetDetailScreen({
       <Card style={styles.posCard}>
         <Text style={styles.posTitle}>我的持倉</Text>
         <Kv k="持有股數" v={`${fmtShares(position.quantity, position.currency)} 股`} />
-        <Kv k="平均成本" v={showPrice(avgCostM)} />
+        <Kv k="均價（含費）" v={showPrice(avgCostM)} />
         <Kv k="市值" v={marketValue ? show(marketValue) : '更新中…'} />
         <Kv
           k="未實現損益"
@@ -275,7 +304,15 @@ export default function AssetDetailScreen({
         <Button
           title="＋ 為此標的新增交易"
           variant="gradient"
-          onPress={() => navigation.navigate('AddTransaction')}
+          onPress={() =>
+            navigation.navigate('AddTransaction', {
+              symbol,
+              market,
+              currency: position.currency,
+              // P3-11：資產類型取該標的最近一筆交易（與表單代號補完同取值口徑）
+              ...(latestAssetType ? { asset_type: latestAssetType } : {}),
+            })
+          }
         />
         <Button
           title="查看完整交易歷史"

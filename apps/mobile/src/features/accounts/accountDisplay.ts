@@ -77,6 +77,18 @@ export function accountTypeLabel(type: AccountType): string {
   return ACCOUNT_TYPE_LABELS[type] ?? type;
 }
 
+/** 市場 enum → 繁中標籤（清單副標「類型 · 市場」；與 AccountForm 共用單一定義，P3-14）。 */
+const MARKET_ZH_LABELS: Record<string, string> = {
+  TW: '台股',
+  US: '美股',
+  CRYPTO: '加密貨幣',
+  OTHER: '其他',
+};
+
+export function marketZhLabel(market: string): string {
+  return MARKET_ZH_LABELS[market] ?? market;
+}
+
 /**
  * ⚠️ adapter only——格式規則的唯一實作點在 `packages/shared` format 模組
  * （fix-display-formatting 規則表）；以下委派**禁止任何格式規則**。

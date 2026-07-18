@@ -1,7 +1,7 @@
 import { useId } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
-import { colors } from '../../theme';
+import { colors, fontFamily } from '../../theme';
 
 /**
  * Chart —— 走勢 sparkline（aa-core.jsx:107 `chartPath` + 121 `Chart`），react-native-svg 自繪。
@@ -18,6 +18,14 @@ interface ChartProps {
   color?: string;
   dot?: boolean;
   baseline?: boolean;
+  /**
+   * Y 軸極值刻度格式（visual-audit P2-13：可讀級）——**存在即開啟**。
+   * 以 RN Text overlay 繪製（不進 SVG：width=100% + 固定 viewBox +
+   * preserveAspectRatio="none" 會把 SVG 文字非等比拉伸）。
+   */
+  yTickFormat?: (v: number) => string;
+  /** X 軸起訖標籤（已格式化字串；null/省略不畫）。 */
+  xLabels?: readonly [string, string] | null;
 }
 
 interface ChartGeometry {
@@ -67,6 +75,8 @@ export default function Chart({
   color = colors.accent,
   dot = true,
   baseline = true,
+  yTickFormat,
+  xLabels,
 }: ChartProps) {
   const id = useId();
   const geo = buildPath(data, width, height, 12);
@@ -76,51 +86,102 @@ export default function Chart({
   const areaId = `${id}-area`;
   const lineId = `${id}-line`;
 
+  // Y 極值刻度（資料 <2 點時 geo 已為 null 不會進來）；span 0（水平線畫在底部）只標一個、靠底跟線走。
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const flat = min === max;
+
   return (
-    <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-      <Defs>
-        <LinearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor={color} stopOpacity={0.34} />
-          <Stop offset="55%" stopColor={color} stopOpacity={0.1} />
-          <Stop offset="100%" stopColor={color} stopOpacity={0} />
-        </LinearGradient>
-        <LinearGradient id={lineId} x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0%" stopColor={color} stopOpacity={0.65} />
-          <Stop offset="100%" stopColor={color} stopOpacity={1} />
-        </LinearGradient>
-      </Defs>
-      {baseline ? (
-        <Line
-          x1="0"
-          y1={height - 12}
-          x2={width}
-          y2={height - 12}
-          stroke={colors.divider}
-          strokeWidth={1}
-          strokeDasharray="2 5"
-        />
-      ) : null}
-      <Path d={geo.area} fill={`url(#${areaId})`} />
-      <Path
-        d={geo.line}
-        fill="none"
-        stroke={`url(#${lineId})`}
-        strokeWidth={2.4}
-        strokeLinecap="round"
-      />
-      {dot ? (
-        <>
-          <Circle cx={geo.last[0]} cy={geo.last[1]} r={6.5} fill={color} opacity={0.22} />
-          <Circle
-            cx={geo.last[0]}
-            cy={geo.last[1]}
-            r={3.4}
-            fill={colors.onPrimary}
-            stroke={color}
-            strokeWidth={2}
+    <View>
+      <View style={styles.plotWrap}>
+        <Svg
+          width="100%"
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+        >
+          <Defs>
+            <LinearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0%" stopColor={color} stopOpacity={0.34} />
+              <Stop offset="55%" stopColor={color} stopOpacity={0.1} />
+              <Stop offset="100%" stopColor={color} stopOpacity={0} />
+            </LinearGradient>
+            <LinearGradient id={lineId} x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0%" stopColor={color} stopOpacity={0.65} />
+              <Stop offset="100%" stopColor={color} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          {baseline ? (
+            <Line
+              x1="0"
+              y1={height - 12}
+              x2={width}
+              y2={height - 12}
+              stroke={colors.divider}
+              strokeWidth={1}
+              strokeDasharray="2 5"
+            />
+          ) : null}
+          <Path d={geo.area} fill={`url(#${areaId})`} />
+          <Path
+            d={geo.line}
+            fill="none"
+            stroke={`url(#${lineId})`}
+            strokeWidth={2.4}
+            strokeLinecap="round"
           />
-        </>
+          {dot ? (
+            <>
+              <Circle cx={geo.last[0]} cy={geo.last[1]} r={6.5} fill={color} opacity={0.22} />
+              <Circle
+                cx={geo.last[0]}
+                cy={geo.last[1]}
+                r={3.4}
+                fill={colors.onPrimary}
+                stroke={color}
+                strokeWidth={2}
+              />
+            </>
+          ) : null}
+        </Svg>
+        {yTickFormat ? (
+          flat ? (
+            <Text style={[styles.yTick, styles.yTickBottom]}>{yTickFormat(max)}</Text>
+          ) : (
+            <>
+              <Text style={[styles.yTick, styles.yTickTop]}>{yTickFormat(max)}</Text>
+              <Text style={[styles.yTick, styles.yTickBottom]}>{yTickFormat(min)}</Text>
+            </>
+          )
+        ) : null}
+      </View>
+      {xLabels ? (
+        <View style={styles.xRow}>
+          <Text style={styles.xLabel}>{xLabels[0]}</Text>
+          <Text style={styles.xLabel}>{xLabels[1]}</Text>
+        </View>
       ) : null}
-    </Svg>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  plotWrap: { position: 'relative' },
+  yTick: {
+    position: 'absolute',
+    left: 2,
+    fontFamily: fontFamily.num.medium,
+    fontSize: 9,
+    color: colors.textFaint,
+    fontVariant: ['tabular-nums'],
+  },
+  yTickTop: { top: 0 },
+  yTickBottom: { bottom: 1 },
+  xRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  xLabel: {
+    fontFamily: fontFamily.num.medium,
+    fontSize: 9,
+    color: colors.textFaint,
+    fontVariant: ['tabular-nums'],
+  },
+});

@@ -69,6 +69,17 @@ export default function AddTransactionScreen({
 
   const isEdit = route.name === 'EditTransaction';
   const editId = isEdit ? (route.params as { transactionId: string }).transactionId : null;
+  // P3-11：個股頁入口帶標的預填（route.name 窄化——AddTransaction 才有這組 params）。
+  const prefill = route.name === 'AddTransaction' ? route.params : undefined;
+  const prefillDefaults: TransactionFormDefaults | null =
+    prefill && prefill.symbol
+      ? {
+          symbol: prefill.symbol,
+          ...(prefill.market ? { market: prefill.market } : {}),
+          ...(prefill.asset_type ? { asset_type: prefill.asset_type } : {}),
+          ...(prefill.currency ? { currency: prefill.currency } : {}),
+        }
+      : null;
   const allTransactions = useTransactionsStore((s) => s.transactions);
   const existing = editId ? allTransactions.find((t) => t.transaction_id === editId) : undefined;
   // SELL 可賣股數推導：編輯時排除被編輯的該筆，避免自身重複計入。
@@ -150,7 +161,9 @@ export default function AddTransactionScreen({
           ? { initialValues: toFormDefaults(existing) }
           : copyDefaults
             ? { initialValues: copyDefaults }
-            : {})}
+            : prefillDefaults
+              ? { initialValues: prefillDefaults }
+              : {})}
         submitLabel={isEdit ? '儲存變更' : '記錄交易'}
         onSubmit={onSubmit}
       />

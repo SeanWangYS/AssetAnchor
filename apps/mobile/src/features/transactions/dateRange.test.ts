@@ -1,4 +1,10 @@
-import { filterByPreset, inRange, isValidCustomRange, presetDisplayLabel } from './dateRangeStore';
+import {
+  filterByPreset,
+  inRange,
+  isValidCustomRange,
+  presetDisplayLabel,
+  presetRange,
+} from './dateRangeStore';
 import type { TransactionDocument } from '@assetanchor/shared';
 
 /** 最小交易 fixture：只有 transaction_date 參與過濾。 */
@@ -96,5 +102,65 @@ describe('presetDisplayLabel', () => {
 
   it('custom 但區間非法 → 退回「自訂」label', () => {
     expect(presetDisplayLabel('custom', { start: '', end: '' })).toBe('自訂');
+  });
+});
+
+describe('presetRange（P3-9：回填值與 inRange 語意等價）', () => {
+  const tx = (date: string) => ({ transaction_date: date }) as TransactionDocument;
+  // 窗界前後一日 + 未來日 + 跨年，覆蓋各 preset 邊界。
+  const fixture = [
+    '2024-12-31',
+    '2025-01-01',
+    '2026-01-01',
+    '2026-03-31',
+    '2026-04-30',
+    '2026-05-01',
+    '2026-05-31',
+    '2026-06-01',
+    '2026-07-01',
+    '2026-07-18',
+    '2026-07-31',
+    '2026-12-25', // 未來日（schema 不禁；期末訖端使等價成立）
+    '2027-01-01',
+  ].map(tx);
+  // parametrize now：一般日 / 月底 / 1 月（跨年 last3m）/ 閏年 2 月
+  const NOWS = [
+    new Date(2026, 6, 18),
+    new Date(2026, 4, 31),
+    new Date(2026, 0, 5),
+    new Date(2024, 1, 29),
+  ];
+  const PRESETS = ['month', 'last3m', 'ytd'] as const;
+
+  it.each(NOWS.flatMap((now) => PRESETS.map((p) => [p, now] as const)))(
+    'filterByPreset(%s) ≡ 回填 custom（now=%s）',
+    (preset, now) => {
+      const range = presetRange(preset, now);
+      expect(range).not.toBeNull();
+      const direct = filterByPreset(fixture, preset, now);
+      const viaCustom = filterByPreset(fixture, 'custom', now, range ?? undefined);
+      expect(viaCustom.map((t) => t.transaction_date)).toEqual(
+        direct.map((t) => t.transaction_date),
+      );
+    },
+  );
+
+  it('all/custom 回 null（無可回填）', () => {
+    expect(presetRange('all', new Date(2026, 6, 18))).toBeNull();
+    expect(presetRange('custom', new Date(2026, 6, 18))).toBeNull();
+  });
+
+  it('last3m 跨年（1 月 → 前年 11/1 起）', () => {
+    expect(presetRange('last3m', new Date(2026, 0, 5))).toEqual({
+      start: '2025-11-01',
+      end: '2026-01-31',
+    });
+  });
+
+  it('month 期末訖端（閏年 2 月 → 02-29）', () => {
+    expect(presetRange('month', new Date(2024, 1, 10))).toEqual({
+      start: '2024-02-01',
+      end: '2024-02-29',
+    });
   });
 });

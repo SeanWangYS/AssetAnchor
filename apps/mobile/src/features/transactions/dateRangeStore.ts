@@ -97,6 +97,33 @@ export function inRange(
   return true;
 }
 
+/**
+ * preset 的實際日曆區間（visual-audit P3-9：選 preset 回填起訖欄）。
+ * **逐字對齊 `inRange` 的日曆月語意**（等價性由測試鎖住）：
+ * - month＝當月 1 日..當月月底；ytd＝1/1..12/31；last3m＝前兩個日曆月的 1 日..當月月底
+ *   （同 inRange 的 year*12+month 線性化——勿用 setMonth(-3)，會月底 rollover）。
+ * - 訖端採**期末**而非今日：schema 不禁未來日交易，期末使等價無條件成立。
+ * - all/custom 回 null（無可回填）。
+ */
+export function presetRange(preset: DateRangePreset, now: Date = new Date()): CustomRange | null {
+  if (preset === 'all' || preset === 'custom') return null;
+  const { year, month } = thisYearMonth(now);
+  const p = (n: number) => String(n).padStart(2, '0');
+  const lastDayOf = (y: number, m: number) => new Date(y, m, 0).getDate(); // m=1..12，day 0＝上月底
+  if (preset === 'ytd') return { start: `${year}-01-01`, end: `${year}-12-31` };
+  if (preset === 'month') {
+    return {
+      start: `${year}-${p(month)}-01`,
+      end: `${year}-${p(month)}-${p(lastDayOf(year, month))}`,
+    };
+  }
+  // last3m：cur-2 月 1 日 .. 當月月底（線性化跨年正確）
+  const startLinear = year * 12 + month - 2;
+  const sy = Math.floor((startLinear - 1) / 12);
+  const sm = ((startLinear - 1) % 12) + 1;
+  return { start: `${sy}-${p(sm)}-01`, end: `${year}-${p(month)}-${p(lastDayOf(year, month))}` };
+}
+
 /** 套用 preset / 自訂區間過濾交易清單（純函式）。 */
 export function filterByPreset(
   transactions: TransactionDocument[],

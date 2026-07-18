@@ -27,10 +27,19 @@ export default function Input({
   style,
   onFocus,
   onBlur,
+  editable,
   ...rest
 }: InputProps) {
   const [focused, setFocused] = useState(false);
-  const borderColor = error ? colors.down : focused ? colors.accent : colors.border;
+  // 唯讀/停用視覺（visual-audit P3-16）：error 紅框優先於 disabled（樣式順序）。
+  const disabled = editable === false;
+  const borderColor = error
+    ? colors.down
+    : focused
+      ? colors.accent
+      : disabled
+        ? 'transparent'
+        : colors.border;
 
   return (
     <View style={styles.wrap}>
@@ -40,11 +49,17 @@ export default function Input({
           不被 flatten 即可在新架構下正常輸入。見 ADR-0009。 */}
       <View
         collapsable={false}
-        style={[styles.field, { borderColor }, focused && !error ? styles.focusRing : null]}
+        style={[
+          styles.field,
+          disabled && !error ? styles.fieldDisabled : null,
+          { borderColor },
+          focused && !error ? styles.focusRing : null,
+        ]}
       >
         {leftIcon ? <View style={styles.icon}>{leftIcon}</View> : null}
         <TextInput
-          style={[styles.input, style]}
+          style={[styles.input, disabled ? styles.inputDisabled : null, style]}
+          editable={editable}
           placeholderTextColor={colors.textFaint}
           onFocus={(e) => {
             setFocused(true);
@@ -65,6 +80,8 @@ export default function Input({
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.xs },
+  fieldDisabled: { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'transparent' },
+  inputDisabled: { color: colors.textSecondary },
   label: {
     fontFamily: fontFamily.text.bold,
     fontSize: fontSize.label,

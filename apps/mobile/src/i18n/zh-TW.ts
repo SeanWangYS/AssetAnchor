@@ -44,10 +44,10 @@ export const zhTW = {
     rateNotReady: '匯率未就緒',
     fxAsOfNote: '依最新匯率換算',
     shares: '股',
-    avgCost: '均價',
+    avgCost: '均價（含費）',
     fields: {
       quantity: '總股數',
-      averageCost: '加權均價',
+      averageCost: '均價（含費）',
       totalCost: '總成本',
       currency: '幣別',
     },
@@ -59,9 +59,9 @@ export const zhTW = {
   transactions: {
     /** 交易清單畫面標題：ScreenHeader 與 route title（返回鈕文字）共用，避免字串漂移。 */
     listTitle: '交易紀錄',
-    empty: '尚無交易，點右上角 ＋ 新增買入',
+    empty: '尚無交易，點右下角 ＋ 新增交易',
     noAccount: '請先到「帳戶」分頁建立一個帳戶，才能記錄交易',
-    addTitle: '新增買入',
+    addTitle: '新增交易',
     fields: {
       account_id: '帳戶',
       symbol: '代號',

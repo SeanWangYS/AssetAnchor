@@ -8,11 +8,10 @@ import {
   type AccountInput,
   type AccountType,
   type Broker,
-  type Market,
 } from '@assetanchor/shared';
 import { Button, ColorSwatches, Icon, Input, Segmented, Sheet } from '../../../core/ui';
 import { colors, fontFamily, fontSize, radius, spacing } from '../../../core/theme';
-import { accountTypeLabel, brokerLabel } from '../accountDisplay';
+import { accountTypeLabel, brokerLabel, marketZhLabel } from '../accountDisplay';
 
 /** 基礎幣別（accountInputSchema 僅收 USD / TWD）。 */
 type BaseCcy = 'TWD' | 'USD';
@@ -22,12 +21,6 @@ const CURRENCY_OPTIONS: readonly { value: BaseCcy; label: string }[] = [
 ];
 
 /** 主要市場繁中標籤。 */
-const MARKET_LABELS: Record<Market, string> = {
-  TW: '台股',
-  US: '美股',
-  CRYPTO: '加密貨幣',
-  OTHER: '其他',
-};
 
 type AccountFormInitial = Partial<{
   account_name: string;
@@ -150,8 +143,8 @@ export default function AccountForm({ initial, submitLabel, onSubmit }: AccountF
         label="主要市場"
         sheetTitle="選擇主要市場"
         value={market}
-        display={market ? (MARKET_LABELS[market as Market] ?? market) : ''}
-        options={MARKETS.map((m) => ({ value: m, label: MARKET_LABELS[m] }))}
+        display={market ? marketZhLabel(market) : ''}
+        options={MARKETS.map((m) => ({ value: m, label: marketZhLabel(m) }))}
         onSelect={setMarket}
         error={errors.market ?? null}
       />

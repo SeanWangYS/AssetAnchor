@@ -110,7 +110,7 @@ export default function AssetTransactionsScreen({
               {symbolNameOf(symbols, market, symbol)} · {marketLabel(market)}
             </Text>
             <Kv k="持有股數" v={`${fmtShares(summary.qty, summary.ccy)} 股`} />
-            <Kv k="加權均價" v={formatPrice(summary.avg, summary.ccy)} />
+            <Kv k="均價（含費）" v={formatPrice(summary.avg, summary.ccy)} />
             <Kv k="總成本" v={fmt(summary.cost, summary.ccy)} />
             <Kv k="交易筆數" v={`買 ${summary.buyCount} · 賣 ${summary.sellCount}`} last />
           </Card>

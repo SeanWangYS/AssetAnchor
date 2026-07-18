@@ -2,8 +2,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AABrandLockup, Card } from '../../../core/ui';
 import { colors, fontFamily, fontSize, spacing } from '../../../core/theme';
 
-/** app 版本（對齊 apps/mobile/app.config.ts 的 version；MVP 直接內嵌）。 */
-const APP_VERSION = '0.0.1';
+// 版本單一來源＝package.json（app.config.ts 同源；visual-audit P3-17 修 0.0.1 漂移）。
+import { version as APP_VERSION } from '../../../../package.json';
 
 /**
  * AboutScreen —— 關於（design.md §1 設定「其他 / 關於」、§2 缺畫面③）。
@@ -22,8 +22,8 @@ export default function AboutScreen() {
       <Card style={styles.card}>
         <Text style={styles.sectionTitle}>關於 AssetAnchor</Text>
         <Text style={styles.body}>
-          AssetAnchor 是一款個人投資組合追蹤工具，協助你記錄跨市場（台股 TWD、美股
-          USD）的交易與持倉，並在顯示時即時換算合計、檢視報酬與資產配置分析。
+          AssetAnchor 是一款個人投資組合追蹤工具，協助你記錄跨市場（台股 TWD、美股 USD、加密貨幣
+          USDT）的交易與持倉，並在顯示時即時換算合計、檢視報酬與資產配置分析。
         </Text>
       </Card>
 
