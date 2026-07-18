@@ -32,11 +32,10 @@ function Row({ h, onClick, dense }) {
       width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: dense ? '9px 6px' : '11px 6px',
       background: 'transparent', border: 'none', borderTop: `1px solid ${T.line}`, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
     }}>
-      <Avatar h={h} size={dense ? 34 : 40} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-          <span style={{ color: T.ink, fontWeight: 600, fontSize: dense ? 14 : 15 }}>{h.name}</span>
-          <span className="num" style={{ color: T.sub, fontSize: 12 }}>{h.sym}</span>
+          <span className="num" style={{ color: T.ink, fontWeight: 600, fontSize: dense ? 14 : 15 }}>{h.sym}</span>
+          <span style={{ color: T.sub, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.name}</span>
         </div>
         <div className="num" style={{ color: T.sub, fontSize: 12, marginTop: 2 }}>{h.sh} 股 · 均價 {h.ccy}{nf(h.avg, h.ccy === 'US$' ? 2 : 0)}</div>
       </div>

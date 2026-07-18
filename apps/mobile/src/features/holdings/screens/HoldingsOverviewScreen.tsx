@@ -18,7 +18,6 @@ import {
 } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
 import {
-  Avatar,
   Card,
   Chart,
   EmptyState,
@@ -50,7 +49,6 @@ import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { useCountUp } from '../useCountUp';
 import { useTrendSeries } from '../useTrendSeries';
 import {
-  avatarColor,
   currencyPrefix,
   displayDecimals,
   fmtAmount,
@@ -166,11 +164,10 @@ function buildSections(
   });
 }
 
-/** 三段式持股 row：圓標 + 名稱/代號 + (股數·均價) + 市值/報酬%（design §3.1 item 7）。 */
+/** 兩段式持股 row：代號(主)/名稱(輔) + (股數·均價) + 市值/報酬%（design §3.1 item 7，owner 2026-07-18 拍板：無圓標、代號優先）。 */
 function HoldingRow({
   position,
   name,
-  dense,
   quote,
   rates,
   notFound,
@@ -178,7 +175,6 @@ function HoldingRow({
 }: {
   position: Position;
   name: string;
-  dense: boolean;
   quote: QuoteEntry | undefined;
   rates: RateMap | null;
   /** 查無報價代號（symbol_not_found）：顯示明確標示而非「更新中…」。 */
@@ -200,17 +196,12 @@ function HoldingRow({
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}
     >
-      <Avatar
-        symbol={position.symbol}
-        color={avatarColor(position.symbol, colors.accent)}
-        size={dense ? 34 : 40}
-      />
       <View style={styles.rowMid}>
         <View style={styles.rowTitleLine}>
-          <Text style={styles.rowName} numberOfLines={1}>
+          <Text style={styles.rowSymbolMain}>{position.symbol}</Text>
+          <Text style={styles.rowNameSub} numberOfLines={1}>
             {name}
           </Text>
-          <Text style={styles.rowSymbol}>{position.symbol}</Text>
         </View>
         <Text style={styles.rowSub} numberOfLines={1}>
           {fmtShares(position.quantity, position.currency)} 股 · 均價{' '}
@@ -609,7 +600,6 @@ export default function HoldingsOverviewScreen({
                   key={`${p.market}_${p.symbol}_${p.currency}`}
                   position={p}
                   name={symbolNameOf(symbols, p.market, p.symbol)}
-                  dense={mode !== '持股'}
                   quote={quoteFor(quotes, p.market, p.symbol)}
                   rates={rates}
                   notFound={quoteErrorFor(quoteErrors, p.market, p.symbol) === 'symbol_not_found'}
@@ -769,17 +759,17 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.6 },
   rowMid: { flex: 1, minWidth: 0 },
   rowTitleLine: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  rowName: {
-    fontFamily: fontFamily.text.semibold,
+  rowSymbolMain: {
+    fontFamily: fontFamily.num.semibold,
     fontSize: 15,
     color: colors.textPrimary,
-    flexShrink: 1,
+    ...numericStyle,
   },
-  rowSymbol: {
-    fontFamily: fontFamily.num.medium,
+  rowNameSub: {
+    fontFamily: fontFamily.text.regular,
     fontSize: 12,
     color: colors.textWeak,
-    ...numericStyle,
+    flexShrink: 1,
   },
   rowSub: {
     fontFamily: fontFamily.num.medium,
