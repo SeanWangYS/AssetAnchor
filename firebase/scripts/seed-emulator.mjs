@@ -235,10 +235,23 @@ const SYMBOLS = [
   },
 ];
 
-// BUY transactions. tx_id stable → re-seed overwrites. quantity/price/fee/tax as
-// plain strings here; the builder logic below canonicalizes to 10-dp + computes
-// total = price × quantity (ADR-0005 flat single-currency).
-// TW fee≈0.1425%, tax 0 on BUY (台股賣出才課證交稅). US fee flat-ish small.
+// Transactions (BUY + SELL). tx_id stable → re-seed overwrites. quantity/price/
+// fee/tax as plain strings here; the builder logic below canonicalizes to 10-dp
+// + computes total = price × quantity (ADR-0005 flat single-currency).
+// TW fee≈0.1425%；tax：BUY 0、SELL 課證交稅 0.3%. US fee flat-ish small.
+// SELL invariants (deriveHoldings fail-loud): 同帳戶同標的、賣量 ≤ 先前買量、
+// 日期晚於對應 BUY——違反會 oversell throw（帳戶頁白屏前科，勿破壞）。
+
+// tx-2330-s01 的日期動態＝執行當日，讓「本月已實現」任何月份 reseed 都有值。
+// 必須用本地時間拼字串（app 端 monthPrefix 也是本地時間）；toISOString() 是 UTC，
+// 每月 1 日 00:00–08:00（UTC+8）會落到上個月，禁用。
+const localToday = (() => {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+})();
+
 const TX_INPUTS = [
   // --- 群益 (TWD) ---
   {
@@ -412,12 +425,62 @@ const TX_INPUTS = [
     tax: '0',
     notes: '',
   },
+  // --- SELL（視覺稽核 P3-20：賣出膠囊 / 已實現損益路徑覆蓋） ---
+  {
+    // TWD 正已實現（當月）：realized = (1,100,000−1567−3300) − 751.068×500 = +719,599
+    tx_id: 'tx-2330-s01',
+    account_id: 'acc-capital',
+    symbol: '2330',
+    market: 'TW',
+    asset_type: 'STOCK',
+    currency: 'TWD',
+    transaction_type: 'SELL',
+    transaction_date: localToday,
+    quantity: '500',
+    price: '2200',
+    fee: '1567',
+    tax: '3300',
+    notes: '部分獲利了結',
+  },
+  {
+    // USD 正已實現：realized = 2,251 − 192.19875×10 = +329.0125
+    tx_id: 'tx-aapl-s01',
+    account_id: 'acc-firstrade',
+    symbol: 'AAPL',
+    market: 'US',
+    asset_type: 'STOCK',
+    currency: 'USD',
+    transaction_type: 'SELL',
+    transaction_date: '2025-03-20',
+    quantity: '10',
+    price: '225.1',
+    fee: '0',
+    tax: '0',
+    notes: '',
+  },
+  {
+    // USD 負已實現（紅色路徑）：realized = (2,250−1) − 487.9×5 = −190.5
+    tx_id: 'tx-qqq-s01',
+    account_id: 'acc-ibkr',
+    symbol: 'QQQ',
+    market: 'US',
+    asset_type: 'ETF',
+    currency: 'USD',
+    transaction_type: 'SELL',
+    transaction_date: '2025-05-09',
+    quantity: '5',
+    price: '450',
+    fee: '1',
+    tax: '0',
+    notes: '',
+  },
 ];
 
 /**
  * Build a TransactionDocument body — mirrors shared/buildTransactionDoc exactly
  * (ADR-0005 flat single-currency: total = price × quantity, ex_date /
  * related_transaction_id / lot_id = null, all money fields 10-dp strings).
+ * transaction_type carried from input（省略時預設 BUY）.
  */
 function buildTxDoc(input) {
   return {
@@ -426,7 +489,7 @@ function buildTxDoc(input) {
     asset_type: input.asset_type,
     symbol: input.symbol,
     market: input.market,
-    transaction_type: 'BUY',
+    transaction_type: input.transaction_type ?? 'BUY',
     transaction_date: input.transaction_date,
     ex_date: null,
     quantity: dec(input.quantity),
@@ -628,6 +691,23 @@ async function main() {
   const acctCount = await listCount(`users/${uid}/accounts`);
   const txCount = await listCount(`users/${uid}/transactions`);
   const symCount = await listCount('symbols');
+  if (txCount !== TX_INPUTS.length) {
+    throw new Error(`[verify] tx count mismatch: got ${txCount}, want ${TX_INPUTS.length}`);
+  }
+
+  // SELL coverage（P3-20）：每筆 SELL 種子的 type 確為賣出；台股 SELL 證交稅非零 canonical。
+  for (const sell of TX_INPUTS.filter((t) => t.transaction_type === 'SELL')) {
+    const f = await verify(`users/${uid}/transactions/${sell.tx_id}`, ['transaction_type', 'tax']);
+    const type = f.transaction_type?.stringValue;
+    if (type !== 'SELL') {
+      throw new Error(`[verify] ${sell.tx_id} transaction_type: got ${type}, want SELL`);
+    }
+  }
+  const twSellTax = (await verify(`users/${uid}/transactions/tx-2330-s01`, ['tax'])).tax
+    ?.stringValue;
+  if (twSellTax !== dec('3300')) {
+    throw new Error(`[verify] tx-2330-s01 tax: got ${twSellTax}, want ${dec('3300')}`);
+  }
 
   // Spot-check a money string is canonical 10-dp + total = price × quantity.
   const total = txFields.total?.stringValue;
