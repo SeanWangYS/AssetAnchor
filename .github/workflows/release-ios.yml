@@ -49,6 +49,21 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # eas build 上傳前會在 runner 本地評估 app config，而 @react-native-firebase/auth 的
+      # config plugin 硬性要求 GoogleService-Info.plist 實檔存在（讀 REVERSED_CLIENT_ID）——
+      # 該檔 gitignored，故從 GitHub secret（base64）還原。EAS 伺服器端另有同內容的 file 機密。
+      - name: 還原 GoogleService-Info.plist
+        env:
+          GOOGLE_SERVICES_PLIST_B64: ${{ secrets.GOOGLE_SERVICES_PLIST_B64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_PLIST_B64" ]; then
+            echo "::error::缺 GOOGLE_SERVICES_PLIST_B64 secret——base64 -i apps/mobile/.secrets/GoogleService-Info.plist | gh secret set GOOGLE_SERVICES_PLIST_B64"
+            exit 1
+          fi
+          mkdir -p apps/mobile/.secrets
+          printf '%s' "$GOOGLE_SERVICES_PLIST_B64" | base64 -d > apps/mobile/.secrets/GoogleService-Info.plist
+          test -s apps/mobile/.secrets/GoogleService-Info.plist
+
       # 扣扳機：EAS 雲端 build（production profile：remote autoIncrement build number、
       # GOOGLE_SERVICES_PLIST / Sentry 機密皆在 EAS 環境）+ 建置完自動 submit 到 TestFlight。
       - name: EAS build + auto-submit
