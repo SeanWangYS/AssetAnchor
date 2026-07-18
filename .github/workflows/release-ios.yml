@@ -53,4 +53,5 @@ jobs:
       # GOOGLE_SERVICES_PLIST / Sentry 機密皆在 EAS 環境）+ 建置完自動 submit 到 TestFlight。
       - name: EAS build + auto-submit
         working-directory: apps/mobile
-        run: npx eas build -p ios --profile production --non-interactive --no-wait --auto-submit
+        # 用 PATH 上的 eas（expo-github-action 安裝處）；npx eas 會誤抓 npm 上的空殼 `eas` 套件。
+        run: eas build -p ios --profile production --non-interactive --no-wait --auto-submit
