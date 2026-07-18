@@ -1,0 +1,56 @@
+name: Release iOS (TestFlight)
+
+# 觸發：push 形如 `0.0.4-release` 的 tag（發版錨點 tag，見 docs/runbook/testflight-release.md）。
+# 本 workflow 只做「驗證 + 扣扳機」：建置與 submit 都在 EAS 雲端執行（--no-wait --auto-submit），
+# 此 job 數十秒內結束；build 進度看 expo.dev、上架結果等 Apple email。
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+-release'
+
+jobs:
+  build-and-submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # tag 祖先檢查需要完整歷史
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      # 安全 gate 1：release tag 必須指向 main 上的 commit（main 恆可發布，憲法 #8）
+      - name: Tag 必須在 main 上
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::tag ${GITHUB_REF_NAME} 指向的 commit 不在 main 上——只能從 main 發版"
+            exit 1
+          fi
+
+      # 安全 gate 2：版號一致性——tag 版本必須等於 package.json（版本單一來源）
+      - name: 版號一致性檢查
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME%-release}"
+          PKG_VERSION=$(node -p "require('./apps/mobile/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::tag 版本 $TAG_VERSION ≠ apps/mobile/package.json 的 $PKG_VERSION——先 bump 版號再打 tag"
+            exit 1
+          fi
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - run: pnpm install --frozen-lockfile
+
+      # 扣扳機：EAS 雲端 build（production profile：remote autoIncrement build number、
+      # GOOGLE_SERVICES_PLIST / Sentry 機密皆在 EAS 環境）+ 建置完自動 submit 到 TestFlight。
+      - name: EAS build + auto-submit
+        working-directory: apps/mobile
+        run: npx eas build -p ios --profile production --non-interactive --no-wait --auto-submit

@@ -16,7 +16,27 @@
 - ASC app record：`AssetAnchor`，**ascAppId `6783860980`**（已回填 `eas.json` submit profile）
 - ASC API key `72WAMTT8XK`（APP_MANAGER 權限，存 EAS 雲端）——EAS Submit 自動使用，本機 `.secrets/AuthKey_KFPGMZGBHC.p8` 未用到
 
-## 發版流程（每次）
+## 發版流程 A：tag 觸發自動發版（2026-07-18 起的預設路徑）
+
+```bash
+# 0. 確認 main 是要發的版本；後端有變更先走下方流程 B 的步驟 1-2（deploy + 煙霧測試）
+# 1. bump 版號（單一來源）：apps/mobile/package.json 的 version → PR → merge
+# 2. 從 main 打 tag（版本必須 = package.json，否則 workflow 會擋）
+git checkout main && git pull
+git tag 0.0.4-release && git push origin 0.0.4-release
+# 3. GitHub Actions `Release iOS (TestFlight)` 自動：驗 tag 在 main 上 + 版號一致
+#    → EAS 雲端 build（autoIncrement build number）→ 建置完 auto-submit
+# 4. build 進度看 expo.dev；Apple 處理完寄 email → TestFlight 可裝
+```
+
+**前置（一次性）**：GitHub repo secret `EXPO_TOKEN`——在 expo.dev（登入 sean.ys）
+→ Account settings → **Access tokens** → Create token（建議開 robot token 命名 `github-actions`），
+然後 `gh secret set EXPO_TOKEN`（貼上 token）。缺 secret 時 workflow 會在 Setup EAS CLI 步驟失敗。
+
+**兩道安全 gate**（在 workflow 內強制）：tag 指向的 commit 必須在 main 上；
+tag 版本字串必須等於 `apps/mobile/package.json` 的 `version`（版號一致性，防漂移）。
+
+## 發版流程 B：手動 EAS CLI（備援 / 後端需部署時）
 
 ```bash
 # 0. 確認 main 是要發的版本，且 production functions 與 app 相容
