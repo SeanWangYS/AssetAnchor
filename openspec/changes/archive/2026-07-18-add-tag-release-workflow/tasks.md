@@ -9,7 +9,7 @@
 ## 2. 驗證（DoD）
 
 - [x] 2.1 prettier / actionlint 級語法檢查（yaml 可 parse）
-- [ ] 2.2 owner 設 `EXPO_TOKEN` secret 後，下次發版（打 tag）實戰驗證 gate 與觸發
+- [x] 2.2 owner 已設 `EXPO_TOKEN` secret（2026-07-18）；實戰觸發驗證留待下次發版（打 tag）
 
 ## 3. 收尾
 
