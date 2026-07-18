@@ -15,4 +15,4 @@
 ## 3. 收尾
 
 - [x] 3.1 commit 分拆（mobile / 設計包獨立 / openspec）→ push → PR（帶 UI，owner merge）
-- [ ] 3.2 archive
+- [x] 3.2 archive（PR#71 merged 2026-07-18）
