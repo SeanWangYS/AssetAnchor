@@ -222,3 +222,12 @@ mobile SHALL 於 store 維護 per-symbol 報價錯誤狀態。持倉清單列：
 
 - **WHEN** 持有 `CRYPTO/BTC` 0.15 股（TWD lot、成本 NT$12,600），BTC 報價 US$64,000、USD_TWD=32
 - **THEN** 顯示幣別 TWD 下市值 SHALL ≈ NT$307,200（0.15×64,000×32），未實現損益 = 市值(TWD) − 成本(TWD)；SHALL NOT 把 USD 報價當 TWD 計成 NT$9,600
+
+### Requirement: 報價 as-of 時間可見
+
+持倉頁報價註腳於有報價時 SHALL 顯示動態最後更新時間（HH:mm），SHALL NOT 僅有靜態延遲文案使資料新舊不可判斷。
+
+#### Scenario: 持倉頁顯示最後更新
+
+- **WHEN** 至少一檔報價已取得（含 fetched 時戳）
+- **THEN** 註腳 SHALL 含「最後更新 HH:mm」且 SHALL 保留延遲語意（抓取時間 ≠ 報價時刻）
