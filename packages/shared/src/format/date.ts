@@ -24,3 +24,13 @@ export function formatDisplayTime(date: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${p(date.getHours())}:${p(date.getMinutes())}`;
 }
+
+/**
+ * `M/D HH:mm` (local time; month/day unpadded, hour/minute padded). Used where a
+ * timestamp must carry its date, e.g. the stale-quote notice — `HH:mm` alone made a
+ * month-old quote look like today's.
+ */
+export function formatMonthDayTime(date: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${date.getMonth() + 1}/${date.getDate()} ${p(date.getHours())}:${p(date.getMinutes())}`;
+}
