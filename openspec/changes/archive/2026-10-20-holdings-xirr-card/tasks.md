@@ -29,5 +29,5 @@
 
 ## 6. 收尾
 
-- [ ] 6.1 commit（英文）→ push → PR（帶 UI + Money 精度 → owner merge）
-- [ ] 6.2 CI 綠 → `/opsx:archive`（sync `portfolio-returns` 新 spec、`holdings-derivation` REMOVED）
+- [x] 6.1 commit（英文）→ push → PR（帶 UI + Money 精度 → owner merge）
+- [x] 6.2 CI 綠 → `/opsx:archive`（sync `portfolio-returns` 新 spec、`holdings-derivation` REMOVED）

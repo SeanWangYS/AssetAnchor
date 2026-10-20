@@ -228,20 +228,6 @@ Position 的成本 SHALL 依 planning doc §4 加權平均法計算：`totalCost
 - **WHEN** 任一 symbol 不在（已移除的）demo 對照表中
 - **THEN** 分群結果 SHALL 完全由真實 `account_id` 決定，與 symbol 字面無關；`holdingsDemo` 的 `accountOf`/`DEMO_ACCOUNT` SHALL 不復存在
 
-### Requirement: 本月已實現損益指標的空狀態
-
-持倉總覽「本月已實現損益」指標 SHALL 在**本月無任何 SELL 事件**時顯示中性空狀態（如「本月無賣出」或灰色「—」），不得以綠色上漲樣式（`▲`）呈現「NT$ 0」而誤導為上漲。月度過濾與跨幣別加總 SHALL 由 `packages/shared` / `holdingsHero` 的具測試純函式提供（本地時間月前綴過濾 + 顯示幣別換算加總），不得僅存在於 screen 的 inline 邏輯而無測試。
-
-#### Scenario: 本月無賣出顯示中性
-
-- **WHEN** 使用者本月無任何 SELL 交易（僅持有或本月僅買入）
-- **THEN** 「本月已實現損益」SHALL 顯示中性空狀態，不顯示綠色「▲ NT$ 0」
-
-#### Scenario: 本月有賣出顯示真值
-
-- **WHEN** 使用者本月有 SELL 事件，已實現損益加總為正 / 負 / 恰為 0
-- **THEN** 指標 SHALL 以 `Pnl` 呈現真值（正綠 `▲`、負紅 `▼`、恰為 0 亦以事件真值顯示），並正確落在本月（月邊界以本地日曆日判定，`2026-06-30` 歸六月、`2026-07-01` 歸七月）
-
 ### Requirement: 可賣數量以幣別為粒度
 
 `sellableQuantity` / `sellableQuantityForAccount` SHALL 以 `(market, symbol, currency)`（帳戶版再加 `account_id`）為粒度回傳可賣股數：SELL 只能沖銷同幣別 lot，選錯幣別時可賣數量為 `"0.0000000000"`，由既有「不可超賣」表單驗證自然擋下（不需新驗證規則）。
