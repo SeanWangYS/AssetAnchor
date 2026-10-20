@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>持倉總覽改版 Mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* Tokens mirror apps/mobile/src/core/theme/index.ts (dark only) */
+  :root {
+    --page: #0a0c10; --screen: #0e1117;
+    --t1: rgba(255,255,255,.95); --t2: rgba(255,255,255,.62); --t3: rgba(255,255,255,.42); --t4: rgba(255,255,255,.26);
+    --div: rgba(255,255,255,.09); --accent: #7c6cf0; --up: #2fd37e; --down: #ff5e62; --amber: #f5a623;
+    --card1: rgba(255,255,255,.055); --card2: rgba(255,255,255,.022);
+    --num: 'Nunito', 'Noto Sans TC', sans-serif; --txt: 'Noto Sans TC', 'Nunito', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--t1); font-family: var(--txt); }
+  .layout { display: flex; gap: 32px; justify-content: center; align-items: flex-start; padding: 24px 16px; flex-wrap: wrap; }
+
+  /* —— Control panel (mock only, not part of the app UI) —— */
+  .panel { width: 340px; max-width: 100%; background: #151922; border: 1px solid var(--div); border-radius: 14px; padding: 18px; font-size: 13px; color: var(--t2); line-height: 1.6; }
+  .panel h1 { font-size: 16px; color: var(--t1); margin: 0 0 4px; }
+  .panel h2 { font-size: 13px; color: var(--t1); margin: 16px 0 6px; }
+  .panel label { display: block; cursor: pointer; }
+  .panel ul { padding-left: 18px; margin: 4px 0; }
+  .panel button { margin-top: 8px; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; padding: 4px 10px; cursor: pointer; font-family: inherit; }
+  .tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 6px; background: rgba(124,108,240,.18); color: #b9b0ff; margin-left: 4px; }
+
+  /* —— Phone frame —— */
+  .phone { width: 390px; max-width: 100%; height: 844px; background: var(--screen); border-radius: 44px; border: 10px solid #1c1f26; position: relative; overflow: hidden;
+           background-image: radial-gradient(120% 40% at 50% 0%, rgba(124,108,240,.10), transparent 60%); }
+  .scroll { position: absolute; inset: 0 0 76px 0; overflow-y: auto; padding: 54px 16px 24px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .header { display: flex; justify-content: space-between; align-items: center; }
+  .header h3 { font-size: 23px; font-weight: 800; margin: 0; }
+  .plus { color: var(--accent); font-size: 30px; font-weight: 400; line-height: 1; }
+
+  .heroLabel { margin-top: 18px; font-size: 13px; color: var(--t2); }
+  .heroValue { font-family: var(--num); font-weight: 900; font-size: 40px; letter-spacing: -.5px; margin-top: 2px; transition: opacity .2s; }
+  .heroValue.dim { opacity: .55; }
+  .staleSoft { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+  .staleHard { margin-top: 8px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px;
+               background: rgba(245,166,35,.12); border: 1px solid rgba(245,166,35,.35); color: var(--amber); font-size: 12.5px; }
+  .staleHard b { font-weight: 700; }
+  .staleHard .retry { margin-left: auto; color: var(--accent); font-weight: 700; cursor: pointer; }
+
+  .bento { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; margin-top: 16px; }
+  .card { min-width: 0; border-radius: 16px; padding: 14px; border: 1px solid var(--div); background: linear-gradient(160deg, var(--card1), var(--card2)); min-height: 86px; }
+  .card.glow { box-shadow: inset 0 0 0 1px rgba(124,108,240,.18); }
+  .card.new { box-shadow: 0 0 0 2px rgba(124,108,240,.55); }
+  .cardLabel { font-size: 11.5px; color: var(--t3); font-weight: 500; }
+  .cardValue { font-family: var(--num); font-weight: 800; font-size: 20px; margin-top: 8px; white-space: nowrap; overflow: hidden; }
+  .cardSub { font-size: 11px; color: var(--t4); margin-top: 4px; }
+  .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--t2); }
+
+  .seg { display: flex; background: rgba(255,255,255,.04); border: 1px solid var(--div); border-radius: 12px; padding: 4px; margin-top: 10px; }
+  .seg button { flex: 1; border: 0; background: transparent; color: var(--t2); font-family: var(--num); font-weight: 700; font-size: 14px; padding: 8px 0; border-radius: 9px; cursor: pointer; }
+  .seg button.on { background: linear-gradient(135deg, #7c6cf0, #6a5cd6); color: #fff; }
+  .secLabel { margin-top: 18px; font-size: 13px; color: var(--t2); font-weight: 500; }
+
+  .trend { margin-top: 14px; border-radius: 16px; border: 1px solid var(--div); background: linear-gradient(160deg, var(--card1), var(--card2)); padding: 14px; }
+  .trend .t { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; }
+  .trend .t span { font-weight: 500; color: var(--t3); font-size: 12px; }
+
+  /* —— Holdings table: frozen symbol column + whole-table synced horizontal scroll; no borders (owner 2026-10-21) —— */
+  .table { display: flex; margin-top: 12px; }
+  .frozen { flex: 0 0 76px; background: var(--screen); position: relative; z-index: 1; }
+  .cols { flex: 1; overflow-x: auto; scrollbar-width: none; }
+  .cols::-webkit-scrollbar { display: none; }
+  .grid { display: table; border-collapse: collapse; min-width: 100%; }
+  .r { display: table-row; }
+  .c { display: table-cell; height: 46px; vertical-align: middle; padding: 0 10px; white-space: nowrap; text-align: right;
+       font-family: var(--num); font-weight: 700; font-size: 14px; }
+  .frozen .r { display: block; }
+  .frozen .c { display: flex; width: 100%; align-items: center; justify-content: flex-start; text-align: left; padding: 0 0 0 2px; font-weight: 800; font-size: 15px; }
+  .hd .c { height: 34px; font-family: var(--txt); font-size: 11.5px; font-weight: 500; color: var(--t3); cursor: pointer; user-select: none; }
+  .hd .c.on { color: var(--t1); }
+  .hd .c .arr { font-size: 9px; margin-left: 2px; color: var(--accent); }
+  .grp .c { height: 34px; background: rgba(255,255,255,.025); font-size: 12px; color: var(--t2); font-weight: 600; }
+  .frozen .grp .c { font-family: var(--txt); font-size: 12.5px; color: var(--t1); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 34px; }
+  .row { cursor: pointer; }
+  .row.hover .c { background: rgba(255,255,255,.035); }
+  .mark { color: var(--t4); font-size: 11px; margin-left: 1px; }
+  .muted { color: var(--t2); font-weight: 600; }
+
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 76px; border-top: 1px solid var(--div); background: rgba(14,17,23,.96);
+            display: flex; justify-content: space-around; padding-top: 10px; font-size: 11px; color: var(--t3); }
+  .tabbar div { text-align: center; } .tabbar .on { color: var(--accent); } .tabbar i { display: block; font-style: normal; font-size: 18px; margin-bottom: 2px; }
+  .toast { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); background: rgba(40,44,56,.97); border: 1px solid var(--div); color: var(--t1);
+           padding: 8px 14px; border-radius: 10px; font-size: 12.5px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="phone">
+    <div class="scroll" id="scroll">
+      <div class="header"><h3>持倉總覽</h3><span class="plus">＋</span></div>
+
+      <!-- R1: drop the unrealized/return/全期 line and the grey caption; show a notice only when quotes are stale -->
+      <div class="heroLabel" id="heroLabel"></div>
+      <div class="heroValue" id="heroValue"></div>
+      <div id="stale"></div>
+
+      <div class="bento">
+        <div class="card glow"><div class="cardLabel">總報酬率</div><div class="cardValue" id="bRet"></div></div>
+        <div class="card"><div class="cardLabel">總未實現損益</div><div class="cardValue" id="bUnreal"></div></div>
+        <div class="card"><div class="cardLabel">今日損益</div><div class="cardValue" id="bToday"></div><div class="cardSub" id="bTodayPct"></div></div>
+        <!-- R2: month-to-date realized P&L replaced by annualized return (XIRR) -->
+        <div class="card new"><div class="cardLabel" id="bXirrLabel"></div><div class="cardValue" id="bXirr"></div><div class="cardSub" id="bXirrSub"></div></div>
+      </div>
+
+      <div class="secLabel">顯示幣別</div>
+      <div class="seg" id="ccySeg"><button data-v="TWD">TWD</button><button data-v="USD">USD</button></div>
+
+      <div class="trend">
+        <div class="t">資產走勢<span>本次不改</span></div>
+        <svg viewBox="0 0 320 90" width="100%" height="90" aria-hidden="true">
+          <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c6cf0" stop-opacity=".35"/><stop offset="1" stop-color="#7c6cf0" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0 78 L30 74 L60 76 L90 66 L120 60 L150 62 L180 44 L210 38 L240 30 L270 26 L300 18 L320 22 L320 90 L0 90Z" fill="url(#g)"/>
+          <path d="M0 78 L30 74 L60 76 L90 66 L120 60 L150 62 L180 44 L210 38 L240 30 L270 26 L300 18 L320 22" fill="none" stroke="#7c6cf0" stroke-width="2.5"/>
+        </svg>
+      </div>
+
+      <div class="seg" id="grpSeg" style="margin-top:16px"><button data-v="none">持股</button><button data-v="account">帳戶</button><button data-v="type">類別</button></div>
+
+      <!-- R3: drop the total-cost row; frozen symbol column + synced horizontal scroll + header sorting -->
+      <div class="table" id="table">
+        <div class="frozen" id="frozen"></div>
+        <div class="cols" id="cols"></div>
+      </div>
+      <div style="height:16px"></div>
+    </div>
+    <div class="tabbar"><div class="on"><i>📈</i>持倉</div><div><i>🧾</i>交易</div><div><i>◔</i>分析</div><div><i>⚙︎</i>設定</div></div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="panel">
+    <h1>持倉總覽改版 Mock</h1>
+    <div>互動原型：表格可左右滑、點欄位標題排序（再點一次反向）、點列模擬進入詳情。數字為模擬器種子資料，計算邏輯僅供示意。</div>
+
+    <h2>報價狀態（模擬）</h2>
+    <label><input type="radio" name="stale" value="fresh" checked /> 正常（不顯示任何提示）</label>
+    <label><input type="radio" name="stale" value="soft" /> 慢 1 小時以上 → 淡色小字</label>
+    <label><input type="radio" name="stale" value="hard" /> 慢 1 天以上 → 橙色警示 + 重試</label>
+
+    <h2>使用者情境（模擬）</h2>
+    <label><input type="radio" name="scn" value="real" checked /> 現有資料（持有約 2 年）</label>
+    <label><input type="radio" name="scn" value="newbie" /> 新使用者（平均投入 &lt; 1 年）</label>
+
+    <button id="resetSort">重設排序（市值 高→低）</button>
+
+    <h2>本版變更</h2>
+    <ul>
+      <li><b>R1</b> 刪掉市值下方「▲未實現 +% 全期」與灰色說明行</li>
+      <li><b>④</b> 報價過期兩級提示（平常隱藏）；修正「最後更新」只有時間沒有日期</li>
+      <li><b>R2</b> 第 4 格改為年化報酬率 XIRR<span class="tag">紫框</span>；平均投入 &lt; 1 年改顯示累積報酬率</li>
+      <li><b>R3</b> 刪「總成本」行；表格凍結代號欄、全部金額跟顯示幣別；個股年化 <span class="mark">*</span> ＝未滿一年、為累積報酬</li>
+    </ul>
+
+    <h2>待你確認的口徑差異</h2>
+    <ul>
+      <li>美股的<b>均價 / 成本</b>用<b>今天匯率</b>換算 → 不是當初實際付的台幣</li>
+      <li>因此美股「報酬%」<b>不含匯率損益</b>，「年化」<b>含</b>（每筆用當天歷史匯率）</li>
+      <li>例：切到 TWD 看 AAPL 的「報酬%」和「年化」</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// —— Data: simulator seed (BUY only, matches the app screen) ——
+const TODAY = new Date('2026-10-21T14:05:00+08:00');
+const FX_NOW = 32.595; // USD→TWD（emulator exchange_rates/2026-10-20）
+// Approximate historical FX (the real implementation reads TWD=X daily closes from price_history)
+const FX_HIST = { '2024-04-08': 32.0, '2024-06-03': 32.3, '2024-07-29': 32.8, '2024-10-18': 32.2, '2025-01-15': 32.9 };
+const SYMBOLS = {
+  '2330': { ccy: 'TWD', type: '個股', acct: '群益證券', price: 2405, prev: 2420 },
+  '0050': { ccy: 'TWD', type: 'ETF', acct: '群益證券', price: 107.25, prev: 108.15 },
+  '2317': { ccy: 'TWD', type: '個股', acct: '富邦證券', price: 241.5, prev: 239.5 },
+  '00878': { ccy: 'TWD', type: 'ETF', acct: '富邦證券', price: 34.88, prev: 35.15 },
+  'AAPL': { ccy: 'USD', type: '個股', acct: 'Firstrade', price: 340.37, prev: 342.94 },
+  'VTI': { ccy: 'USD', type: 'ETF', acct: 'Firstrade', price: 377.295, prev: 375.54 },
+  'QQQ': { ccy: 'USD', type: 'ETF', acct: 'IBKR', price: 719.33, prev: 718.36 },
+};
+const TX = [
+  ['2330', '2024-03-14', 1000, 590, 840], ['2330', '2024-09-05', 1000, 910, 1296],
+  ['0050', '2024-01-10', 2000, 132.5, 377], ['0050', '2024-11-22', 1000, 188, 267],
+  ['2317', '2024-05-20', 2000, 155, 441],
+  ['00878', '2024-02-15', 5000, 21.3, 151], ['00878', '2024-12-03', 5000, 23.1, 164],
+  ['AAPL', '2024-04-08', 25, 168.45, 0], ['AAPL', '2024-10-18', 15, 231.78, 0],
+  ['VTI', '2024-06-03', 30, 262.4, 0],
+  ['QQQ', '2024-07-29', 20, 475.6, 1], ['QQQ', '2025-01-15', 10, 512.3, 1],
+];
+
+// —— State (sort is remembered: device preference in the app, localStorage in this mock) ——
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('aa-mock-' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('aa-mock-' + k, JSON.stringify(v)); } catch {} },
+};
+const st = { ccy: 'TWD', grp: 'none', stale: 'fresh', scn: 'real', sort: store.get('sort', { key: 'mv', dir: -1 }) };
+// URL params open a specific state: ?ccy=USD&grp=account&stale=hard&scn=newbie
+for (const [k, v] of new URLSearchParams(location.search)) if (k in st && k !== 'sort') st[k] = v;
+document.querySelectorAll('input[name=stale],input[name=scn]').forEach((i) => (i.checked = st[i.name] === i.value));
+
+// —— Calculations ——
+const YEAR_MS = 365.25 * 864e5;
+const dateOf = (s) => new Date(s + 'T00:00:00+08:00');
+function txList() {
+  if (st.scn === 'real') return TX;
+  // New user: shift every transaction into the last 8 months
+  return TX.map(([s, d, q, p, f], i) => [s, new Date(TODAY - (240 - i * 15) * 864e5).toISOString().slice(0, 10), q, p, f]);
+}
+function fxOn(d) { return FX_HIST[d] ?? FX_NOW; }
+// Native amount -> display currency (pass a date to use that day's historical FX)
+function conv(amount, ccy, date) {
+  if (ccy === st.ccy) return amount;
+  const r = date ? fxOn(date) : FX_NOW;
+  return ccy === 'USD' ? amount * r : amount / r;
+}
+function xirr(flows) { // flows: [{t: Date, v}], buys negative, terminal value positive
+  const t0 = flows[0].t;
+  const f = (r) => flows.reduce((s, x) => s + x.v / Math.pow(1 + r, (x.t - t0) / YEAR_MS), 0);
+  let lo = -0.99, hi = 10;
+  if (f(lo) * f(hi) > 0) return null;
+  for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; (f(lo) * f(mid) <= 0) ? hi = mid : lo = mid; }
+  return (lo + hi) / 2;
+}
+// Sharesight AYI: average years invested, weighted by amount x holding time
+function ayi(flows) {
+  const out = flows.filter((x) => x.v < 0);
+  const w = out.reduce((s, x) => s + -x.v, 0);
+  return out.reduce((s, x) => s + -x.v * ((TODAY - x.t) / YEAR_MS), 0) / w;
+}
+// Annualized when AYI >= 1, otherwise cumulative return
+function perf(flows, endValue) {
+  const all = [...flows, { t: TODAY, v: endValue }].sort((a, b) => a.t - b.t);
+  const years = ayi(flows);
+  if (years >= 1) return { annual: true, value: xirr(all), years };
+  const invested = flows.reduce((s, x) => s + -x.v, 0);
+  return { annual: false, value: endValue / invested - 1, years };
+}
+function positions() {
+  const by = {};
+  for (const [s, d, q, p, fee] of txList()) {
+    const m = SYMBOLS[s];
+    const o = (by[s] ??= { sym: s, ...m, qty: 0, costNative: 0, flows: [] });
+    o.qty += q; o.costNative += q * p + fee;
+    o.flows.push({ t: dateOf(d), v: -conv(q * p + fee, m.ccy, d) });
+  }
+  const list = Object.values(by).map((o) => {
+    const mv = conv(o.qty * o.price, o.ccy);
+    const cost = conv(o.costNative, o.ccy);
+    return { ...o, mv, cost, unreal: mv - cost, ret: (o.price * o.qty) / o.costNative - 1,
+      today: o.price / o.prev - 1, todayAmt: conv(o.qty * (o.price - o.prev), o.ccy),
+      priceD: conv(o.price, o.ccy), avgD: conv(o.costNative / o.qty, o.ccy), perf: perf(o.flows, mv) };
+  });
+  const total = list.reduce((s, p) => s + p.mv, 0);
+  list.forEach((p) => (p.weight = p.mv / total));
+  return list;
+}
+
+// —— Formatting ——
+const pre = () => (st.ccy === 'TWD' ? 'NT$' : 'US$');
+const dp = () => (st.ccy === 'TWD' ? 0 : 2);
+const n = (v, d) => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const money = (v, d = dp()) => `${pre()} ${n(Math.abs(v), d)}`;
+const pct = (v) => `${v >= 0 ? '+' : '−'}${n(Math.abs(v * 100), 2)}%`;
+const cls = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');
+const tri = (v) => (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '');
+
+const COLS = [
+  { key: 'mv', label: '市值', get: (p) => p.mv, fmt: (p) => n(p.mv, dp()) },
+  { key: 'ret', label: '報酬%', get: (p) => p.ret, fmt: (p) => `<span class="${cls(p.ret)}">${pct(p.ret)}</span>` },
+  { key: 'unreal', label: '未實現', get: (p) => p.unreal, fmt: (p) => `<span class="${cls(p.unreal)}">${p.unreal >= 0 ? '+' : '−'}${n(Math.abs(p.unreal), dp())}</span>` },
+  { key: 'today', label: '今日漲跌%', get: (p) => p.today, fmt: (p) => `<span class="${cls(p.today)}">${pct(p.today)}</span>` },
+  { key: 'price', label: '現價', get: (p) => p.priceD, fmt: (p) => `<span class="muted">${n(p.priceD, 2)}</span>` },
+  { key: 'qty', label: '股數', get: (p) => p.qty, fmt: (p) => `<span class="muted">${n(p.qty, 0)}</span>` },
+  { key: 'avg', label: '均價', get: (p) => p.avgD, fmt: (p) => `<span class="muted">${n(p.avgD, 2)}</span>` },
+  { key: 'cost', label: '成本', get: (p) => p.cost, fmt: (p) => `<span class="muted">${n(p.cost, dp())}</span>` },
+  { key: 'weight', label: '佔比', get: (p) => p.weight, fmt: (p) => `<span class="muted">${n(p.weight * 100, 1)}%</span>` },
+  { key: 'xirr', label: '年化', get: (p) => p.perf.value ?? -Infinity,
+    fmt: (p) => p.perf.value === null ? '—' : `<span class="${cls(p.perf.value)}">${pct(p.perf.value)}</span>${p.perf.annual ? '' : '<span class="mark">*</span>'}` },
+];
+
+function render() {
+  const ps = positions();
+  const total = ps.reduce((s, p) => s + p.mv, 0);
+  const cost = ps.reduce((s, p) => s + p.cost, 0);
+  const todayAmt = ps.reduce((s, p) => s + p.todayAmt, 0);
+  const allFlows = ps.flatMap((p) => p.flows);
+  const pf = perf(allFlows, total);
+
+  // Hero
+  document.getElementById('heroLabel').textContent = `持股市值（${st.ccy}）`;
+  const hv = document.getElementById('heroValue');
+  hv.textContent = `${pre()} ${n(total, dp())}`;
+  hv.classList.toggle('dim', st.stale === 'hard');
+  document.getElementById('stale').innerHTML =
+    st.stale === 'soft' ? '<div class="staleSoft">報價更新於 10/21 12:48</div>'
+    : st.stale === 'hard' ? '<div class="staleHard">⚠︎ <span>報價已 <b>29 天</b>未更新（停在 9/22 17:10）</span><span class="retry">重試</span></div>'
+    : '';
+
+  // Bento
+  const ret = total / cost - 1, unreal = total - cost, tPct = todayAmt / (total - todayAmt);
+  document.getElementById('bRet').innerHTML = `<span class="${cls(ret)}">${pct(ret)}</span>`;
+  document.getElementById('bUnreal').innerHTML = `<span class="${cls(unreal)}">${tri(unreal)}${money(unreal)}</span>`;
+  document.getElementById('bToday').innerHTML = `<span class="${cls(todayAmt)}">${tri(todayAmt)}${money(todayAmt)}</span>`;
+  document.getElementById('bTodayPct').innerHTML = `<span class="${cls(tPct)}">${pct(tPct)}</span>`;
+  document.getElementById('bXirrLabel').textContent = pf.annual ? '年化報酬率' : '累積報酬率';
+  document.getElementById('bXirr').innerHTML = pf.value === null ? '—' : `<span class="${cls(pf.value)}">${pct(pf.value)}</span>`;
+  document.getElementById('bXirrSub').textContent = pf.annual ? '' : '投入未滿一年，暫不年化';
+  // Mirrors the app's adjustsFontSizeToFit: shrink until it fits
+  fitCards();
+
+  // Segments
+  for (const [id, key] of [['ccySeg', 'ccy'], ['grpSeg', 'grp']])
+    document.querySelectorAll(`#${id} button`).forEach((b) => b.classList.toggle('on', b.dataset.v === st[key]));
+
+  // Table
+  const col = COLS.find((c) => c.key === st.sort.key);
+  const sorter = st.sort.key === 'sym'
+    ? (a, b) => st.sort.dir * a.sym.localeCompare(b.sym)
+    : (a, b) => st.sort.dir * (col.get(a) - col.get(b));
+  const groups = st.grp === 'none' ? [{ label: null, items: ps }]
+    : Object.entries(ps.reduce((m, p) => ((m[st.grp === 'account' ? p.acct : (p.ccy === 'TWD' ? '台股' : '美股')] ??= []).push(p), m), {}))
+        .map(([label, items]) => ({ label, items }))
+        .sort((a, b) => b.items.reduce((s, p) => s + p.mv, 0) - a.items.reduce((s, p) => s + p.mv, 0));
+  const arrow = (k) => (st.sort.key === k ? `<span class="arr">${st.sort.dir < 0 ? '▼' : '▲'}</span>` : '');
+
+  let L = `<div class="r hd"><div class="c ${st.sort.key === 'sym' ? 'on' : ''}" data-sort="sym" style="font-size:11.5px;font-weight:500;font-family:var(--txt)">代號${arrow('sym')}</div></div>`;
+  let R = `<div class="r hd">${COLS.map((c) => `<div class="c ${st.sort.key === c.key ? 'on' : ''}" data-sort="${c.key}">${c.label}${arrow(c.key)}</div>`).join('')}</div>`;
+  for (const g of groups) {
+    if (g.label) {
+      const sub = g.items.reduce((s, p) => s + p.mv, 0);
+      L += `<div class="r grp"><div class="c" title="${g.label}">${g.label}</div></div>`;
+      R += `<div class="r grp"><div class="c">${n(sub, dp())}</div>${COLS.slice(1).map((c, i) => `<div class="c">${i === 0 ? `<span style="color:var(--t3);font-weight:500">${g.items.length} 檔</span>` : ''}</div>`).join('')}</div>`;
+    }
+    for (const p of [...g.items].sort(sorter)) {
+      L += `<div class="r row" data-sym="${p.sym}"><div class="c">${p.sym}</div></div>`;
+      R += `<div class="r row" data-sym="${p.sym}">${COLS.map((c) => `<div class="c">${c.fmt(p)}</div>`).join('')}</div>`;
+    }
+  }
+  document.getElementById('frozen').innerHTML = L;
+  document.getElementById('cols').innerHTML = `<div class="grid">${R}</div>`;
+}
+
+function fitCards() {
+  document.querySelectorAll('.cardValue').forEach((el) => {
+    el.style.fontSize = '20px';
+    for (let fs = 20; fs > 11 && el.scrollWidth > el.clientWidth; fs--) el.style.fontSize = fs + 'px';
+  });
+}
+// Widths change once web fonts load, so measure again
+if (document.fonts) document.fonts.ready.then(fitCards);
+
+// —— Interactions ——
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 1400); }
+document.getElementById('ccySeg').onclick = (e) => { const v = e.target.dataset.v; if (v) { st.ccy = v; render(); } };
+document.getElementById('grpSeg').onclick = (e) => { const v = e.target.dataset.v; if (v) { st.grp = v; render(); } };
+document.getElementById('table').addEventListener('click', (e) => {
+  const h = e.target.closest('[data-sort]');
+  if (h) {
+    const k = h.dataset.sort;
+    st.sort = st.sort.key === k ? { key: k, dir: -st.sort.dir } : { key: k, dir: k === 'sym' ? 1 : -1 };
+    store.set('sort', st.sort); render(); return;
+  }
+  const r = e.target.closest('[data-sym]');
+  if (r) toast(`→ 進入資產詳情（${r.dataset.sym}）`);
+});
+document.getElementById('table').addEventListener('mouseover', (e) => {
+  document.querySelectorAll('.row.hover').forEach((x) => x.classList.remove('hover'));
+  const r = e.target.closest('[data-sym]');
+  if (r) document.querySelectorAll(`.row[data-sym="${r.dataset.sym}"]`).forEach((x) => x.classList.add('hover'));
+});
+document.querySelectorAll('input[name=stale]').forEach((i) => (i.onchange = () => { st.stale = i.value; render(); }));
+document.querySelectorAll('input[name=scn]').forEach((i) => (i.onchange = () => { st.scn = i.value; render(); }));
+document.getElementById('resetSort').onclick = () => { st.sort = { key: 'mv', dir: -1 }; store.set('sort', st.sort); render(); };
+render();
+// Screenshot helpers: #table scrolls to the table; #table-right also scrolls it fully right
+if (location.hash.startsWith('#table')) {
+  document.getElementById('scroll').scrollTop = document.getElementById('grpSeg').offsetTop - 60;
+  if (location.hash === '#table-right') document.getElementById('cols').scrollLeft = 9999;
+}
+</script>
+</body>
+</html>
