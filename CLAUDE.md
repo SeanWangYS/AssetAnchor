@@ -24,6 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - **merge 後保留分支**（不刪；owner 偏好）。**未完成功能用 feature flag 藏**（保 `main` 可發布）。
    - **iOS 部署**：「merge = 部署」對手機不成立——`main` 恆可發布，實際發布＝**定期從 `main` 切 TestFlight / App Store build**（release tag 標版本）；緊急修用 `hotfix/*` 從 release tag 開、修完併回 `main`。
 9. **人類介入 gate**（planning §2.5）：聖牛 schema 變更、設計衝突/缺 spec、花錢·部署·真機、Money 精度規則、跨 change 重大決策——**必停找 owner**；其餘可自走。
+10. **英文程式碼註解與 commit**（owner 2026-10-20 拍板）：自此之後新寫或修改的**程式碼註解一律用英文**（含 JSDoc / TODO / 行內註解；UI 字串仍為繁中，不受影響）；**git commit message 一律用英文**（Conventional Commits 格式不變；PR title/body、tag annotation 同理）。既有中文註解不需主動批次改寫，動到該段時順手改成英文即可。
 
 ## 通過開發的標準（DoD）
 
@@ -100,7 +101,7 @@ pnpm --filter @assetanchor/mobile ios      # expo run:ios（需 prebuild 後的 
 pnpm --filter @assetanchor/firebase test:rules
 ```
 
-CI（`.github/workflows/ci.yml`）三個 job：`lint`（prettier --check + `pnpm -r lint`）、`typecheck`、`test`（**只跑 shared 的 `test:coverage`**——mobile/firebase 測試不在 CI，須本機手動跑）。commit 走 **Conventional Commits**（commitlint 強制），scope 限 `mobile / functions / shared / infra / docs / firebase`；husky pre-commit 跑 lint-staged。
+CI（`.github/workflows/ci.yml`）三個 job：`lint`（prettier --check + `pnpm -r lint`）、`typecheck`、`test`（**只跑 shared 的 `test:coverage`**——mobile/firebase 測試不在 CI，須本機手動跑）。commit 走 **Conventional Commits**（commitlint 強制、**message 一律英文**，見憲法 #10），scope 限 `mobile / functions / shared / infra / docs / firebase`；husky pre-commit 跑 lint-staged。
 
 ## 設計驅動工作流（UI 最高權威，ADR-0008）
 
