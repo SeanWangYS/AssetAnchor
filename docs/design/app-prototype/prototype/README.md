@@ -2,6 +2,8 @@
 
 涵蓋：**Auth 流程（登入/註冊/忘記密碼）**＋ 持倉總覽流程（v1 定稿）＋ 分析頁 ＋ 交易紀錄（時間軸 B，含個股完整交易歷史）＋ 設定 → 帳戶管理（含 inline 現金編輯、重新啟用）＋ confirm dialog 與空狀態 ＋ 新導航（持倉/交易/分析/設定）。
 
+> ⚠️ **持倉總覽首頁已改版（2026-10-21）**：`Home` 的 hero 變動行、bento「本月已實現損益」、`HoldingList` 兩段式 row 皆為**舊版**；以 `../../holdings-overview/holdings-overview-spec.md` D7–D10 與 `../../holdings-overview/holdings-redesign-mock.html` 為準。
+
 啟動流程：**Splash gate（擋 auth 閃現）→ SignIn → 登入成功進 MainTabs（落地持倉）→ 設定頁登出回 SignIn**。
 
 ## 如何開啟

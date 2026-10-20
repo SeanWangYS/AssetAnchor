@@ -8,7 +8,7 @@
 
 | 項目 | 路徑 | 狀態 |
 |---|---|---|
-| 持倉總覽（首頁）+ 資產詳情 + 新增交易 | [`holdings-overview/`](./holdings-overview/) | ✅ v1 定稿 |
+| 持倉總覽（首頁）+ 資產詳情 + 新增交易 | [`holdings-overview/`](./holdings-overview/) | ✅ v1 定稿；**2026-10-21 改版**（hero 精簡 / 報價過期提示 / 年化報酬率 / 持股表格，見 spec D7–D10 + [`holdings-redesign-mock.html`](./holdings-overview/holdings-redesign-mock.html)） |
 | 分析頁（配置 donut + 多維度比較圖）+ 導航變更 | [`analysis-page/`](./analysis-page/) | ✅ v1 定稿 |
 | 交易紀錄（時間軸列表 + 詳情 + 日期篩選） | [`transactions-page/`](./transactions-page/) | ✅ v1 定稿 |
 | 帳戶管理（列表 + 詳情 + 現金 inline 編輯 + 表單） | [`accounts-management/`](./accounts-management/) | ✅ v1 定稿 |
@@ -18,6 +18,8 @@
 > ⚠️ 上表「✅ v1 定稿」指**該流程主畫面**已定稿，**不代表 MVP 全部畫面已齊**。截至 2026-06-14 仍**缺 ~11 個 MVP 畫面/狀態**（顯示偏好、個資編輯、關於、該帳戶交易列表、股票代號搜尋、帳戶選擇 picker、日期選擇器、券商/類型選單 ＋ 首次引導、Loading skeleton、離線/抓取失敗態）。完整缺漏清單見 `_READ-ME-FIRST.md`「✅ 已完成 / ⬜ 尚缺」。
 
 > `app-prototype/` 是**唯一持續更新**的整合原型；各頁面資料夾保留 spec 與探索記錄（`exploration/`）。各單頁資料夾內的 `prototype/`（含 `analysis-page/prototype/`）＝該畫面當初的獨立原型，屬**歷史**，已併入 `app-prototype/`，衝突時**以 `app-prototype/` 為準**（同 `_READ-ME-FIRST.md`）。
+
+> 📌 **持倉總覽首頁例外（2026-10-21）**：首頁 hero、bento 第 4 格、持股清單已改版，`app-prototype/` 的對應段落（`aa-screens-v2.jsx` 的 `Home` / `HoldingList`）**尚未同步、屬舊版**；這三處**以 `holdings-overview-spec.md` D7–D10 + `holdings-overview/holdings-redesign-mock.html` 為準**（比照 2026-07-18 代號優先 row 的處理方式）。
 
 ## 導航（已落實於 prototype）
 
