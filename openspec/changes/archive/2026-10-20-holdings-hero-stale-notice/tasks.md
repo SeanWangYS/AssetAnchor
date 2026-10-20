@@ -27,5 +27,5 @@
 
 ## 5. 收尾
 
-- [ ] 5.1 commit（英文 Conventional Commits）→ push → 開 PR（帶 UI → owner merge，不自 merge）
-- [ ] 5.2 CI 綠 → `/opsx:archive`（spec sync 進 `openspec/specs/live-quotes`、`currency-display`）
+- [x] 5.1 commit（英文 Conventional Commits）→ push → 開 PR（帶 UI → owner merge，不自 merge）
+- [x] 5.2 CI 綠 → `/opsx:archive`（spec sync 進 `openspec/specs/live-quotes`、`currency-display`）
