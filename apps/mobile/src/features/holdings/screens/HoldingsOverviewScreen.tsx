@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   DISPLAY_CURRENCIES,
   Money,
+  classifyQuoteStaleness,
   deriveHoldingsByAccount,
   formatAxisTick,
   formatDisplayDate,
-  formatDisplayTime,
   formatPercent,
   formatPrice,
   type AccountRef,
@@ -58,6 +58,7 @@ import {
   toDisplay,
 } from '../holdingsDemo';
 import { computeHoldingsHero, countQuoteNotFound, realizedInMonth } from '../holdingsHero';
+import { staleNoticeFor } from '../staleNotice';
 import { useAccountsStore } from '../../accounts/accountsStore';
 
 /** 清單分組模式（持股 / 帳戶 / 類別）。 */
@@ -261,16 +262,25 @@ export default function HoldingsOverviewScreen({
     currency: p.currency,
   }));
   const quotes = useQuotes(quoteTargets);
-  // 報價 as-of（visual-audit P3-7）：只看當前 targets（勿掃全 store——舊持股報價會污染 max）；
-  // fetchedAtMs＝抓取時間 ≠ 報價時刻 → 與「延遲 15 分鐘」並存、不替換。
-  const quotesAsOf = useMemo(() => {
-    let maxMs = 0;
+  // Stale-quote notice (design spec D8): judged by the OLDEST quote among held targets.
+  // Only iterate quoteTargets, never the whole store — quotes of fully sold symbols would
+  // otherwise trigger the notice. The 60s tick only bumps local `now` so a screen left
+  // open still escalates fresh -> soft -> hard; it must never be wired to loadFor (zero I/O).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  // quoteTargets is a new array every render, so key the memo on its content instead.
+  const targetsKey = quoteTargets.map((t) => `${t.market}_${t.symbol}`).join(',');
+  const staleNotice = useMemo(() => {
+    const fetchedAt: number[] = [];
     for (const t of quoteTargets) {
       const q = quoteFor(quotes, t.market, t.symbol);
-      if (q && q.fetchedAtMs > maxMs) maxMs = q.fetchedAtMs;
+      if (q && q.fetchedAtMs > 0) fetchedAt.push(q.fetchedAtMs);
     }
-    return maxMs > 0 ? `最後更新 ${formatDisplayTime(new Date(maxMs))} · 延遲 15 分鐘` : null;
-  }, [quotes, quoteTargets]);
+    return staleNoticeFor(classifyQuoteStaleness(fetchedAt, now));
+  }, [quotes, targetsKey, now]);
   // per-symbol 報價錯誤（symbol_not_found → 查無代號降級；成功即清除）。
   const quoteErrors = useQuotesStore((s) => s.errors);
   // 「每次打開」都檢查新鮮度：切回分頁 focus + App 回前景（非 force、TTL 去抖）。
@@ -385,13 +395,21 @@ export default function HoldingsOverviewScreen({
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
         }
       >
-        {/* 持股市值 Hero（報價真值、不含現金；未就緒顯示載入中）——visual-audit P1-4 */}
+        {/*
+          Holdings value hero (design spec D7): label + value only. Value is computed from live
+          quotes (delayed about 15 minutes) and excludes account cash (the label says 持股市值,
+          visual-audit P1-4); cost and realized P&L come from recorded transactions. These notes
+          used to be an on-screen caption, removed by the owner on 2026-10-21 for a cleaner hero.
+        */}
         <View style={styles.hero}>
           <Text style={styles.heroLabel}>持股市值（{displayCcy}）</Text>
           {hero ? (
             <>
               <Text
-                style={styles.heroValue}
+                style={[
+                  styles.heroValue,
+                  staleNotice?.kind === 'hard' ? styles.heroValueStale : null,
+                ]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.5}
@@ -402,16 +420,24 @@ export default function HoldingsOverviewScreen({
                   maximumFractionDigits: dp,
                 })}
               </Text>
-              <View style={styles.heroChange}>
-                <Pnl value={hero.unrealized} display={fmtCcy(hero.unrealized)} size={14} />
-                <Pnl
-                  value={hero.returnPct}
-                  display={formatPercent(hero.returnPct, { signed: false })}
-                  signMode="plusminus"
-                  size={13}
-                />
-                <Text style={styles.heroPeriod}>全期</Text>
-              </View>
+              {staleNotice?.kind === 'soft' ? (
+                <Text style={styles.staleSoft}>{staleNotice.text}</Text>
+              ) : null}
+              {staleNotice?.kind === 'hard' ? (
+                <View style={styles.staleHard}>
+                  <Text style={styles.staleHardText} numberOfLines={2}>
+                    ⚠︎ {staleNotice.text}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="重試報價"
+                    hitSlop={6}
+                    onPress={onRefresh}
+                  >
+                    <Text style={styles.heroRetry}>重試</Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </>
           ) : heroNotFound > 0 ? (
             // 永久錯誤降級：全部持倉皆無可用報價且含查無代號者——顯示引導而非無限載入。
@@ -423,14 +449,14 @@ export default function HoldingsOverviewScreen({
               報價載入中…
             </Text>
           )}
-          {/* 降級揭露：部分缺報價（更新中）/ 查無代號 / 含過期值（顯示最後已知）+ 重試。 */}
-          {hero && (hero.pendingCount > 0 || hero.notFoundCount > 0 || hero.anyStale) ? (
+          {/* Degraded disclosure: quotes still updating / symbols not found, with retry. Stale
+              values are covered by the two-level notice above (D8), not repeated here. */}
+          {hero && (hero.pendingCount > 0 || hero.notFoundCount > 0) ? (
             <View style={styles.heroStaleRow}>
               <Text style={styles.heroStaleText} numberOfLines={1}>
                 {[
                   hero.pendingCount > 0 ? `${hero.pendingCount} 檔報價更新中` : null,
                   hero.notFoundCount > 0 ? `${hero.notFoundCount} 檔查無代號` : null,
-                  hero.anyStale ? '部分為最後已知報價（延遲）' : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -445,10 +471,6 @@ export default function HoldingsOverviewScreen({
               </Pressable>
             </View>
           ) : null}
-          <Text style={styles.demoNote}>
-            市值/今日為報價即時計算（{quotesAsOf ?? '延遲 15 分鐘'}
-            ）；不含現金；成本與已實現來自實際交易
-          </Text>
         </View>
 
         {/* 2×2 摘要 Bento */}
@@ -637,8 +659,33 @@ const styles = StyleSheet.create({
     marginTop: 3,
     ...numericStyle,
   },
-  heroChange: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 5 },
-  heroPeriod: { fontFamily: fontFamily.text.regular, fontSize: 12, color: colors.textWeak },
+  // Hard stale level dims the value so it reads as unreliable at a glance (D8).
+  heroValueStale: { opacity: 0.55 },
+  staleSoft: {
+    fontFamily: fontFamily.text.regular,
+    fontSize: 11.5,
+    color: colors.textWeak,
+    marginTop: 4,
+  },
+  staleHard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    // 12% fill / 35% border of colors.warning (#F5A623).
+    backgroundColor: 'rgba(245,166,35,0.12)',
+    borderColor: 'rgba(245,166,35,0.35)',
+  },
+  staleHardText: {
+    flex: 1,
+    fontFamily: fontFamily.text.medium,
+    fontSize: 12.5,
+    color: colors.warning,
+  },
   heroStaleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -653,12 +700,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   heroRetry: { fontFamily: fontFamily.text.bold, fontSize: 11, color: colors.accent },
-  demoNote: {
-    fontFamily: fontFamily.text.regular,
-    fontSize: 10.5,
-    color: colors.textFaint,
-    marginTop: 6,
-  },
 
   // Bento 2×2
   bento: {

@@ -68,6 +68,12 @@ export const colors = {
   down: '#FF5E62',
   /** 驗證錯誤（語意別名，= down）。 */
   error: '#FF5E62',
+  /**
+   * Warning (e.g. the stale-quote notice). Same value as the CRYPTO amber in
+   * `categoryPalette`, but kept as its own token so recoloring charts never
+   * changes warning color.
+   */
+  warning: '#F5A623',
 } as const;
 
 /**

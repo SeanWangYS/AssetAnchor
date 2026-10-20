@@ -1,4 +1,9 @@
-import { formatDisplayDate, formatDisplayDateTime, formatDisplayTime } from './date.js';
+import {
+  formatDisplayDate,
+  formatDisplayDateTime,
+  formatDisplayTime,
+  formatMonthDayTime,
+} from './date.js';
 
 describe('formatDisplayDate（YYYY-MM-DD → YYYY/MM/DD）', () => {
   it('ISO 轉 slash、保留前導零', () => {
@@ -24,5 +29,17 @@ describe('formatDisplayTime（HH:mm）', () => {
   it('補零', () => {
     expect(formatDisplayTime(new Date(2026, 6, 18, 9, 5))).toBe('09:05');
     expect(formatDisplayTime(new Date(2026, 6, 18, 23, 42))).toBe('23:42');
+  });
+});
+
+describe('formatMonthDayTime (M/D HH:mm)', () => {
+  it('does not pad month/day but pads hour/minute', () => {
+    expect(formatMonthDayTime(new Date(2026, 8, 22, 17, 10))).toBe('9/22 17:10');
+    expect(formatMonthDayTime(new Date(2026, 9, 3, 9, 5))).toBe('10/3 09:05');
+  });
+
+  it('formats midnight and year boundaries', () => {
+    expect(formatMonthDayTime(new Date(2026, 11, 31, 0, 0))).toBe('12/31 00:00');
+    expect(formatMonthDayTime(new Date(2027, 0, 1, 23, 59))).toBe('1/1 23:59');
   });
 });

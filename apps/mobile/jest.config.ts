@@ -16,6 +16,7 @@ const config: Config = {
     'src/**/authErrors.ts',
     'src/**/holdingsHero.ts',
     'src/**/quotesBatch.ts',
+    'src/**/staleNotice.ts',
   ],
   coverageThreshold: {
     global: { branches: 90, functions: 90, lines: 90, statements: 90 },
