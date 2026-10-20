@@ -1,10 +1,5 @@
 import { useMemo } from 'react';
-import {
-  deriveHoldingsSafe,
-  deriveRealizedEvents,
-  type Position,
-  type RealizedEvent,
-} from '@assetanchor/shared';
+import { deriveHoldingsSafe, type Position } from '@assetanchor/shared';
 import { reportHandledError } from '../../services/monitoring';
 import { useTransactionsStore } from '../transactions/transactionsStore';
 
@@ -33,21 +28,6 @@ export function useHoldings(): Position[] {
       console.warn('[holdings] deriveHoldings 推導失敗，降級為空持倉：', message);
       // silent-severe：白屏降級是使用者看不出原因的資料問題，上報留跡（dev 為 no-op）。
       reportHandledError('holdings:derive_failed', { message });
-      return [];
-    }
-  }, [transactions]);
-}
-
-/** 已實現損益事件（時序，§4）；供持倉「本月已實現」等彙總。同樣零新增 I/O。 */
-export function useRealizedEvents(): RealizedEvent[] {
-  const transactions = useTransactionsStore((s) => s.transactions);
-  return useMemo(() => {
-    try {
-      return deriveRealizedEvents(transactions);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.warn('[holdings] deriveRealizedEvents 推導失敗，降級為空事件：', message);
-      reportHandledError('holdings:realized_derive_failed', { message });
       return [];
     }
   }, [transactions]);

@@ -1,5 +1,6 @@
 import { Money } from '../money/index.js';
 import { convertMoney } from '../fx/convertMoney.js';
+import { ratesFromUsdTwd } from '../fx/ratesFromUsdTwd.js';
 import type { RateMap } from '../types/exchange-rate.js';
 import type { Currency } from '../enums/currencies.js';
 import type { TransactionDocument } from '../types/transaction.js';
@@ -105,20 +106,7 @@ export function buildPortfolioSeries(input: PortfolioSeriesInput): PortfolioSeri
           dropDate = true;
           break;
         }
-        if (rates === null) {
-          const usdTwd = new Money(fx, 'TWD').toDecimalString();
-          const twdUsd = new Money('1', 'USD').divide(fx).toDecimalString();
-          const one = new Money('1', 'USD').toDecimalString();
-          rates = {
-            USD_TWD: usdTwd,
-            TWD_USD: twdUsd,
-            // USDT 1:1 釘 USD（enable-crypto-quotes D3——peg 政策與 exchange_rates 寫入層一致）
-            USDT_TWD: usdTwd,
-            TWD_USDT: twdUsd,
-            USDT_USD: one,
-            USD_USDT: one,
-          };
-        }
+        rates ??= ratesFromUsdTwd(fx);
         value = convertMoney(value, rates, displayCurrency);
       }
       total = total.add(value);

@@ -35,7 +35,7 @@ export interface TrendSeries {
 export type AssetTimeframe = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL';
 
 /** 裝置時區的今天（en-CA locale 即 YYYY-MM-DD）。 */
-function localToday(): string {
+export function localToday(): string {
   return new Intl.DateTimeFormat('en-CA').format(new Date());
 }
 

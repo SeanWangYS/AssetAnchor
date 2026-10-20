@@ -7,7 +7,6 @@ import {
   type Position,
   type QuoteErrorCode,
   type RateMap,
-  type RealizedEvent,
 } from '@assetanchor/shared';
 import type { QuoteEntry } from '../quotes';
 
@@ -53,6 +52,11 @@ export interface HeroPosition {
 
 export interface HoldingsHero {
   value: number;
+  /**
+   * Same total as `value` but kept as Money in the display currency, for precision-
+   * sensitive consumers such as the XIRR terminal value (constitution #2).
+   */
+  valueMoney: Money;
   cost: number;
   unrealized: number;
   returnPct: number;
@@ -152,6 +156,7 @@ export function computeHoldingsHero(
 
   return {
     value: value.toNumber(),
+    valueMoney: value,
     cost: cost.toNumber(),
     unrealized: unrealized.toNumber(),
     returnPct,
@@ -222,33 +227,4 @@ export function positionValuation(
     returnPct,
     stale: !isFresh(quote.fetchedAtMs, nowMs),
   };
-}
-
-/** `realizedInMonth` 回傳：當月已實現損益加總（顯示幣別）+ 納入的事件數（0 → UI 顯示中性空狀態）。 */
-export interface RealizedInMonth {
-  sum: Money;
-  count: number;
-}
-
-/**
- * 指定月份（`monthPrefix` = 本地時間 `YYYY-MM`）的已實現損益加總。
- * 以 `transaction_date` 前綴比對過濾當月 SELL 事件，各原幣別以 `toDisplay` 換算成 `displayCcy` 後加總。
- * `count === 0` 代表當月無賣出（呼叫端據此顯示中性空狀態）。純函式。
- */
-export function realizedInMonth(
-  events: readonly RealizedEvent[],
-  monthPrefix: string,
-  rates: RateMap | null,
-  displayCcy: Currency,
-): RealizedInMonth {
-  let sum = Money.zero(displayCcy);
-  let count = 0;
-  for (const ev of events) {
-    if (!ev.transaction_date.startsWith(monthPrefix)) continue;
-    const conv = toDisplay(new Money(ev.realized, ev.currency), rates, displayCcy);
-    if (conv === null) continue;
-    sum = sum.add(conv);
-    count += 1;
-  }
-  return { sum, count };
 }

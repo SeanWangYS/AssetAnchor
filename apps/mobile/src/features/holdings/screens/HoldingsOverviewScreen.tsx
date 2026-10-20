@@ -32,7 +32,7 @@ import {
 } from '../../../core/ui';
 import { colors, fontFamily, fontSize, numericStyle, spacing } from '../../../core/theme';
 import { zhTW } from '../../../i18n/zh-TW';
-import { useHoldings, useRealizedEvents } from '../useHoldings';
+import { useHoldings } from '../useHoldings';
 import { useExchangeRatesStore } from '../../../services/exchange-rates';
 import { usePreferencesStore } from '../../../services/preferences';
 import {
@@ -57,7 +57,8 @@ import {
   marketLabel,
   toDisplay,
 } from '../holdingsDemo';
-import { computeHoldingsHero, countQuoteNotFound, realizedInMonth } from '../holdingsHero';
+import { computeHoldingsHero, countQuoteNotFound } from '../holdingsHero';
+import { usePortfolioReturn } from '../usePortfolioReturn';
 import { staleNoticeFor } from '../staleNotice';
 import { useAccountsStore } from '../../accounts/accountsStore';
 
@@ -239,7 +240,6 @@ export default function HoldingsOverviewScreen({
   navigation,
 }: HoldingsStackScreenProps<'HoldingsOverview'>) {
   const positions = useHoldings();
-  const realizedEvents = useRealizedEvents();
   // Symbol 名稱真值（Sprint 6）：以交易清單（含 asset_type）為來源 enrich + 顯示。
   const transactions = useTransactionsStore((s) => s.transactions);
   const accounts = useAccountsStore((s) => s.accounts);
@@ -350,13 +350,12 @@ export default function HoldingsOverviewScreen({
     [hero, positions, quotes, quoteErrors],
   );
 
-  // 「本月已實現損益」真值（§4）：當月 SELL 已實現，各原幣別換算成顯示幣別後加總（純函式）。
-  // count === 0 ⇒ 本月無賣出 → bento 顯示中性空狀態（不以綠色 ▲ NT$ 0 誤導為上漲）。
-  const realized = useMemo(() => {
-    const now = new Date();
-    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return realizedInMonth(realizedEvents, monthPrefix, rates, displayCcy);
-  }, [realizedEvents, rates, displayCcy]);
+  // Bento slot 4 (design spec D9): whole-portfolio XIRR, or the cumulative return while
+  // the average years invested is under one year. `null` (shown as "—") until every
+  // holding has a quote and historical FX is fully loaded.
+  const performance = usePortfolioReturn(hero, displayCcy);
+  // decimal string -> percent number only at this UI boundary (constitution #2).
+  const performancePct = performance === null ? null : Number(performance.rate) * 100;
 
   // 持股市值 Hero count-up：報價就緒跑真值總市值，否則 0（顯示「報價載入中…」不跑數字）。
   const totalAssets = useCountUp(hero?.value ?? 0);
@@ -522,23 +521,25 @@ export default function HoldingsOverviewScreen({
             ) : null}
           </Card>
           <Card padding={spacing.cardInner} style={styles.bentoCell}>
-            <Text style={styles.bentoLabel}>本月已實現損益</Text>
+            <Text style={styles.bentoLabel}>
+              {performance?.kind === 'cumulative' ? '累積報酬率' : '年化報酬率'}
+            </Text>
             <View style={styles.bentoVal}>
-              {realized.count === 0 ? (
-                // 本月無賣出：中性「—」（比照今日損益 pending），不顯示綠色 ▲ NT$ 0 誤導為上漲
+              {performancePct === null ? (
                 <Text style={styles.bentoPending}>—</Text>
               ) : (
                 <Pnl
-                  value={realized.sum.toNumber()}
-                  display={fmtCcy(realized.sum.toNumber())}
+                  value={performancePct}
+                  display={formatPercent(performancePct, { signed: false })}
+                  signMode="plusminus"
                   size={18}
+                  fit
                 />
               )}
             </View>
-            {/* P3-10：區分「無資料」與「值為 0」——無賣出時明示原因 */}
-            {realized.count === 0 ? (
+            {performance?.kind === 'cumulative' ? (
               <View style={styles.bentoSub}>
-                <Text style={styles.bentoSubNote}>本月無賣出</Text>
+                <Text style={styles.bentoSubNote}>投入未滿一年，暫不年化</Text>
               </View>
             ) : null}
           </Card>
