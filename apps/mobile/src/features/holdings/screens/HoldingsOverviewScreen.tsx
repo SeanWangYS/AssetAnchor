@@ -2,19 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   DISPLAY_CURRENCIES,
-  Money,
   classifyQuoteStaleness,
-  deriveHoldingsByAccount,
   formatAxisTick,
   formatDisplayDate,
   formatPercent,
-  formatPrice,
-  type AccountRef,
   type DisplayCurrency,
-  type Market,
-  type Position,
-  type RateMap,
-  type TransactionDocument,
 } from '@assetanchor/shared';
 import type { HoldingsStackScreenProps } from '../../../core/navigation/types';
 import {
@@ -41,24 +33,16 @@ import {
   useQuotes,
   useQuotesStore,
   useRefreshQuotesOnFocus,
-  type QuoteEntry,
 } from '../../../services/quotes';
-import { quoteMoneyIn } from '../../../services/valuation';
-import { useSymbols, symbolNameOf, symbolTargetsFromTransactions } from '../../../services/symbols';
+import { useSymbols, symbolTargetsFromTransactions } from '../../../services/symbols';
 import { useTransactionsStore } from '../../transactions/transactionsStore';
 import { useCountUp } from '../useCountUp';
 import { useTrendSeries } from '../useTrendSeries';
-import {
-  currencyPrefix,
-  displayDecimals,
-  fmtAmount,
-  fmtMoney,
-  fmtShares,
-  marketLabel,
-  toDisplay,
-} from '../holdingsDemo';
+import { currencyPrefix, displayDecimals } from '../holdingsDemo';
 import { computeHoldingsHero, countQuoteNotFound } from '../holdingsHero';
 import { usePortfolioReturn } from '../usePortfolioReturn';
+import { useHoldingsSort, useHoldingsTable } from '../useHoldingsTable';
+import { HoldingsTable } from '../components/HoldingsTable';
 import { staleNoticeFor } from '../staleNotice';
 import { useAccountsStore } from '../../accounts/accountsStore';
 
@@ -77,165 +61,6 @@ const CCY_OPTIONS = DISPLAY_CURRENCIES.map((value) => ({ value }));
 type Timeframe = '1M' | '3M' | 'YTD' | '1Y' | 'ALL';
 const TIMEFRAMES: readonly Timeframe[] = ['1M', '3M', 'YTD', '1Y', 'ALL'];
 
-interface GroupSection {
-  key: string;
-  label: string;
-  count: number;
-  /** 右側原幣別市值小計字（demo）。 */
-  subtotal: string;
-  positions: Position[];
-}
-
-/** 該組原幣別市值小計（混幣別時各幣別分列）；以真實報價計，缺報價者排除並標「N 檔更新中」。 */
-function subtotalText(
-  positions: Position[],
-  quotes: Record<string, QuoteEntry>,
-  rates: RateMap | null,
-): string {
-  const byCcy = new Map<Position['currency'], Money>();
-  let pending = 0;
-  for (const p of positions) {
-    const q = quoteFor(quotes, p.market, p.symbol);
-    if (!q) {
-      pending += 1;
-      continue;
-    }
-    // 報價幣別由市場決定（D9）：先換算到 lot 幣別再乘股數；無法換算＝更新中。
-    const priceP = quoteMoneyIn(q.price, q, p.currency, rates);
-    if (!priceP) {
-      pending += 1;
-      continue;
-    }
-    const mv = priceP.multiply(p.quantity);
-    byCcy.set(p.currency, (byCcy.get(p.currency) ?? Money.zero(p.currency)).add(mv));
-  }
-  const parts = [...byCcy.entries()].map(([ccy, sum]) => fmtMoney(sum, ccy));
-  if (pending > 0) parts.push(`${pending} 檔更新中`);
-  return parts.join(' · ');
-}
-
-function buildSections(
-  positions: Position[],
-  mode: GroupMode,
-  quotes: Record<string, QuoteEntry>,
-  transactions: TransactionDocument[],
-  accounts: AccountRef[],
-  rates: RateMap | null,
-): GroupSection[] {
-  if (mode === '持股') {
-    return [
-      {
-        key: 'all',
-        label: '',
-        count: positions.length,
-        subtotal: '',
-        positions,
-      },
-    ];
-  }
-  if (mode === '帳戶') {
-    // 依**真實 account_id** 分群（per-account 推導），取代已移除的 symbol→帳戶 demo 表。
-    // orphan account_id 歸「未分類」；某帳戶內髒資料 symbol 被 fail-soft 跳過並在小計標「N 檔資料異常」。
-    return deriveHoldingsByAccount(transactions, accounts).map((g) => ({
-      key: g.accountId || '__unassigned__',
-      label: g.accountName,
-      count: g.positions.length,
-      subtotal: [
-        subtotalText(g.positions, quotes, rates),
-        g.skipped.length > 0 ? `${g.skipped.length} 檔資料異常` : '',
-      ]
-        .filter(Boolean)
-        .join(' · '),
-      positions: g.positions,
-    }));
-  }
-  // 類別：依市場分（台股 TWD / 美股 USD …）。
-  const byMarket = new Map<Market, Position[]>();
-  for (const p of positions) {
-    byMarket.set(p.market, [...(byMarket.get(p.market) ?? []), p]);
-  }
-  return [...byMarket.entries()].map(([market, list]) => {
-    const ccy = list[0]?.currency ?? 'TWD';
-    return {
-      key: market,
-      label: `${marketLabel(market)} · ${ccy}`,
-      count: list.length,
-      subtotal: subtotalText(list, quotes, rates),
-      positions: list,
-    };
-  });
-}
-
-/** 兩段式持股 row：代號(主)/名稱(輔) + (股數·均價) + 市值/報酬%（design §3.1 item 7，owner 2026-07-18 拍板：無圓標、代號優先）。 */
-function HoldingRow({
-  position,
-  name,
-  quote,
-  rates,
-  notFound,
-  onPress,
-}: {
-  position: Position;
-  name: string;
-  quote: QuoteEntry | undefined;
-  rates: RateMap | null;
-  /** 查無報價代號（symbol_not_found）：顯示明確標示而非「更新中…」。 */
-  notFound?: boolean;
-  onPress: () => void;
-}) {
-  const avg = Money.fromDecimalString(position.averageCost, position.currency);
-  // 報價就緒→真值市值/報酬%；未就緒→「更新中…」（與 Hero/AssetDetail 一致，不顯示 demo 假值）。
-  const priceM = quote ? quoteMoneyIn(quote.price, quote, position.currency, rates) : null;
-  const mv = priceM ? priceM.multiply(position.quantity) : null;
-  const retPct =
-    priceM && !avg.isZero()
-      ? priceM.subtract(avg).divide(position.averageCost).multiply('100').toNumber()
-      : null;
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}
-    >
-      <View style={styles.rowMid}>
-        <View style={styles.rowTitleLine}>
-          <Text style={styles.rowSymbolMain}>{position.symbol}</Text>
-          <Text style={styles.rowNameSub} numberOfLines={1}>
-            {name}
-          </Text>
-        </View>
-        <Text style={styles.rowSub} numberOfLines={1}>
-          {fmtShares(position.quantity, position.currency)} 股 · 均價{' '}
-          {formatPrice(position.averageCost, position.currency)}
-        </Text>
-      </View>
-      <View style={styles.rowRight}>
-        {mv !== null ? (
-          <>
-            <Text style={styles.rowValue}>{fmtMoney(mv, position.currency)}</Text>
-            {retPct !== null ? (
-              <Pnl
-                value={retPct}
-                display={formatPercent(retPct, { signed: false })}
-                signMode="plusminus"
-                size={12}
-              />
-            ) : (
-              <Text style={styles.rowPending}>—</Text>
-            )}
-          </>
-        ) : notFound ? (
-          // 永久錯誤出口：代號在該市場查無報價（多為市場選錯），引導修正而非無限等待。
-          <Text style={styles.rowNotFound}>查無代號</Text>
-        ) : (
-          <Text style={styles.rowPending}>更新中…</Text>
-        )}
-      </View>
-    </Pressable>
-  );
-}
-
 export default function HoldingsOverviewScreen({
   navigation,
 }: HoldingsStackScreenProps<'HoldingsOverview'>) {
@@ -246,7 +71,9 @@ export default function HoldingsOverviewScreen({
   const txLoading = useTransactionsStore((s) => s.loading);
   const txError = useTransactionsStore((s) => s.error);
   const symbolTargets = useMemo(() => symbolTargetsFromTransactions(transactions), [transactions]);
-  const symbols = useSymbols(symbolTargets);
+  // Called for its side effect: it enriches symbol metadata (names used by AssetDetail).
+  // The table shows symbols only, so the returned map is not needed here.
+  useSymbols(symbolTargets);
   const rates = useExchangeRatesStore((s) => s.rates);
   const displayCcy = usePreferencesStore((s) => s.preferredDisplayCurrency);
   const changeDisplayCurrency = usePreferencesStore((s) => s.changeDisplayCurrency);
@@ -316,11 +143,6 @@ export default function HoldingsOverviewScreen({
     </>
   );
 
-  const sections = useMemo(
-    () => buildSections(positions, mode, quotes, transactions, accounts, rates),
-    [positions, mode, quotes, transactions, accounts, rates],
-  );
-
   // Hero / bento 彙總（報價）：部分渲染——有報價（新鮮或過期）的持倉先加總，缺者標「更新中」。
   // 純函式 computeHoldingsHero（已單元測試）；今日損益僅全數新鮮時呈現，否則 null。
   // 僅當「可納入數 === 0」（或無持倉 / 匯率未就緒）才回 null → 畫面顯示「報價載入中…」。
@@ -357,21 +179,24 @@ export default function HoldingsOverviewScreen({
   // decimal string -> percent number only at this UI boundary (constitution #2).
   const performancePct = performance === null ? null : Number(performance.rate) * 100;
 
+  // Holdings table (design spec D10): sort choice lives on the device (MMKV); rows are
+  // sorted within each group and per-row returns reuse the trend chart's FX series.
+  const [sort, onSort] = useHoldingsSort();
+  const tableSections = useHoldingsTable({
+    mode,
+    sort,
+    positions,
+    transactions,
+    accounts,
+    quotes,
+    quoteErrors,
+    rates,
+    displayCurrency: displayCcy,
+    totalValue: hero?.valueMoney ?? null,
+  });
+
   // 持股市值 Hero count-up：報價就緒跑真值總市值，否則 0（顯示「報價載入中…」不跑數字）。
   const totalAssets = useCountUp(hero?.value ?? 0);
-
-  // 真實跨幣別「總成本」：以使用者顯示幣別偏好為基準，rates（或 demo 匯率退回）即時換算加總。
-  // 部分渲染：單檔無法換算則跳過（不因一檔回 null 而整體不顯示）；rates 未就緒才回 null。
-  const grandCost = useMemo(() => {
-    if (rates === null) return null;
-    let sum = Money.zero(displayCcy);
-    for (const p of positions) {
-      const conv = toDisplay(Money.fromDecimalString(p.totalCost, p.currency), rates, displayCcy);
-      if (conv === null) continue;
-      sum = sum.add(conv);
-    }
-    return sum;
-  }, [positions, rates, displayCcy]);
 
   // 顯示幣別的金額格式（前綴 + 小數位）；Pnl display 取絕對值（正負由 Pnl 自行呈現）。
   const dp = displayDecimals(displayCcy);
@@ -585,16 +410,6 @@ export default function HoldingsOverviewScreen({
           <Segmented options={GROUP_OPTIONS} value={mode} onChange={setMode} />
         </View>
 
-        {/* 真實「總成本」快照（以顯示幣別偏好呈現） */}
-        <View style={styles.costRow}>
-          <Text style={styles.costLabel}>總成本（{displayCcy}）</Text>
-          <Text style={styles.costValue}>
-            {grandCost === null
-              ? '匯率未就緒'
-              : `${currencyPrefix(displayCcy)} ${fmtAmount(grandCost, displayCcy)}`}
-          </Text>
-        </View>
-
         {/* 清單（cold start：error → loading → empty → content） */}
         {transactions.length === 0 && txError ? (
           <ErrorState message="載入失敗" subtitle="請下拉重新整理" />
@@ -607,32 +422,14 @@ export default function HoldingsOverviewScreen({
             icon={<Icon name="txn" size={26} color={colors.accent} />}
           />
         ) : (
-          sections.map((section) => (
-            <View key={section.key}>
-              {section.label !== '' ? (
-                <View style={styles.groupHeader}>
-                  <Text style={styles.groupLabel}>{section.label}</Text>
-                  <Text style={styles.groupCount}>{section.count} 檔</Text>
-                  <Text style={styles.groupSubtotal} numberOfLines={1}>
-                    {section.subtotal}
-                  </Text>
-                </View>
-              ) : null}
-              {section.positions.map((p) => (
-                <HoldingRow
-                  key={`${p.market}_${p.symbol}_${p.currency}`}
-                  position={p}
-                  name={symbolNameOf(symbols, p.market, p.symbol)}
-                  quote={quoteFor(quotes, p.market, p.symbol)}
-                  rates={rates}
-                  notFound={quoteErrorFor(quoteErrors, p.market, p.symbol) === 'symbol_not_found'}
-                  onPress={() =>
-                    navigation.navigate('AssetDetail', { market: p.market, symbol: p.symbol })
-                  }
-                />
-              ))}
-            </View>
-          ))
+          <HoldingsTable
+            sections={tableSections}
+            sort={sort}
+            onSort={onSort}
+            onPressRow={(row) =>
+              navigation.navigate('AssetDetail', { market: row.market, symbol: row.symbol })
+            }
+          />
         )}
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -749,86 +546,6 @@ const styles = StyleSheet.create({
   },
 
   segmentedWrap: { marginTop: spacing.lg },
-
-  // 總成本快照
-  costRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
-  },
-  costLabel: {
-    fontFamily: fontFamily.text.medium,
-    fontSize: fontSize.label,
-    color: colors.textWeak,
-  },
-  costValue: {
-    fontFamily: fontFamily.num.bold,
-    fontSize: fontSize.footnote,
-    color: colors.textSecondary,
-    ...numericStyle,
-  },
-
-  // 分組標頭
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingTop: spacing.lg - 1,
-    paddingBottom: 7,
-  },
-  groupLabel: { fontFamily: fontFamily.text.bold, fontSize: 13, color: colors.textPrimary },
-  groupCount: { fontFamily: fontFamily.text.regular, fontSize: 11, color: colors.textFaint },
-  groupSubtotal: {
-    marginLeft: 'auto',
-    fontFamily: fontFamily.num.semibold,
-    fontSize: 12,
-    color: colors.textSecondary,
-    ...numericStyle,
-  },
-
-  // 持股 row
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: 11,
-    paddingHorizontal: spacing.xs + 2,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.divider,
-  },
-  pressed: { opacity: 0.6 },
-  rowMid: { flex: 1, minWidth: 0 },
-  rowTitleLine: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  rowSymbolMain: {
-    fontFamily: fontFamily.num.semibold,
-    fontSize: 15,
-    color: colors.textPrimary,
-    ...numericStyle,
-  },
-  rowNameSub: {
-    fontFamily: fontFamily.text.regular,
-    fontSize: 12,
-    color: colors.textWeak,
-    flexShrink: 1,
-  },
-  rowSub: {
-    fontFamily: fontFamily.num.medium,
-    fontSize: 12,
-    color: colors.textWeak,
-    marginTop: 2,
-    ...numericStyle,
-  },
-  rowRight: { alignItems: 'flex-end', gap: 2 },
-  rowValue: {
-    fontFamily: fontFamily.num.bold,
-    fontSize: 15,
-    color: colors.textPrimary,
-    ...numericStyle,
-  },
-  rowPending: { fontFamily: fontFamily.text.regular, fontSize: 13, color: colors.textFaint },
-  rowNotFound: { fontFamily: fontFamily.text.regular, fontSize: 13, color: colors.danger },
 
   bottomSpacer: { height: spacing.lg },
 });

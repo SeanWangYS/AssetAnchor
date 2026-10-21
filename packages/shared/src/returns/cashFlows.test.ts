@@ -17,12 +17,13 @@ function tx(
     date: string;
     fee?: string;
     tax?: string;
+    account?: string;
   },
 ): TransactionDocument {
   seq += 1;
   const doc = buildTransactionDoc(
     {
-      account_id: 'acc_1',
+      account_id: o.account ?? 'acc_1',
       symbol: o.symbol,
       market: o.market,
       asset_type: 'STOCK',
@@ -173,5 +174,64 @@ describe('buildCashFlows', () => {
       fxUsdTwdCloses: { '2024-04-08': '32' },
     });
     expect(r.ok && r.flows.map((f) => f.date)).toEqual(['2024-03-14', '2024-04-08', '2025-05-01']);
+  });
+
+  describe('accountIds filter', () => {
+    const inA = tx('BUY', {
+      symbol: '2330',
+      market: 'TW',
+      currency: 'TWD',
+      quantity: '1',
+      price: '500',
+      date: '2022-04-21',
+      account: 'acc_A',
+    });
+    const inB = tx('BUY', {
+      symbol: '2330',
+      market: 'TW',
+      currency: 'TWD',
+      quantity: '1',
+      price: '1000',
+      date: '2025-07-21',
+      account: 'acc_B',
+    });
+    const otherInA = tx('BUY', {
+      symbol: '0050',
+      market: 'TW',
+      currency: 'TWD',
+      quantity: '1',
+      price: '100',
+      date: '2023-01-01',
+      account: 'acc_A',
+    });
+    const base = {
+      transactions: [inA, inB, otherInA],
+      displayCurrency: 'TWD' as const,
+      fxUsdTwdCloses: {},
+    };
+
+    it('keeps only the listed account', () => {
+      const r = buildCashFlows({
+        ...base,
+        filter: { market: 'TW', symbol: '2330', accountIds: ['acc_A'] },
+      });
+      expect(r.ok && flat(r.flows)).toEqual([['2022-04-21', '-500.0000000000', 'TWD']]);
+    });
+
+    it('accepts a set of accounts (e.g. the unassigned bucket)', () => {
+      const r = buildCashFlows({
+        ...base,
+        filter: { market: 'TW', symbol: '2330', accountIds: ['acc_A', 'acc_B'] },
+      });
+      expect(r.ok && r.flows.map((f) => f.date)).toEqual(['2022-04-21', '2025-07-21']);
+    });
+
+    it('returns no flows for an empty account set', () => {
+      const r = buildCashFlows({
+        ...base,
+        filter: { market: 'TW', symbol: '2330', accountIds: [] },
+      });
+      expect(r.ok && r.flows).toEqual([]);
+    });
   });
 });

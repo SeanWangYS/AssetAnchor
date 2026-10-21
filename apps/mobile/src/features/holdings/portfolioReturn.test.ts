@@ -135,4 +135,48 @@ describe('computePortfolioReturn', () => {
       }),
     ).toBeNull();
   });
+
+  it('returns null when FX chunks exist but hold no closes', () => {
+    const empty = Object.fromEntries(
+      [2024, 2025, 2026].map((y) => [`FX_USDTWD_${y}`, { year: y, closes: {} }]),
+    );
+    expect(
+      computePortfolioReturn({
+        transactions: [aapl],
+        chunks: empty,
+        fxBackfilling: false,
+        hero: hero('450000'),
+        displayCurrency: 'TWD',
+        today: TODAY,
+      }),
+    ).toBeNull();
+  });
+
+  it('finds the earliest USD trade regardless of order and ignores non-trades', () => {
+    const later = buy({
+      symbol: 'AAPL',
+      market: 'US',
+      currency: 'USD',
+      quantity: '1',
+      price: '200',
+      date: '2025-06-01',
+    });
+    const dividend = {
+      ...aapl,
+      transaction_type: 'DIVIDEND_CASH' as const,
+      transaction_date: '2023-01-01',
+    };
+    const base = {
+      transactions: [later, dividend, aapl],
+      fxBackfilling: false,
+      hero: hero('500000'),
+      displayCurrency: 'TWD' as const,
+      today: TODAY,
+    };
+    // 2024 is required (from aapl), 2023 is not (dividend ignored).
+    expect(computePortfolioReturn({ ...base, chunks: fxChunks([2025, 2026]) })).toBeNull();
+    expect(
+      computePortfolioReturn({ ...base, chunks: fxChunks([2024, 2025, 2026]) }),
+    ).not.toBeNull();
+  });
 });

@@ -2,8 +2,6 @@ import {
   Money,
   amountDisplayDecimals,
   currencyPrefix as sharedCurrencyPrefix,
-  formatAmount as sharedFormatAmount,
-  formatMoney as sharedFormatMoney,
   formatQuantity,
   type Currency,
   type Market,
@@ -106,16 +104,6 @@ export function currencyPrefix(currency: Currency): string {
 /** @deprecated 同上。 */
 export function displayDecimals(currency: Currency): number {
   return amountDisplayDecimals(currency);
-}
-
-/** 金額顯示字（Money 型輸入 adapter；裸數字、依幣別小數位）。 */
-export function fmtAmount(amount: Money, currency: Currency): string {
-  return sharedFormatAmount(amount.toDecimalString(), currency);
-}
-
-/** 帶前綴金額（NT$ 1,238,540 / US$ 1,712.88）。 */
-export function fmtMoney(amount: Money, currency: Currency): string {
-  return sharedFormatMoney(amount.toDecimalString(), currency);
 }
 
 /** 股數顯示（≤4 位去尾零 + 千分位；currency 僅為簽名相容、內部丟棄）。 */
