@@ -23,10 +23,10 @@
 ## 5. 驗證（DoD）
 
 - [x] 5.1 `pnpm -r typecheck`、`pnpm -r lint`、`pnpm exec prettier --check .`、shared / mobile `test:coverage` 全綠
-- [ ] 5.2 模擬器對圖（對照 mock，owner gate）：(a) 預設市值降冪 (b) 左右滑動代號固定 (c) 點標題排序與反向 (d) 重啟 App 排序沿用 (e) 帳戶分組小計與年化只算該帳戶 (f) 類別分組 (g) USD 顯示 (h) 查無代號列；截圖存 `docs/qa/holdings-table-evidence/`
+- [x] 5.2 模擬器對圖（對照 mock，owner gate）：(a) 預設市值降冪 (b) 左右滑動代號固定 (c) 點標題排序與反向 (d) 重啟 App 排序沿用 (e) 帳戶分組小計與年化只算該帳戶 (f) 類別分組 (g) USD 顯示 (h) 查無代號列；截圖存 `docs/qa/holdings-table-evidence/`
 - [x] 5.3 E2E `regression-quote-not-found` 斷言字樣仍存在（「查無代號」）
 
 ## 6. 收尾
 
-- [ ] 6.1 commit（英文）→ push → PR（帶 UI + 新原生依賴 → owner merge）
-- [ ] 6.2 CI 綠 → `/opsx:archive`（新 spec `holdings-table`；sync `holdings-derivation`、`currency-display`、`portfolio-returns`）
+- [x] 6.1 commit（英文）→ push → PR（帶 UI + 新原生依賴 → owner merge）
+- [x] 6.2 CI 綠 → `/opsx:archive`（新 spec `holdings-table`；sync `holdings-derivation`、`currency-display`、`portfolio-returns`）

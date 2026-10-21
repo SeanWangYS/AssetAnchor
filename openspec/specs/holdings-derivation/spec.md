@@ -112,17 +112,17 @@ Position 的成本 SHALL 依 planning doc §4 加權平均法計算：`totalCost
 
 ### Requirement: 持倉清單檢視（HoldingsOverview）
 
-持倉 Tab SHALL 顯示由 `deriveHoldings` 推導的持倉清單：依 `market` 分組（TW / US），每組顯示該市場**原幣別總成本小計**；每列顯示 `symbol`、總股數、加權均價與總成本。底部 SHALL 額外顯示**跨幣別「總成本」grand total**，換算成 `preferred_display_currency`（預設 TWD），換算機制與降級行為見 currency-display capability。原幣別小計為精確值、grand total 為最新匯率的 as-of-today 快照，兩者並存。本畫面市值 / 未實現損益 / Hero 彙總由 **live-quotes** 報價提供（Sprint 5b）；**顯示幣別切換鈕設於本頁**＝偏好控制（見 currency-display）。金額顯示 SHALL 用 `Money.toDisplayString()`（2 位小數），儲存與計算仍 10 位。
+持倉 Tab SHALL 顯示由 `deriveHoldings` 推導的持倉清單，並以**持股表格**呈現（凍結代號欄 + 同步橫捲、欄位、排序、分組列與降級規則見 `holdings-table` capability；owner 2026-10-21，design spec D10）。清單 SHALL 支援「持股 / 帳戶 / 類別」三種分組；「類別」依 `market` 分組，組標題為市場名。表格內**所有金額**（含組小計）SHALL 以 `preferred_display_currency`（預設 TWD）呈現，以最新匯率換算；SHALL NOT 再顯示各市場原幣別小計與清單上方的跨幣別「總成本」grand total（已移除）。本畫面市值 / 未實現損益 / Hero 彙總由 **live-quotes** 報價提供；**顯示幣別切換鈕設於本頁**＝偏好控制（見 currency-display）。金額運算 SHALL 用 `Money`（儲存與計算 10 位），`toNumber()` 只在顯示與排序邊界。
 
-#### Scenario: 依市場分組顯示原幣別小計
+#### Scenario: 依市場分組
 
-- **WHEN** 使用者持有 TW 與 US 市場的股票
-- **THEN** 持倉清單分「TW」「US」兩組，各組標頭顯示該市場原幣別成本小計（如 `TWD 1,376,900.00`、`USD 1,805.00`）
+- **WHEN** 使用者持有 TW 與 US 市場的股票並切到「類別」
+- **THEN** 清單分「台股」「美股」兩組，各組標題的市值欄顯示該組顯示幣別市值小計
 
-#### Scenario: 底部顯示跨幣別 TWD 總成本合計
+#### Scenario: 不再顯示總成本行
 
-- **WHEN** 持倉同時含 TWD 與 USD 部位、且已有最新匯率
-- **THEN** 清單底部顯示「總成本（TWD）」= 各 position 原幣別總成本換算成 TWD 後加總（用最新匯率）
+- **WHEN** 使用者檢視持倉清單
+- **THEN** 清單上方 SHALL NOT 出現「總成本（{幣別}）」行
 
 #### Scenario: 新交易即時反映
 
@@ -206,17 +206,17 @@ Position 的成本 SHALL 依 planning doc §4 加權平均法計算：`totalCost
 
 ### Requirement: 持倉清單「帳戶」分群依真實帳戶
 
-持倉總覽的「帳戶」分群模式 SHALL 依交易的真實 `account_id` 分組，**不得**使用任何 symbol→帳戶的 demo 硬編對照表。`packages/shared` SHALL 提供純函式 `deriveHoldingsByAccount(transactions, accounts)`，對每個帳戶各自以 `deriveHoldingsForAccountSafe` 推導持倉（per-account，逐 symbol 容錯），回傳有序的帳戶分組（每組含 `accountId`、`accountName`、`positions`、`skipped`）。分組標題 SHALL 顯示真實 `account_name` + 檔數 + 原幣別小計，且不含顏色圓點（holdings-overview-spec D3：持倉清單本身）。`account_id` 對不到任何現存帳戶的交易 SHALL 歸入「未分類」群（fail-soft，不靜默消失）。同一 `(market, symbol)` 跨多帳戶持有時 SHALL 於各自帳戶群各成一列（各自股數/均價）。`AssetDetail` 的「帳戶分布」欄 SHALL 同樣由真實交易解析帳戶名（可能多帳戶），不得使用 demo 對照。
+持倉總覽的「帳戶」分群模式 SHALL 依交易的真實 `account_id` 分組，**不得**使用任何 symbol→帳戶的 demo 硬編對照表。`packages/shared` SHALL 提供純函式 `deriveHoldingsByAccount(transactions, accounts)`，對每個帳戶各自以 `deriveHoldingsForAccountSafe` 推導持倉（per-account，逐 symbol 容錯），回傳有序的帳戶分組（每組含 `accountId`、`accountName`、`positions`、`skipped`）。分組標題 SHALL 顯示真實 `account_name` + 檔數 + **顯示幣別市值小計**（holdings-table 分組列），且不含顏色圓點（holdings-overview-spec D3：持倉清單本身）。`account_id` 對不到任何現存帳戶的交易 SHALL 歸入「未分類」群（fail-soft，不靜默消失）。同一 `(market, symbol)` 跨多帳戶持有時 SHALL 於各自帳戶群各成一列（各自股數/均價/年化，年化只計該帳戶交易）。`AssetDetail` 的「帳戶分布」欄 SHALL 同樣由真實交易解析帳戶名（可能多帳戶），不得使用 demo 對照。
 
 #### Scenario: 依真實帳戶分組
 
 - **WHEN** 使用者於持倉總覽切到「帳戶」模式，且其交易分屬帳戶 A（Firstrade）與帳戶 B（群益證券）
-- **THEN** 系統 SHALL 顯示標題為「Firstrade」「群益證券」的分組，各組只含該帳戶交易推導出的持倉，標題顯示檔數與原幣別小計；**不得**出現使用者未建立的帳戶名
+- **THEN** 系統 SHALL 顯示標題為「Firstrade」「群益證券」的分組，各組只含該帳戶交易推導出的持倉，標題顯示檔數與顯示幣別市值小計；**不得**出現使用者未建立的帳戶名
 
 #### Scenario: 跨帳戶同 symbol 各自成列
 
 - **WHEN** 同一 `(market, symbol)` 在帳戶 A 與帳戶 B 皆有持有
-- **THEN** 該 symbol SHALL 於帳戶 A 群與帳戶 B 群各出現一列，各列的股數/均價依該帳戶自身交易計算
+- **THEN** 該 symbol SHALL 於帳戶 A 群與帳戶 B 群各出現一列，各列的股數/均價/年化依該帳戶自身交易計算
 
 #### Scenario: orphan account_id 歸未分類
 
