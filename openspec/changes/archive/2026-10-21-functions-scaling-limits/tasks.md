@@ -16,4 +16,4 @@
 
 - [x] 4.1 DoD: `pnpm -r typecheck`, `pnpm -r lint`, `pnpm exec prettier --check .`, functions `test`, shared `test:coverage`
 - [x] 4.2 Local smoke on emulators:fn: build functions, call `ensureHistory` and `fetchQuotes`, app loads quotes/trend on simulator
-- [ ] 4.3 Open PR (owner merge + owner `firebase deploy --only functions`); after deploy verify `maxScale` / timeout via Cloud Run Admin API
+- [x] 4.3 Open PR (owner merge + owner `firebase deploy --only functions`); after deploy verify `maxScale` / timeout via Cloud Run Admin API
