@@ -8,8 +8,7 @@ import {
   type HistoryMarket,
 } from '@assetanchor/shared';
 import { INTRADAY_PARAMS, yahooHistoryProvider, type IntradayTf } from './yahooHistoryProvider';
-
-const REGION = 'asia-east1';
+import { USER_HTTP_OPTIONS } from '../runtimeOptions';
 
 type ParseResult =
   | { ok: true; market: HistoryMarket; symbol: string; currency: Currency; tf: IntradayTf }
@@ -43,7 +42,7 @@ function parseInput(q: Record<string, unknown>): ParseResult {
  * **不落地**（ADR-0010 D5——盤中資料時效短）。點列 close 以 Money 10 位小數 string 回傳，
  * 無效 bar（null / ≤0）剔除；mobile 端記憶體 cache。
  */
-export const fetchIntraday = onRequest({ region: REGION, cors: true }, async (req, res) => {
+export const fetchIntraday = onRequest(USER_HTTP_OPTIONS, async (req, res) => {
   const parsed = parseInput(req.query as Record<string, unknown>);
   if (!parsed.ok) {
     res.status(400).json({ ok: false, error: parsed.msg });

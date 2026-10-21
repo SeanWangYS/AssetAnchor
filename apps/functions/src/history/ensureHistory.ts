@@ -3,14 +3,20 @@ import * as logger from 'firebase-functions/logger';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { computeFetchWindow, chunkBarsByYear } from './historyPlan';
+import { runEnsureBatch, type EnsureResult } from './ensureBatch';
 import { parseHistoryInput, type HistoryItem } from './parseHistoryInput';
 import { yahooHistoryProvider, type HistoryProvider } from './yahooHistoryProvider';
+import { USER_HTTP_OPTIONS } from '../runtimeOptions';
 
-const REGION = 'asia-east1';
 /** 對 Yahoo 的請求間隔（少量、有禮貌——2025 起 429 收緊，ADR-0010）。 */
 const THROTTLE_MS = 1_000;
 /** 429 退避後重試一次的等待。 */
 const BACKOFF_MS = 2_000;
+/**
+ * Stop starting new items after 50 s. Worst case for one started item is ~66 s
+ * (≤ 8 Yahoo requests × 8 s abort timeout + 2 s backoff), so 50 + 66 < 120 s timeout.
+ */
+const BATCH_BUDGET_MS = 50_000;
 
 function ensureApp(): void {
   if (getApps().length === 0) initializeApp();
@@ -31,10 +37,6 @@ async function readLastDate(symbolId: string, nowMs: number): Promise<string | n
   }
   return null; // 超過一年沒開 app 也走首次回補路徑（冪等 upsert，只是多抓）
 }
-
-type EnsureResult =
-  | { symbolId: string; lastDate: string | null; cached: boolean }
-  | { symbolId: string; error: string };
 
 /**
  * 單一 symbol 的 lazy 增量：last_date 已涵蓋最近預期交易日 → no-op；否則
@@ -96,13 +98,14 @@ export async function ensureHistoryFor(
 }
 
 /**
- * HTTP `ensureHistory`（GET ?items=market:symbol:currency:from,...）：
- * 開圖時 lazy 觸發的歷史日線增量（ADR-0010 D4）。逐筆錯誤隔離（單檔失敗回該筆
- * error，不拖垮整批）；對 Yahoo 的實際請求之間 ≥1s 節流。資料本體不回傳——
- * client 從 Firestore 讀（單一讀取路徑）。onRequest + cors（對齊 fetchQuotes）。
+ * HTTP `ensureHistory` (GET ?items=market:symbol:currency:from,...): lazy incremental
+ * daily history triggered when charts open (ADR-0010 D4). Per-item error isolation,
+ * ≥1 s between real Yahoo requests, and a 50 s batch budget inside a 120 s timeout
+ * (items past the budget come back deferred). The data itself is not returned — the
+ * client reads Firestore (single read path).
  */
 export const ensureHistory = onRequest(
-  { region: REGION, cors: true, timeoutSeconds: 300 },
+  { ...USER_HTTP_OPTIONS, timeoutSeconds: 120 },
   async (req, res) => {
     const parsed = parseHistoryInput(req.query as Record<string, unknown>);
     if (!parsed.ok) {
@@ -110,20 +113,15 @@ export const ensureHistory = onRequest(
       return;
     }
     const nowMs = Date.now();
-    const results: EnsureResult[] = [];
-    let didFetch = false;
-    for (const item of parsed.items) {
-      if (didFetch) await sleep(THROTTLE_MS);
-      try {
-        const r = await ensureHistoryFor(item, yahooHistoryProvider, nowMs);
-        didFetch = !('cached' in r) || !r.cached;
-        results.push(r);
-      } catch (e) {
-        logger.error('ensureHistory item failed', { item, error: String(e) });
-        didFetch = true; // 失敗也算打過 Yahoo，維持節流
-        results.push({ symbolId: `${item.market}_${item.symbol}`, error: '歷史資料暫時無法取得' });
-      }
-    }
+    const results = await runEnsureBatch(parsed.items, {
+      ensureOne: (item) => ensureHistoryFor(item, yahooHistoryProvider, nowMs),
+      now: Date.now,
+      sleep,
+      budgetMs: BATCH_BUDGET_MS,
+      throttleMs: THROTTLE_MS,
+      onError: (item, error) =>
+        logger.error('ensureHistory item failed', { item, error: String(error) }),
+    });
     res.json({ ok: true, results });
   },
 );

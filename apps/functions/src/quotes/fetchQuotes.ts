@@ -4,8 +4,7 @@ import { getOrFetchQuote } from './fetchQuote';
 import { parseBatchInput } from './parseBatchInput';
 import { quoteErrorPayload } from './quoteErrors';
 import { yahooProvider } from './yahooProvider';
-
-const REGION = 'asia-east1';
+import { USER_HTTP_OPTIONS } from '../runtimeOptions';
 
 /**
  * HTTP `fetchQuotes`（GET ?items=market:symbol:currency,market:symbol:currency,...）：
@@ -13,7 +12,7 @@ const REGION = 'asia-east1';
  * 重用 `getOrFetchQuote`（server 端 15min 新鮮度 + sanitize + 寫 quotes/）；逐筆錯誤隔離
  * （單檔失敗回該筆 error，不拖垮整批）。onRequest（非 onCall，對齊 fetchQuote）、cors。
  */
-export const fetchQuotes = onRequest({ region: REGION, cors: true }, async (req, res) => {
+export const fetchQuotes = onRequest(USER_HTTP_OPTIONS, async (req, res) => {
   const parsed = parseBatchInput(req.query as Record<string, unknown>);
   if (!parsed.ok) {
     res.status(400).json({ ok: false, error: parsed.msg });

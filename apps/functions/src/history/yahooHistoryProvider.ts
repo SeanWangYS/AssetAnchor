@@ -46,6 +46,13 @@ const UA = 'Mozilla/5.0 (AssetAnchor)';
 /** Yahoo chart 主機：query1 被 429 時輪替 query2（實測兩者限流獨立；ADR-0010 風險緩解）。 */
 const YAHOO_HOSTS = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'] as const;
 
+/**
+ * Abort a Yahoo request after 8 s (Yahoo normally answers in < 2 s). Without it a hung
+ * upstream call holds the instance until the function timeout; an abort carries no
+ * HTTP status, so it fails the item instead of triggering the 429 fallbacks.
+ */
+export const YAHOO_FETCH_TIMEOUT_MS = 8_000;
+
 /** 打 Yahoo chart 並解析；`expectGranularity` 提供時驗證粒度（fail loud，不回髒資料）。 */
 async function fetchChart(
   ySymbol: string,
@@ -55,7 +62,10 @@ async function fetchChart(
   let res: Response | null = null;
   for (const host of YAHOO_HOSTS) {
     const url = `https://${host}/v8/finance/chart/${encodeURIComponent(ySymbol)}?${params}`;
-    res = await fetch(url, { headers: { 'User-Agent': UA } });
+    res = await fetch(url, {
+      headers: { 'User-Agent': UA },
+      signal: AbortSignal.timeout(YAHOO_FETCH_TIMEOUT_MS),
+    });
     if (res.status !== 429) break; // 只有限流才換主機；其他錯誤直接處理
   }
   if (res === null || !res.ok) {
