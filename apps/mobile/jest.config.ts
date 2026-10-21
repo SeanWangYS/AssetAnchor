@@ -18,6 +18,8 @@ const config: Config = {
     'src/**/quotesBatch.ts',
     'src/**/staleNotice.ts',
     'src/**/portfolioReturn.ts',
+    'src/**/holdingsSort.ts',
+    'src/**/holdingsTable.ts',
   ],
   coverageThreshold: {
     global: { branches: 90, functions: 90, lines: 90, statements: 90 },

@@ -20,8 +20,12 @@ export interface BuildCashFlowsInput {
   displayCurrency: Currency;
   /** FX_USDTWD daily closes (1 USD = N TWD), same shape as price_history `closes`. */
   fxUsdTwdCloses: Readonly<Record<string, string>>;
-  /** Restrict to one symbol (per-symbol returns for the holdings table). */
-  filter?: { market: Market; symbol: string };
+  /**
+   * Restrict to one symbol (per-symbol returns for the holdings table), optionally to a
+   * set of accounts: the account grouping counts only that account's trades, and the
+   * "unassigned" bucket passes every account_id that no longer exists.
+   */
+  filter?: { market: Market; symbol: string; accountIds?: readonly string[] };
 }
 
 /**
@@ -40,6 +44,7 @@ export function buildCashFlows(input: BuildCashFlowsInput): CashFlowsResult {
   const relevant = input.transactions
     .filter((t) => t.transaction_type === 'BUY' || t.transaction_type === 'SELL')
     .filter((t) => !filter || (t.market === filter.market && t.symbol === filter.symbol))
+    .filter((t) => filter?.accountIds === undefined || filter.accountIds.includes(t.account_id))
     .map((t, i) => ({ t, i }))
     // Stable sort by date: same-day flows keep their input order.
     .sort((a, b) =>

@@ -41,25 +41,48 @@ export function computePortfolioReturn(input: PortfolioReturnInput): Performance
   const { hero, displayCurrency, today } = input;
   if (hero === null || hero.pendingCount > 0 || hero.notFoundCount > 0) return null;
 
-  const firstFxYear = earliestYearNeedingFx(input.transactions, displayCurrency);
-  if (firstFxYear !== null) {
-    if (input.fxBackfilling) return null;
-    const thisYear = Number(today.slice(0, 4));
-    for (let y = firstFxYear; y <= thisYear; y++) {
-      if (input.chunks[`${FX_ID}_${y}`] === undefined) return null;
-    }
-  }
-
-  const fxChunks = Object.entries(input.chunks)
-    .filter(([key]) => key.startsWith(`${FX_ID}_`))
-    .map(([, chunk]) => chunk);
+  if (!fxReadyFor(input)) return null;
   const flows = buildCashFlows({
     transactions: input.transactions,
     displayCurrency,
-    fxUsdTwdCloses: mergeChunkCloses(fxChunks),
+    fxUsdTwdCloses: fxUsdTwdClosesOf(input.chunks),
   });
   if (!flows.ok) return null;
   return summarizePerformance(flows.flows, { date: today, amount: hero.valueMoney });
+}
+
+/**
+ * Whether historical FX is complete enough to convert these transactions: when any
+ * trade crosses TWD versus the display currency, every `FX_USDTWD_${year}` chunk from
+ * that trade's year through this year must be loaded and no backfill may be running.
+ * Shared by the bento XIRR and the holdings table's per-row returns.
+ */
+export function fxReadyFor(input: {
+  transactions: readonly TransactionDocument[];
+  chunks: Readonly<Record<string, HistoryChunk>>;
+  fxBackfilling: boolean;
+  displayCurrency: Currency;
+  today: string;
+}): boolean {
+  const firstFxYear = earliestYearNeedingFx(input.transactions, input.displayCurrency);
+  if (firstFxYear === null) return true;
+  if (input.fxBackfilling) return false;
+  const thisYear = Number(input.today.slice(0, 4));
+  for (let y = firstFxYear; y <= thisYear; y++) {
+    if (input.chunks[`${FX_ID}_${y}`] === undefined) return false;
+  }
+  return true;
+}
+
+/** Merged FX_USDTWD closes from the history chunks. */
+export function fxUsdTwdClosesOf(
+  chunks: Readonly<Record<string, HistoryChunk>>,
+): Record<string, string> {
+  return mergeChunkCloses(
+    Object.entries(chunks)
+      .filter(([key]) => key.startsWith(`${FX_ID}_`))
+      .map(([, chunk]) => chunk),
+  );
 }
 
 /** Year of the earliest BUY/SELL whose currency crosses TWD versus the display currency. */
