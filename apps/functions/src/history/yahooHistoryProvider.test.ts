@@ -4,6 +4,7 @@ import {
   toYahooHistorySymbol,
   yahooHistoryProvider,
   INTRADAY_PARAMS,
+  YAHOO_FETCH_TIMEOUT_MS,
 } from './yahooHistoryProvider';
 
 describe('toYahooHistorySymbol', () => {
@@ -87,5 +88,25 @@ describe('yahooHistoryProvider 標的身分護欄（enable-crypto-quotes）', ()
     mockFetchOnce(historyJson());
     const bars = await yahooHistoryProvider.fetchDaily('US', 'AAPL', 0, 86_400);
     expect(bars).toHaveLength(1);
+  });
+});
+
+describe('Yahoo request timeout (functions-scaling-limits)', () => {
+  it('passes an abort signal so a hung request cannot pin the instance', async () => {
+    const spy = jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => historyJson('AAPL'),
+    } as Response);
+    await yahooHistoryProvider.fetchDaily('US', 'AAPL', 0, 86_400);
+    expect(YAHOO_FETCH_TIMEOUT_MS).toBe(8_000);
+    expect(spy.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('a timed-out request fails the item without the 429 range fallback', async () => {
+    const timeout = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    const spy = jest.spyOn(globalThis, 'fetch').mockRejectedValueOnce(timeout);
+    await expect(yahooHistoryProvider.fetchDaily('US', 'AAPL', 0, 86_400)).rejects.toBe(timeout);
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });

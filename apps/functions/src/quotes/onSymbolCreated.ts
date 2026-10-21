@@ -3,8 +3,7 @@ import * as logger from 'firebase-functions/logger';
 import { getOrFetchQuote } from './fetchQuote';
 import { symbolDocToQuoteTarget } from './symbolDocToQuoteTarget';
 import { yahooProvider } from './yahooProvider';
-
-const REGION = 'asia-east1';
+import { BACKGROUND_OPTIONS } from '../runtimeOptions';
 
 /**
  * 事件驅動報價發現（ADR-0006 增補）：`symbols/{symbolId}` 被建立時（新標的首次進場，
@@ -13,7 +12,7 @@ const REGION = 'asia-east1';
  * 抓取失敗 fail-soft（log、不擲，避免觸發器無限重試）；缺/非法欄位則略過。
  */
 export const onSymbolCreatedFetchQuote = onDocumentCreated(
-  { document: 'symbols/{symbolId}', region: REGION },
+  { ...BACKGROUND_OPTIONS, document: 'symbols/{symbolId}' },
   async (event) => {
     const target = symbolDocToQuoteTarget(event.data?.data());
     if (!target) {

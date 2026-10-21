@@ -5,6 +5,7 @@ import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { parseYahooFxRate } from './parseYahooFxRate';
 import { buildDailyRates } from './buildDailyRates';
+import { BACKGROUND_OPTIONS } from '../runtimeOptions';
 
 /**
  * 匯率源：Yahoo v8 chart `TWD=X`（1 USD = N TWD 市場價）。
@@ -13,7 +14,6 @@ import { buildDailyRates } from './buildDailyRates';
  */
 const YAHOO_FX_URL =
   'https://query1.finance.yahoo.com/v8/finance/chart/TWD%3DX?interval=1d&range=1d';
-const REGION = 'asia-east1';
 
 function ensureApp(): void {
   if (getApps().length === 0) initializeApp();
@@ -52,7 +52,7 @@ export async function fetchAndStoreUsdRate(): Promise<{ date: string }> {
 
 /** 每日排程（Asia/Taipei 09:30；外匯近全天候，取當下最新市場價，design D4）。 */
 export const scheduledUsdRate = onSchedule(
-  { schedule: '30 9 * * *', timeZone: 'Asia/Taipei', region: REGION },
+  { ...BACKGROUND_OPTIONS, schedule: '30 9 * * *', timeZone: 'Asia/Taipei' },
   async () => {
     const r = await fetchAndStoreUsdRate();
     logger.info('exchange rate stored', r);
@@ -63,7 +63,7 @@ export const scheduledUsdRate = onSchedule(
  * 手動觸發端點（emulator 驗證 / 正式環境初次 seed 用）。寫入內容與排程相同。
  * 僅寫公開的 `exchange_rates`（資料源 Yahoo、idempotent），不碰任何使用者資料。
  */
-export const seedUsdRate = onRequest({ region: REGION }, async (_req, res) => {
+export const seedUsdRate = onRequest(BACKGROUND_OPTIONS, async (_req, res) => {
   try {
     const r = await fetchAndStoreUsdRate();
     res.json({ ok: true, ...r });

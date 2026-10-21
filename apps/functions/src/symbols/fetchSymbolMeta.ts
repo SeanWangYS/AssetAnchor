@@ -11,8 +11,7 @@ import {
   type Currency,
 } from '@assetanchor/shared';
 import { yahooSymbolMetaProvider, type SymbolMetaProvider } from './symbolMetaProvider';
-
-const REGION = 'asia-east1';
+import { USER_HTTP_OPTIONS } from '../runtimeOptions';
 
 function ensureApp(): void {
   if (getApps().length === 0) initializeApp();
@@ -119,7 +118,7 @@ export async function upsertSymbolMeta(
  * 顯示缺名稱時以 `fetch()` 觸發；後端抓 Yahoo metadata 並 upsert 共用 `symbols/{symbolId}`。
  * 採 onRequest（非 onCall）以免 mobile 需 RNFirebase functions 原生模組——對齊 fetchQuote。
  */
-export const fetchSymbolMeta = onRequest({ region: REGION, cors: true }, async (req, res) => {
+export const fetchSymbolMeta = onRequest(USER_HTTP_OPTIONS, async (req, res) => {
   const parsed = parseInput(req.query as Record<string, unknown>);
   if (!parsed.ok) {
     res.status(400).json({ ok: false, error: parsed.msg });
