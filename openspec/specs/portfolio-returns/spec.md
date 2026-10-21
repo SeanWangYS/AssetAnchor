@@ -8,7 +8,7 @@
 
 ### Requirement: 現金流建構（含交易日歷史匯率）
 
-`packages/shared` SHALL 匯出純函式，由交易事件流（`TransactionDocument[]`）產生依日期排序的現金流：`BUY` 為負、`SELL` 為正，金額 SHALL 為 `transactionTotalWithFees(tx)`（與持倉推導同一口徑：買入含手續費與稅、賣出扣除手續費與稅）。非 `BUY`/`SELL` 類型 SHALL 忽略。每筆 SHALL 以**該筆交易日**的歷史匯率換成顯示幣別：`USD`↔`TWD` 取 `FX_USDTWD` 日線（1 USD = N TWD）；交易日無收盤（休市）SHALL 取該日之前最近一筆（forward-fill）；之前完全無資料時 SHALL 取該日之後最近一筆；`USDT` SHALL 1:1 釘 `USD`（與 `buildPortfolioSeries` 一致）。需要換匯但匯率日線為空時 SHALL 回報「匯率未就緒」（由呼叫端顯示「—」），SHALL NOT 以最新匯率冒充。函式 SHALL 支援依 `(market, symbol)` 篩選，以產生個股現金流。所有金額運算 SHALL 用 `Money`。
+`packages/shared` SHALL 匯出純函式，由交易事件流（`TransactionDocument[]`）產生依日期排序的現金流：`BUY` 為負、`SELL` 為正，金額 SHALL 為 `transactionTotalWithFees(tx)`（與持倉推導同一口徑：買入含手續費與稅、賣出扣除手續費與稅）。非 `BUY`/`SELL` 類型 SHALL 忽略。每筆 SHALL 以**該筆交易日**的歷史匯率換成顯示幣別：`USD`↔`TWD` 取 `FX_USDTWD` 日線（1 USD = N TWD）；交易日無收盤（休市）SHALL 取該日之前最近一筆（forward-fill）；之前完全無資料時 SHALL 取該日之後最近一筆；`USDT` SHALL 1:1 釘 `USD`（與 `buildPortfolioSeries` 一致）。需要換匯但匯率日線為空時 SHALL 回報「匯率未就緒」（由呼叫端顯示「—」），SHALL NOT 以最新匯率冒充。函式 SHALL 支援依 `(market, symbol)` 篩選，以產生個股現金流；並 SHALL 支援依**一組 `account_id`** 篩選（與 symbol 篩選可併用），供持股表格「帳戶」分組只計該帳戶交易——「未分類」群以「不屬於任何現存帳戶的 `account_id` 集合」表示。所有金額運算 SHALL 用 `Money`。
 
 #### Scenario: 台股買賣的現金流
 
@@ -34,6 +34,11 @@
 
 - **WHEN** 指定 `(TW, 2330)`
 - **THEN** 只回傳 2330 的現金流
+
+#### Scenario: 依帳戶篩選
+
+- **WHEN** 2330 在帳戶 A 與帳戶 B 各有買入，指定 `(TW, 2330)` 且帳戶集合為 `[A]`
+- **THEN** 只回傳帳戶 A 的 2330 現金流
 
 ### Requirement: XIRR 求解（全程 decimal.js）
 
