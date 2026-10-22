@@ -66,6 +66,6 @@
 ## 10. DoD 與交付
 
 - [x] 10.1 `pnpm -r typecheck`、`pnpm -r lint`、`pnpm exec prettier --check .`、`pnpm --filter @assetanchor/shared test:coverage`、functions 測試、rules 測試全綠
-- [ ] 10.2 開 PR（高風險：schema／安全／部署，owner merge），PR 內列出 owner gate 清單：審 `oauth_store` schema 與 ADR-0011、建立 secrets、設定 TTL policy、確認 Auth 授權網域、部署 hosting／functions／rules
-- [ ] 10.3 owner 部署後，在 claude.ai 新增 connector 完成授權與三個工具驗收；Hosting 登入頁瀏覽器目視驗收
-- [ ] 10.4 `/opsx:archive`，同步 specs；更新 planning §6 整體結構與 §7 rules 段落
+- [x] 10.2 開 PR（高風險：schema／安全／部署，owner merge），PR 內列出 owner gate 清單：審 `oauth_store` schema 與 ADR-0011、建立 secrets、設定 TTL policy、確認 Auth 授權網域、部署 hosting／functions／rules
+- [ ] 10.3 （owner，PR #88）owner 部署後，在 claude.ai 新增 connector 完成授權與三個工具驗收；Hosting 登入頁瀏覽器目視驗收
+- [x] 10.4 `/opsx:archive`，同步 specs；更新 planning §6 整體結構與 §7 rules 段落
