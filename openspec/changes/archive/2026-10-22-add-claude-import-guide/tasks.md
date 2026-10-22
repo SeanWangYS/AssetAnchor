@@ -8,6 +8,6 @@
 
 - [x] 2.1 typecheck、lint、prettier、mobile 測試全綠
 - [x] 2.2 iOS Simulator 截圖對照 spec（入口列、子頁全頁、分享面板）
-- [ ] 2.3 開 PR（UI，owner 對圖並 merge）
-- [ ] 2.4 （owner）視覺對圖確認
-- [ ] 2.5 `/opsx:archive`
+- [x] 2.3 開 PR（UI，owner 對圖並 merge）
+- [ ] 2.4 （owner，PR #91）視覺對圖確認
+- [x] 2.5 `/opsx:archive`
