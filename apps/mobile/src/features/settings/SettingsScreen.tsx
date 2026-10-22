@@ -18,7 +18,8 @@ function rowChevron() {
  *
  * 由上到下：
  * 1. 「登入帳號」card —— AABrandLockup（圓環錨點品牌）+ 使用者 email。
- * 2. 分組清單：帳戶（帳戶管理 / 現金餘額（合計））/ 帳號（個人資料）/ 其他（關於），列尾 chevron。
+ * 2. 分組清單：帳戶（帳戶管理 / 現金餘額（合計））/ 帳號（個人資料）/ 工具（用 Claude 匯入交易）/
+ *    其他（關於），列尾 chevron。
  *    （顯示幣別切換已移至持倉頁＝偏好控制；原「顯示偏好」子頁移除。）
  * 3. 破壞性「登出」 → 置中 ConfirmDialog（破壞性紅，auth-flow-spec §6）。
  *
@@ -75,6 +76,17 @@ export default function SettingsScreen({ navigation }: SettingsStackScreenProps<
             right={rowChevron()}
             divider={false}
             onPress={() => navigation.navigate('Profile')}
+          />
+        </View>
+
+        {/* 工具：外部整合（claude-import-spec §2） */}
+        <Text style={styles.groupLabel}>工具</Text>
+        <View style={styles.group}>
+          <ListItem
+            title="用 Claude 匯入交易"
+            right={rowChevron()}
+            divider={false}
+            onPress={() => navigation.navigate('ClaudeImport')}
           />
         </View>
 
