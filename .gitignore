@@ -36,6 +36,8 @@ google-services.json
 !apps/web/.env.emulator
 !apps/web/.env.integration
 !apps/functions/.env.demo-assetanchor
+# Public MCP issuer URL for production (docs/runbook/mcp-operations.md); not a secret.
+!apps/functions/.env.assetanchor-832df
 
 # OS
 .DS_Store

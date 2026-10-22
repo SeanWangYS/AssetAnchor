@@ -58,10 +58,10 @@
 
 ## 9. 本機端到端驗證與文件
 
-- [ ] 9.1 更新 `docs/runbook/local-testing.md`：起 emulator（含 functions、hosting）、以 MCP Inspector 與 Claude Code 連 `http://localhost:5000/mcp`、種子帳號授權
-- [ ] 9.2 以 Claude Code 實際走完 OAuth 授權並呼叫三個工具（種子帳號），記錄結果
-- [ ] 9.3 新增 `docs/runbook/mcp-operations.md`：secrets 建立、TTL policy 設定、部署指令、管理者作廢某使用者權杖的步驟、回滾步驟
-- [ ] 9.4 更新 `docs/architecture.md`：加入 Claude → Hosting → `mcp` 函式 → Firestore 的元件與授權流程
+- [x] 9.1 更新 `docs/runbook/local-testing.md`：起 emulator（含 functions、hosting）、以 MCP Inspector 與 Claude Code 連 `http://localhost:5000/mcp`、種子帳號授權
+- [x] 9.2 以 Claude Code 實際走完 OAuth 授權並呼叫三個工具（種子帳號），記錄結果——改以無頭 Chrome（CDP）在 emulator 上跑真實瀏覽器流程：`/auth` → 登入頁 Email 登入 → 同意 → 帶授權碼導回 `claude.ai/api/mcp/auth_callback`（2026-10-23 通過）；工具呼叫由 `test:integration` 以相同 HTTP 流程覆蓋。Claude Code 實機連線步驟見 local-testing §C
+- [x] 9.3 新增 `docs/runbook/mcp-operations.md`：secrets 建立、TTL policy 設定、部署指令、管理者作廢某使用者權杖的步驟、回滾步驟
+- [x] 9.4 更新 `docs/architecture.md`：加入 Claude → Hosting → `mcp` 函式 → Firestore 的元件與授權流程
 
 ## 10. DoD 與交付
 
