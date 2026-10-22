@@ -158,3 +158,51 @@ export function findImportOversells(
   }
   return [...issues.values()].sort((a, b) => a.index - b.index);
 }
+
+/** A SELL that oversells only after a change; amounts are 10dp decimal strings. */
+export interface NewOversell {
+  transaction_id: string;
+  sellable: string;
+  requested: string;
+}
+
+type IdentifiedRow = ImportRow & { transaction_id: string };
+
+/** Replays rows per account lot and returns every overselling SELL with its shortfall. */
+function oversells(rows: readonly IdentifiedRow[]): Map<string, NewOversell> {
+  const byLot = new Map<string, IdentifiedRow[]>();
+  for (const r of rows) byLot.set(lotKey(r), [...(byLot.get(lotKey(r)) ?? []), r]);
+  const found = new Map<string, NewOversell>();
+  for (const lot of byLot.values()) {
+    const currency = lot[0]?.currency;
+    if (!currency) continue;
+    let held = Money.zero(currency);
+    for (const r of sortTransactionsChronologically(lot)) {
+      const q = new Money(r.quantity, currency);
+      if (r.transaction_type === 'BUY') held = held.add(q);
+      else if (r.transaction_type === 'SELL') {
+        if (q.compareTo(held) > 0) {
+          found.set(r.transaction_id, {
+            transaction_id: r.transaction_id,
+            sellable: held.toDecimalString(),
+            requested: q.toDecimalString(),
+          });
+          held = Money.zero(currency);
+        } else held = held.subtract(q);
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * SELLs that oversell after a change (edit or delete) but did not before (spec
+ * transaction-import). Pre-existing data problems are not attributed to the change.
+ */
+export function findNewOversells(
+  before: readonly IdentifiedRow[],
+  after: readonly IdentifiedRow[],
+): NewOversell[] {
+  const was = oversells(before);
+  return [...oversells(after).values()].filter((o) => !was.has(o.transaction_id));
+}

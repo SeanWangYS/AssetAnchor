@@ -1,6 +1,7 @@
 import {
   findDuplicates,
   findImportOversells,
+  findNewOversells,
   transactionDuplicateKey,
   type ImportRow,
 } from './importChecks.js';
@@ -133,6 +134,43 @@ describe('findImportOversells', () => {
     const existing = [row({ transaction_type: 'SELL', quantity: '5' })];
     expect(
       findImportOversells(existing, [row({ transaction_date: '2025-05-01', quantity: '1' })]),
+    ).toEqual([]);
+  });
+});
+
+describe('findNewOversells', () => {
+  const t = (id: string, over: Partial<ImportRow> = {}) => ({ ...row(over), transaction_id: id });
+  const buy = t('buy', { quantity: '1000' });
+  const sell = t('sell', {
+    transaction_date: '2025-03-01',
+    transaction_type: 'SELL',
+    quantity: '1000',
+  });
+
+  it('reports a later sell left uncovered by deleting a buy', () => {
+    expect(findNewOversells([buy, sell], [sell])).toEqual([
+      { transaction_id: 'sell', sellable: '0.0000000000', requested: '1000.0000000000' },
+    ]);
+  });
+
+  it('never flags deleting a sell', () => {
+    expect(findNewOversells([buy, sell], [buy])).toEqual([]);
+  });
+
+  it('reports shrinking a buy below later sells', () => {
+    expect(findNewOversells([buy, sell], [{ ...buy, quantity: '400' }, sell])).toEqual([
+      { transaction_id: 'sell', sellable: '400.0000000000', requested: '1000.0000000000' },
+    ]);
+  });
+
+  it('reports moving a buy to another account', () => {
+    expect(findNewOversells([buy, sell], [{ ...buy, account_id: 'acc-b' }, sell])).toHaveLength(1);
+  });
+
+  it('ignores oversells that already existed', () => {
+    const broken = t('broken', { symbol: '2317', transaction_type: 'SELL', quantity: '5' });
+    expect(
+      findNewOversells([buy, sell, broken], [buy, sell, broken, t('new', { symbol: '2454' })]),
     ).toEqual([]);
   });
 });
