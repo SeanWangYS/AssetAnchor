@@ -64,3 +64,10 @@ describe('runtime limits', () => {
     }
   });
 });
+
+describe('App Check mode', () => {
+  it('rejects unverified requests in production', async () => {
+    const { APP_CHECK_MODE } = await import('./runtimeOptions');
+    expect(APP_CHECK_MODE).toBe('enforce');
+  });
+});
