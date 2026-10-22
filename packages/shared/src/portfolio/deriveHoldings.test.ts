@@ -3,6 +3,7 @@ import {
   deriveHoldingsSafe,
   deriveRealizedEvents,
   sellableQuantity,
+  sortTransactionsChronologically,
 } from './deriveHoldings.js';
 import { buildTransactionDoc } from '../transactions/buildTransactionDoc.js';
 import { InvalidMoneyValueError } from '../money/index.js';
@@ -551,5 +552,45 @@ describe('deriveHoldings — 缺欄位 fail-soft（pre-ADR-0005 舊 doc）', () 
     expect(() => deriveHoldings([broken as unknown as TransactionDocument])).not.toThrow();
     // 缺 quantity → 0 股 → qty=0 不列入持倉。
     expect(deriveHoldings([broken as unknown as TransactionDocument])).toHaveLength(0);
+  });
+});
+
+describe('sortTransactionsChronologically（add-mcp-transaction-import D4）', () => {
+  const row = (id: string, date: string, type: 'BUY' | 'SELL') => ({
+    id,
+    transaction_date: date,
+    transaction_type: type,
+  });
+
+  it('orders by date, then BUY before SELL on the same day, keeping input order within a type', () => {
+    const sorted = sortTransactionsChronologically([
+      row('s1', '2025-01-02', 'SELL'),
+      row('b0', '2025-01-01', 'BUY'),
+      row('b1', '2025-01-02', 'BUY'),
+      row('s2', '2025-01-02', 'SELL'),
+      row('b2', '2025-01-02', 'BUY'),
+    ]);
+    expect(sorted.map((r) => r.id)).toEqual(['b0', 'b1', 'b2', 's1', 's2']);
+  });
+
+  it('lets a same-day round trip (day trade) derive without an oversell error', () => {
+    const sell = tx('SELL', {
+      symbol: '2330',
+      market: 'TW',
+      currency: 'TWD',
+      quantity: '1000',
+      price: '600',
+      date: '2025-03-03',
+    });
+    const buy = tx('BUY', {
+      symbol: '2330',
+      market: 'TW',
+      currency: 'TWD',
+      quantity: '1000',
+      price: '580',
+      date: '2025-03-03',
+    });
+    expect(deriveHoldings([sell, buy])).toEqual([]);
+    expect(deriveRealizedEvents([sell, buy])).toHaveLength(1);
   });
 });

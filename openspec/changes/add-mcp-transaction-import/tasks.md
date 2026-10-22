@@ -1,12 +1,12 @@
 ## 1. shared：時序、重複與超賣（TDD）
 
-- [ ] 1.1 先寫測試：`sortTransactionsChronologically` 同日 BUY 先於 SELL、同類型維持輸入順序；`deriveHoldings` 當沖案例不擲錯
-- [ ] 1.2 抽出並 export 排序函式，`deriveHoldings`／`deriveRealizedEvents` 改用它，既有測試全綠
-- [ ] 1.3 先寫測試：`transactionDuplicateKey` 正規化、`findDuplicates`（既有、同批）
-- [ ] 1.4 實作重複判定
-- [ ] 1.5 先寫測試：`findImportOversells`（只賣超賣、先買後賣、當沖、既有異常不歸咎、跨帳戶不互抵、跨幣別不互抵）
-- [ ] 1.6 實作批次超賣檢查
-- [ ] 1.7 `TransactionDocument` 新增選填 `source`、`import_batch_id`，shared coverage gate 綠
+- [x] 1.1 先寫測試：`sortTransactionsChronologically` 同日 BUY 先於 SELL、同類型維持輸入順序；`deriveHoldings` 當沖案例不擲錯
+- [x] 1.2 抽出並 export 排序函式，`deriveHoldings`／`deriveRealizedEvents` 改用它，既有測試全綠
+- [x] 1.3 先寫測試：`transactionDuplicateKey` 正規化、`findDuplicates`（既有、同批）
+- [x] 1.4 實作重複判定
+- [x] 1.5 先寫測試：`findImportOversells`（只賣超賣、先買後賣、當沖、既有異常不歸咎、跨帳戶不互抵、跨幣別不互抵）
+- [x] 1.6 實作批次超賣檢查
+- [x] 1.7 `TransactionDocument` 新增選填 `source`、`import_batch_id`，shared coverage gate 綠
 
 ## 2. MCP 匯入工具
 
