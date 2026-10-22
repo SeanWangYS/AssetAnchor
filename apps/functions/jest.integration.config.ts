@@ -9,6 +9,8 @@ const config: Config = {
   ...base,
   testMatch: ['<rootDir>/src/**/*.integration.ts'],
   testTimeout: 30000,
+  // Suites share the emulators' oauth_store; the adapter suite clears it between tests.
+  maxWorkers: 1,
 };
 
 export default config;
