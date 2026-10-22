@@ -8,7 +8,7 @@ import { colors, gradientDirection, gradients, radius, spacing } from '../theme'
  * Card —— fintech 卡面（aa-core.jsx:163）。
  * cardSurface 漸層（160deg 極淡白疊在 screen 上）+ 1px 邊 + 柔外陰影。
  * 頂部 1px 內高光（RN 無 inset shadow，以頂部 hairline overlay 近似）。
- * `glow`：強調卡（總報酬率 / 計算預覽 / donut）的 accent 色光暈陰影。
+ * `glow`：強調卡（未實現報酬率 / 計算預覽 / donut）的 accent 色光暈陰影。
  */
 interface CardProps {
   children: ReactNode;
