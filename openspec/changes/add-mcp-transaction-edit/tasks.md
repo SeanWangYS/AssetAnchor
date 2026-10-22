@@ -1,7 +1,7 @@
 ## 1. shared（TDD）
 
-- [ ] 1.1 先寫測試：`findNewOversells`（刪除較早買入、刪除賣出、修改改小買入、換帳戶、既有異常不算）
-- [ ] 1.2 實作 `findNewOversells`，coverage gate 綠
+- [x] 1.1 先寫測試：`findNewOversells`（刪除較早買入、刪除賣出、修改改小買入、換帳戶、既有異常不算）
+- [x] 1.2 實作 `findNewOversells`，coverage gate 綠
 
 ## 2. MCP 修改與刪除工具
 
