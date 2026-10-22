@@ -1,0 +1,187 @@
+/* Mirrors the app's dark theme tokens (apps/mobile/src/core/theme). */
+:root {
+  --page: #0a0c10;
+  --screen: #0e1117;
+  --surface: rgba(255, 255, 255, 0.04);
+  --divider: rgba(255, 255, 255, 0.09);
+  --text: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.62);
+  --text-weak: rgba(255, 255, 255, 0.42);
+  --accent: #7c6cf0;
+  --error: #ff5e62;
+  --font-body: 'Noto Sans TC', 'PingFang TC', system-ui, sans-serif;
+  --font-brand: 'Nunito', 'Noto Sans TC', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(124, 108, 240, 0.18), transparent 60%), var(--page);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 24px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--screen);
+  border: 1px solid var(--divider);
+  border-radius: 20px;
+  padding: 28px 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  font-family: var(--font-brand);
+  font-weight: 900;
+}
+
+.brand-name {
+  font-family: var(--font-brand);
+  font-weight: 800;
+  font-size: 18px;
+}
+
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+h1 {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.4;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.muted {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.note {
+  color: var(--text-weak);
+  font-size: 13px;
+  margin: 0;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--divider);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+input:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--divider);
+  color: var(--text);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-weak);
+  font-size: 13px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--divider);
+}
+
+.error {
+  color: var(--error);
+  font-size: 13px;
+  margin: 0;
+}
+
+.scopes {
+  margin: 0;
+  padding: 12px 16px 12px 32px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+[hidden] {
+  display: none !important;
+}

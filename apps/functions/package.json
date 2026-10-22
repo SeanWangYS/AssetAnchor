@@ -7,7 +7,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint 'src/**/*.ts'",
     "test": "jest",
-    "build": "tsup"
+    "build": "tsup",
+    "test:integration": "pnpm build && pnpm --filter @assetanchor/web build:integration && firebase --config ../../firebase.integration.json emulators:exec --project demo-assetanchor --only auth,firestore,functions,hosting \"jest -c jest.integration.config.ts\""
   },
   "engines": {
     "node": "22"

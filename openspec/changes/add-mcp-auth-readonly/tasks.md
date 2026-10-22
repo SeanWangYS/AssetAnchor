@@ -30,14 +30,14 @@
 - [x] 5.2 設定 `oidc-provider`：DCR（無 initial access token、redirect URI 只收 https 與 localhost）、強制 S256 PKCE、`resourceIndicators`（opaque、綁 MCP resource、scope `transactions.read`）、存取權杖 1h、refresh 輪替且絕對期限 30 天、授權碼 10 分鐘、關閉 `devInteractions`
 - [x] 5.3 實作互動路由：`/interaction/:uid`（導向登入頁）、`/interaction/:uid/firebase`（CORS 限 Hosting、`verifyIdToken`、寫 `FirebaseLogin` 一次性紀錄）、`/interaction/:uid/confirm`（建立 Grant、`interactionFinished`）、`/interaction/:uid/abort`（`access_denied`）
 - [x] 5.4 註冊端點加上以 IP 計數的簡單頻率限制
-- [ ] 5.5 以 supertest 對 emulator 寫整合測試，涵蓋 `mcp-authorization` 每個 scenario（metadata、DCR 合法／不合法、缺 PKCE、授權碼重用、偽造 ID token、拒絕、過期、續期輪替、30 天上限、管理者作廢）
+- [x] 5.5 以 supertest 對 emulator 寫整合測試，涵蓋 `mcp-authorization` 每個 scenario（metadata、DCR 合法／不合法、缺 PKCE、授權碼重用、偽造 ID token、拒絕、過期、續期輪替、30 天上限、管理者作廢）
 
 ## 6. 登入頁 `apps/web`
 
-- [ ] 6.1 建立 workspace `@assetanchor/web`（Vite + TypeScript、eslint、prettier、`typecheck`／`lint`／`build` scripts），確認 `pnpm -r typecheck`、`pnpm -r lint` 涵蓋
-- [ ] 6.2 實作 `connect` 頁：讀 `interaction` 參數、Email／密碼與 Google 登入（Firebase Web SDK modular）、emulator 模式連 Auth emulator、繁中錯誤訊息
-- [ ] 6.3 實作同意畫面：說明「Claude 將可讀取你的帳戶與交易」、「允許」／「拒絕」，套用 App theme 配色與字型
-- [ ] 6.4 `firebase.json` 新增 `hosting`（public `apps/web/dist`、predeploy build、`/mcp` 與 `/.well-known/oauth-protected-resource/**` rewrite 到 `mcp`、asia-east1）與 Hosting emulator port
+- [x] 6.1 建立 workspace `@assetanchor/web`（Vite + TypeScript、eslint、prettier、`typecheck`／`lint`／`build` scripts），確認 `pnpm -r typecheck`、`pnpm -r lint` 涵蓋
+- [x] 6.2 實作 `connect` 頁：讀 `interaction` 參數、Email／密碼與 Google 登入（Firebase Web SDK modular）、emulator 模式連 Auth emulator、繁中錯誤訊息
+- [x] 6.3 實作同意畫面：說明「Claude 將可讀取你的帳戶與交易」、「允許」／「拒絕」，套用 App theme 配色與字型
+- [x] 6.4 `firebase.json` 新增 `hosting`（public `apps/web/dist`、predeploy build、`/mcp` 與 `/.well-known/oauth-protected-resource/**` rewrite 到 `mcp`、asia-east1）與 Hosting emulator port
 
 ## 7. MCP 端點
 
@@ -54,7 +54,7 @@
 - [x] 8.5 實作 `list_accounts`（啟用篩選、`display_order` 排序、無帳戶提示）
 - [x] 8.6 實作 `list_transactions`（D6 查詢策略、decimal string 原樣輸出、他人帳戶 ID 回「找不到帳戶」）
 - [x] 8.7 實作 `search_symbol`（直接查、前綴查、使用者 symbol 名稱比對，不建立 symbol）
-- [ ] 8.8 以 emulator 寫工具整合測試，涵蓋 `mcp-server` 每個 scenario（含跨使用者存取、作廢後 401、`tools/list` 只讀標記）
+- [x] 8.8 以 emulator 寫工具整合測試，涵蓋 `mcp-server` 每個 scenario（含跨使用者存取、作廢後 401、`tools/list` 只讀標記）
 
 ## 9. 本機端到端驗證與文件
 

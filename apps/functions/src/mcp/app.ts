@@ -84,13 +84,18 @@ export function buildMcpApp({ config, provider, adapter, db, verifyIdToken }: Mc
   const providerCallback = provider.callback();
   app.get('/.well-known/oauth-authorization-server', (req, res) => {
     req.url = '/.well-known/openid-configuration';
+    // Keep originalUrl consistent so the provider derives the same mount path.
+    req.originalUrl = `${config.pathPrefix}${req.url}`;
     void providerCallback(req, res);
   });
 
   app.use(interactionRouter({ provider, config, adapter, verifyIdToken }));
 
   // Open registration is unauthenticated: throttle it and pin redirect URIs (spec DCR).
-  const allowRegistration = createRateLimiter({ limit: 10, windowMs: 60_000 });
+  const allowRegistration = createRateLimiter({
+    limit: config.registrationLimit,
+    windowMs: 60_000,
+  });
   app.post('/reg', (req: Request, res: Response, next: NextFunction) => {
     if (!allowRegistration(req.ip ?? 'unknown', Date.now())) {
       res.status(429).json({ error: 'slow_down', error_description: 'Too many registrations' });

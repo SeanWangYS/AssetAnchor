@@ -13,6 +13,7 @@ describe('resolveMcpConfig', () => {
       hostingOrigin: 'http://127.0.0.1:5002',
       resourceUrl: 'http://127.0.0.1:5002/mcp',
       connectUrl: 'http://127.0.0.1:5002/connect',
+      registrationLimit: 10,
     });
   });
 
@@ -39,7 +40,16 @@ describe('resolveMcpConfig', () => {
       hostingOrigin: 'https://assetanchor-832df.web.app',
       resourceUrl: 'https://assetanchor-832df.web.app/mcp',
       connectUrl: 'https://assetanchor-832df.web.app/connect',
+      registrationLimit: 10,
     });
+  });
+
+  it('reads a positive registration limit and ignores junk', () => {
+    const base = { FUNCTIONS_EMULATOR: 'true', GCLOUD_PROJECT: 'p' };
+    expect(resolveMcpConfig({ ...base, MCP_REGISTRATION_LIMIT: '500' }).registrationLimit).toBe(
+      500,
+    );
+    expect(resolveMcpConfig({ ...base, MCP_REGISTRATION_LIMIT: '-1' }).registrationLimit).toBe(10);
   });
 
   it('refuses to run in production without an https issuer', () => {

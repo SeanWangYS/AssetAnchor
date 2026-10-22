@@ -13,6 +13,8 @@ export interface McpConfig {
   resourceUrl: string;
   /** Login and consent page. */
   connectUrl: string;
+  /** Client registrations allowed per IP per minute on one instance. */
+  registrationLimit: number;
 }
 
 export type McpEnv = Partial<
@@ -21,12 +23,20 @@ export type McpEnv = Partial<
     | 'GCLOUD_PROJECT'
     | 'MCP_ISSUER_URL'
     | 'MCP_EMULATOR_FUNCTIONS_ORIGIN'
-    | 'MCP_EMULATOR_HOSTING_ORIGIN',
+    | 'MCP_EMULATOR_HOSTING_ORIGIN'
+    | 'MCP_REGISTRATION_LIMIT',
     string
   >
 >;
 
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
+
+const DEFAULT_REGISTRATION_LIMIT = 10;
+
+function registrationLimit(raw: string | undefined): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : DEFAULT_REGISTRATION_LIMIT;
+}
 
 /** Resolves the MCP URLs from the runtime environment; throws on a misconfigured production. */
 export function resolveMcpConfig(env: McpEnv): McpConfig {
@@ -44,6 +54,7 @@ export function resolveMcpConfig(env: McpEnv): McpConfig {
       hostingOrigin,
       resourceUrl: `${hostingOrigin}/mcp`,
       connectUrl: `${hostingOrigin}/connect`,
+      registrationLimit: registrationLimit(env.MCP_REGISTRATION_LIMIT),
     };
   }
 
@@ -59,6 +70,7 @@ export function resolveMcpConfig(env: McpEnv): McpConfig {
     hostingOrigin,
     resourceUrl: `${hostingOrigin}/mcp`,
     connectUrl: `${hostingOrigin}/connect`,
+    registrationLimit: registrationLimit(env.MCP_REGISTRATION_LIMIT),
   };
 }
 

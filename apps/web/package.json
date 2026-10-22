@@ -1,0 +1,21 @@
+{
+  "name": "@assetanchor/web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint 'src/**/*.ts'",
+    "build:emulator": "vite build --mode emulator",
+    "build:integration": "vite build --mode integration"
+  },
+  "dependencies": {
+    "firebase": "12.19.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "8.3.4"
+  }
+}
