@@ -66,16 +66,24 @@ interface AuthorizeOptions {
   idToken: string;
   challenge?: string | undefined;
   deny?: boolean;
+  /** Requested scope; null omits the parameter. */
+  scope?: string | null;
 }
 
 /** Runs /auth → login → consent and returns the final redirect URL back to the client. */
-export async function authorize({ clientId, idToken, challenge, deny }: AuthorizeOptions) {
+export async function authorize({
+  clientId,
+  idToken,
+  challenge,
+  deny,
+  scope = 'transactions.read transactions.write offline_access',
+}: AuthorizeOptions) {
   const jar = new Jar();
   const url = new URL(`${FN}/auth`);
   url.searchParams.set('client_id', clientId);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('redirect_uri', REDIRECT_URI);
-  url.searchParams.set('scope', 'transactions.read offline_access');
+  if (scope !== null) url.searchParams.set('scope', scope);
   url.searchParams.set('resource', RESOURCE);
   url.searchParams.set('state', 'st');
   url.searchParams.set('prompt', 'consent');

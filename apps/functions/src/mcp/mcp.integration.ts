@@ -134,7 +134,7 @@ describe('mcp-authorization', () => {
     expect(await res.json()).toMatchObject({
       resource: RESOURCE,
       authorization_servers: [FN],
-      scopes_supported: ['transactions.read'],
+      scopes_supported: ['transactions.read', 'transactions.write'],
     });
   });
 
@@ -212,6 +212,26 @@ describe('mcp-authorization', () => {
     expect(reused.body.error).toBe('invalid_grant');
   });
 
+  it('grants every connector scope when the client omits scope', async () => {
+    const { body } = await register();
+    const { verifier, challenge } = pkce();
+    const back = await authorize({
+      clientId: body.client_id ?? '',
+      idToken: alice.idToken,
+      challenge,
+      scope: null,
+    });
+    const res = await token({
+      grant_type: 'authorization_code',
+      code: back.searchParams.get('code') ?? '',
+      code_verifier: verifier,
+      client_id: body.client_id ?? '',
+      redirect_uri: REDIRECT_URI,
+      resource: RESOURCE,
+    });
+    expect(res.body.scope?.split(' ').sort()).toEqual(['transactions.read', 'transactions.write']);
+  });
+
   it('rejects a reused authorization code', async () => {
     const c = await connect(alice.idToken);
     const again = await token({
@@ -263,18 +283,20 @@ describe('mcp-authorization', () => {
 });
 
 describe('mcp-server', () => {
-  it('lists exactly the three read-only tools', async () => {
+  it('marks the read tools read-only and create_transactions as a write', async () => {
     const { message } = await mcp(aliceToken, 'tools/list');
     const tools = message.result.tools as {
       name: string;
       annotations: { readOnlyHint: boolean };
     }[];
-    expect(tools.map((t) => t.name).sort()).toEqual([
-      'list_accounts',
-      'list_transactions',
-      'search_symbol',
-    ]);
-    expect(tools.every((t) => t.annotations.readOnlyHint)).toBe(true);
+    const byName = Object.fromEntries(tools.map((t) => [t.name, t.annotations.readOnlyHint]));
+    expect(byName).toMatchObject({
+      list_accounts: true,
+      list_transactions: true,
+      search_symbol: true,
+      validate_transactions: true,
+      create_transactions: false,
+    });
   });
 
   it('lists active accounts in display order', async () => {

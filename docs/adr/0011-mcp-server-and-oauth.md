@@ -22,8 +22,9 @@ MCP TypeScript SDK v2 已把授權伺服器 helper（`mcpAuthRouter` 等）移�
 3. **授權伺服器採 `oidc-provider`**（panva，OpenID 認證實作）：DCR、強制 S256 PKCE、`resourceIndicators`（權杖綁定 MCP 端點、opaque）、refresh 輪替。身分由 Firebase Auth 確認（與 App 同 uid），授權伺服器以 Admin SDK `verifyIdToken` 驗證登入頁送回的 ID token，不信任頁面傳入的 uid。
 4. **網域配置**：使用者看得到的都在 Firebase Hosting（connector `https://assetanchor-832df.web.app/mcp`、登入頁 `/connect`）；授權伺服器掛在函式的 Cloud Run 網址根路徑（issuer）。原因：Hosting rewrite 只轉送 `__session` cookie，而 OAuth 互動需要多個 cookie；`cloudfunctions.net/mcp` 帶路徑前綴，RFC 8414 metadata 會落在我們控制不到的網域根目錄。
 5. **權杖存放**：隨機不透明權杖，存在後端專用集合 `oauth_store`（rules 全拒、Firestore TTL 清除）。存取權杖 1 小時，refresh 最長 30 天。使用者以「在 Claude 移除 connector」收回授權，管理者可依 runbook 作廢某使用者的所有權杖。
-6. **安全護欄**：所有工具只存取權杖 uid 的資料；金額以 decimal string 原樣進出（ADR-0005）；破壞性工具（change 3）一律兩段式確認、只接受 ID、單次上限 20 筆；任何造成超賣的寫入整批拒絕。
-7. **分期**：change 1 登入與只讀工具 → change 2 匯入交易（`source`、`import_batch_id`）→ change 3 修改與刪除 → change 4 App 說明頁。上線即開放所有使用者。
+6. **寫入只認確認碼**（change 2 `add-mcp-transaction-import`）：`validate_transactions` 檢查整批後簽發確認碼（HMAC，綁定使用者、帳戶與正規化後的完整清單，30 分鐘有效）；`create_transactions` 只接受與確認碼完全相符的清單，寫入前再驗證一次並以單一 batch 原子寫入。伺服器因此能保證寫入的就是使用者在對話中看過的那份清單。寫入需 `transactions.write` scope。
+7. **安全護欄**：所有工具只存取權杖 uid 的資料；金額以 decimal string 原樣進出（ADR-0005）；破壞性工具（change 3）一律兩段式確認、只接受 ID、單次上限 20 筆；任何造成超賣的寫入整批拒絕。
+8. **分期**：change 1 登入與只讀工具 → change 2 匯入交易（`source`、`import_batch_id`）→ change 3 修改與刪除 → change 4 App 說明頁。上線即開放所有使用者。
 
 ## Consequences
 
