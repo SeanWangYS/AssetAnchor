@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { auth, wireEmulatorsOnce } from './src/services/firebase';
+import { auth, initAppCheck, wireEmulatorsOnce } from './src/services/firebase';
 import { initErrorReporting } from './src/services/monitoring';
 import { useAuthStore } from './src/features/auth/authStore';
 import { getUserDoc } from './src/features/auth/userDoc';
@@ -24,6 +24,8 @@ GoogleSignin.configure({
 // 錯誤上報（Sentry，add-sentry-error-reporting）：模組載入即 init，涵蓋啟動期錯誤。
 // dev / Emulator 模式 / 缺 DSN 時為 no-op（見 services/monitoring）。
 initErrorReporting();
+// App Check before any Firebase back-end call (add-app-check D1); no-op against emulators.
+void initAppCheck();
 
 export default function App() {
   const setUser = useAuthStore((s) => s.setUser);

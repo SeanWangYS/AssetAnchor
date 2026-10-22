@@ -1,4 +1,3 @@
-import { onRequest } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -6,7 +5,7 @@ import { computeFetchWindow, chunkBarsByYear } from './historyPlan';
 import { runEnsureBatch, type EnsureResult } from './ensureBatch';
 import { parseHistoryInput, type HistoryItem } from './parseHistoryInput';
 import { yahooHistoryProvider, type HistoryProvider } from './yahooHistoryProvider';
-import { USER_HTTP_OPTIONS } from '../runtimeOptions';
+import { userHttpFunction } from '../appCheck/userHttpFunction';
 
 /** 對 Yahoo 的請求間隔（少量、有禮貌——2025 起 429 收緊，ADR-0010）。 */
 const THROTTLE_MS = 1_000;
@@ -104,8 +103,8 @@ export async function ensureHistoryFor(
  * (items past the budget come back deferred). The data itself is not returned — the
  * client reads Firestore (single read path).
  */
-export const ensureHistory = onRequest(
-  { ...USER_HTTP_OPTIONS, timeoutSeconds: 120 },
+export const ensureHistory = userHttpFunction(
+  'ensureHistory',
   async (req, res) => {
     const parsed = parseHistoryInput(req.query as Record<string, unknown>);
     if (!parsed.ok) {
@@ -124,4 +123,5 @@ export const ensureHistory = onRequest(
     });
     res.json({ ok: true, results });
   },
+  { timeoutSeconds: 120 },
 );

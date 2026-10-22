@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { doc, getDoc } from '@react-native-firebase/firestore';
 import { isFresh, priceHistoryDocumentSchema } from '@assetanchor/shared';
-import { db, functionsBaseUrl } from '../firebase';
+import { db, functionsBaseUrl, functionsFetch } from '../firebase';
 import {
   buildEnsureHistoryUrl,
   buildFetchIntradayUrl,
@@ -138,7 +138,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     }));
 
     try {
-      const res = await fetch(buildEnsureHistoryUrl(functionsBaseUrl, toEnsure));
+      const res = await functionsFetch(buildEnsureHistoryUrl(functionsBaseUrl, toEnsure));
       const newLastDates = parseEnsureHistoryResponse(await res.json());
 
       // lastDate 有前進（或本地全缺）的 symbol → 重讀涵蓋年度，取回新資料。
@@ -194,7 +194,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     const cached = get().intraday[key];
     if (cached && isFresh(cached.fetchedAtMs, nowMs)) return;
     try {
-      const res = await fetch(buildFetchIntradayUrl(functionsBaseUrl, target, tf));
+      const res = await functionsFetch(buildFetchIntradayUrl(functionsBaseUrl, target, tf));
       const points = parseIntradayResponse(await res.json());
       if (points.length > 0) {
         set((s) => ({ intraday: { ...s.intraday, [key]: { points, fetchedAtMs: nowMs } } }));

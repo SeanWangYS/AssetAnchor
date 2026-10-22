@@ -13,3 +13,9 @@ export const USER_HTTP_OPTIONS = { region: REGION, cors: true, maxInstances: 3 }
 
 /** Low-volume background work: scheduler, Firestore trigger, manual seed endpoint. */
 export const BACKGROUND_OPTIONS = { region: REGION, maxInstances: 1 } as const;
+
+/**
+ * App Check mode for user-facing HTTP functions (add-app-check D3/D4). Ship 'monitor'
+ * first; flip to 'enforce' only after the new build shows verified traffic in the logs.
+ */
+export const APP_CHECK_MODE: 'monitor' | 'enforce' = 'monitor';
