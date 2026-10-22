@@ -14,22 +14,22 @@
 
 ## 3. Runtime limits（TDD）
 
-- [ ] 3.1 先改 `runtimeOptions.test.ts`：新增 `MCP_HTTP = ['mcp']` 分類、斷言 `maxInstances: 3`、`asia-east1`；App Check 斷言改為「除 `mcp` 外的使用者端 HTTP 函式皆帶 gate、`mcp` 不帶」
-- [ ] 3.2 在 `runtimeOptions.ts` 新增 `MCP_HTTP_OPTIONS`（region、`maxInstances: 3`、secrets；不設 CORS 全開）並讓 `mcp` 使用，測試綠
+- [x] 3.1 先改 `runtimeOptions.test.ts`：新增 `MCP_HTTP = ['mcp']` 分類、斷言 `maxInstances: 3`、`asia-east1`；App Check 斷言改為「除 `mcp` 外的使用者端 HTTP 函式皆帶 gate、`mcp` 不帶」
+- [x] 3.2 在 `runtimeOptions.ts` 新增 `MCP_HTTP_OPTIONS`（region、`maxInstances: 3`、secrets；不設 CORS 全開）並讓 `mcp` 使用，測試綠
 
 ## 4. OAuth 儲存 adapter
 
-- [ ] 4.1 先寫純函式測試：文件 ID 組成（`{model}_{id}`）、payload → 文件欄位對映（`account_id`、`grant_id`、`interaction_uid`、`expires_at`）、過期判定
-- [ ] 4.2 實作純函式使測試通過
-- [ ] 4.3 實作 Firestore adapter（`upsert`／`find`／`findByUid`／`consume`／`destroy`／`revokeByGrantId`），讀取時過期即回 `undefined`
-- [ ] 4.4 以 Firestore emulator 寫 adapter 整合測試（含 `consume` 一次性、`revokeByGrantId` 連帶刪除）
+- [x] 4.1 先寫純函式測試：文件 ID 組成（`{model}_{id}`）、payload → 文件欄位對映（`account_id`、`grant_id`、`interaction_uid`、`expires_at`）、過期判定
+- [x] 4.2 實作純函式使測試通過
+- [x] 4.3 實作 Firestore adapter（`upsert`／`find`／`findByUid`／`consume`／`destroy`／`revokeByGrantId`），讀取時過期即回 `undefined`
+- [x] 4.4 以 Firestore emulator 寫 adapter 整合測試（含 `consume` 一次性、`revokeByGrantId` 連帶刪除）
 
 ## 5. 授權伺服器
 
-- [ ] 5.1 建立 `mcp/config.ts`：依環境決定 issuer、Hosting 網域、MCP resource URL、允許的 CORS 來源；emulator 用開發金鑰，正式環境讀 `MCP_OIDC_JWKS`、`MCP_COOKIE_KEYS` secrets（缺少即 500）
-- [ ] 5.2 設定 `oidc-provider`：DCR（無 initial access token、redirect URI 只收 https 與 localhost）、強制 S256 PKCE、`resourceIndicators`（opaque、綁 MCP resource、scope `transactions.read`）、存取權杖 1h、refresh 輪替且絕對期限 30 天、授權碼 10 分鐘、關閉 `devInteractions`
-- [ ] 5.3 實作互動路由：`/interaction/:uid`（導向登入頁）、`/interaction/:uid/firebase`（CORS 限 Hosting、`verifyIdToken`、寫 `FirebaseLogin` 一次性紀錄）、`/interaction/:uid/confirm`（建立 Grant、`interactionFinished`）、`/interaction/:uid/abort`（`access_denied`）
-- [ ] 5.4 註冊端點加上以 IP 計數的簡單頻率限制
+- [x] 5.1 建立 `mcp/config.ts`：依環境決定 issuer、Hosting 網域、MCP resource URL、允許的 CORS 來源；emulator 用開發金鑰，正式環境讀 `MCP_OIDC_JWKS`、`MCP_COOKIE_KEYS` secrets（缺少即 500）
+- [x] 5.2 設定 `oidc-provider`：DCR（無 initial access token、redirect URI 只收 https 與 localhost）、強制 S256 PKCE、`resourceIndicators`（opaque、綁 MCP resource、scope `transactions.read`）、存取權杖 1h、refresh 輪替且絕對期限 30 天、授權碼 10 分鐘、關閉 `devInteractions`
+- [x] 5.3 實作互動路由：`/interaction/:uid`（導向登入頁）、`/interaction/:uid/firebase`（CORS 限 Hosting、`verifyIdToken`、寫 `FirebaseLogin` 一次性紀錄）、`/interaction/:uid/confirm`（建立 Grant、`interactionFinished`）、`/interaction/:uid/abort`（`access_denied`）
+- [x] 5.4 註冊端點加上以 IP 計數的簡單頻率限制
 - [ ] 5.5 以 supertest 對 emulator 寫整合測試，涵蓋 `mcp-authorization` 每個 scenario（metadata、DCR 合法／不合法、缺 PKCE、授權碼重用、偽造 ID token、拒絕、過期、續期輪替、30 天上限、管理者作廢）
 
 ## 6. 登入頁 `apps/web`
@@ -41,19 +41,19 @@
 
 ## 7. MCP 端點
 
-- [ ] 7.1 掛上 `mcpAuthMetadataRouter` 與 `requireBearerAuth`（verifier 以 `oidc-provider` 查 AccessToken、檢查 resource 與 scope），未帶權杖回 401 + `resource_metadata`
-- [ ] 7.2 建立無狀態 Streamable HTTP（JSON 回應模式）的 `McpServer`（名稱 `assetanchor`），每個請求以權杖的 uid 建立工具上下文
-- [ ] 7.3 統一工具錯誤處理：繁中訊息、`isError: true`、log 帶 uid 與工具名稱、不洩漏內部細節
+- [x] 7.1 掛上 `mcpAuthMetadataRouter` 與 `requireBearerAuth`（verifier 以 `oidc-provider` 查 AccessToken、檢查 resource 與 scope），未帶權杖回 401 + `resource_metadata`
+- [x] 7.2 建立無狀態 Streamable HTTP（JSON 回應模式）的 `McpServer`（名稱 `assetanchor`），每個請求以權杖的 uid 建立工具上下文
+- [x] 7.3 統一工具錯誤處理：繁中訊息、`isError: true`、log 帶 uid 與工具名稱、不洩漏內部細節
 
 ## 8. 只讀工具（純函式先 TDD）
 
-- [ ] 8.1 先寫測試：交易篩選（symbol／market／日期含端點）、新到舊排序、cursor 編碼與解碼、每頁上限 100／預設 50、日期驗證錯誤訊息
-- [ ] 8.2 實作上述純函式使測試通過
-- [ ] 8.3 先寫測試：symbol 候選排序（代號完全相符 → 前綴 → 名稱包含）、最多 10 筆
-- [ ] 8.4 實作 symbol 比對純函式使測試通過
-- [ ] 8.5 實作 `list_accounts`（啟用篩選、`display_order` 排序、無帳戶提示）
-- [ ] 8.6 實作 `list_transactions`（D6 查詢策略、decimal string 原樣輸出、他人帳戶 ID 回「找不到帳戶」）
-- [ ] 8.7 實作 `search_symbol`（直接查、前綴查、使用者 symbol 名稱比對，不建立 symbol）
+- [x] 8.1 先寫測試：交易篩選（symbol／market／日期含端點）、新到舊排序、cursor 編碼與解碼、每頁上限 100／預設 50、日期驗證錯誤訊息
+- [x] 8.2 實作上述純函式使測試通過
+- [x] 8.3 先寫測試：symbol 候選排序（代號完全相符 → 前綴 → 名稱包含）、最多 10 筆
+- [x] 8.4 實作 symbol 比對純函式使測試通過
+- [x] 8.5 實作 `list_accounts`（啟用篩選、`display_order` 排序、無帳戶提示）
+- [x] 8.6 實作 `list_transactions`（D6 查詢策略、decimal string 原樣輸出、他人帳戶 ID 回「找不到帳戶」）
+- [x] 8.7 實作 `search_symbol`（直接查、前綴查、使用者 symbol 名稱比對，不建立 symbol）
 - [ ] 8.8 以 emulator 寫工具整合測試，涵蓋 `mcp-server` 每個 scenario（含跨使用者存取、作廢後 401、`tools/list` 只讀標記）
 
 ## 9. 本機端到端驗證與文件
