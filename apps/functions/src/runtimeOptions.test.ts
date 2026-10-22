@@ -54,4 +54,13 @@ describe('runtime limits', () => {
       .__endpoint;
     expect(ep?.timeoutSeconds).toBe(120);
   });
+
+  it('puts the App Check gate in front of every user-facing HTTP function', () => {
+    for (const name of USER_HTTP) {
+      const ep = (deployed as Record<string, { __endpoint?: { labels?: Record<string, string> } }>)[
+        name
+      ]?.__endpoint;
+      expect([name, ep?.labels?.['app-check']]).toEqual([name, 'gated']);
+    }
+  });
 });

@@ -25,6 +25,11 @@ const config: ExpoConfig = {
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
     },
+    // App Check (add-app-check D1): App Attest needs this entitlement; EAS Build enables the
+    // matching App ID capability on the Apple Developer portal when it syncs capabilities.
+    entitlements: {
+      'com.apple.developer.devicecheck.appattest-environment': 'production',
+    },
   },
   android: { package: 'com.seanwangys.assetanchor' },
   plugins: [
@@ -38,12 +43,14 @@ const config: ExpoConfig = {
       {
         ios: {
           useFrameworks: 'static',
-          forceStaticLinking: ['RNFBApp', 'RNFBAuth', 'RNFBFirestore'],
+          forceStaticLinking: ['RNFBApp', 'RNFBAuth', 'RNFBFirestore', 'RNFBAppCheck'],
         },
       },
     ],
     '@react-native-firebase/app',
     '@react-native-firebase/auth',
+    // Registers the App Check native module before FirebaseApp.configure() (add-app-check).
+    '@react-native-firebase/app-check',
     [
       '@react-native-google-signin/google-signin',
       {

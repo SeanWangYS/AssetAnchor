@@ -8,7 +8,7 @@ import {
   type Market,
   type TransactionDocument,
 } from '@assetanchor/shared';
-import { db, functionsBaseUrl } from '../firebase';
+import { db, functionsBaseUrl, functionsFetch } from '../firebase';
 
 /**
  * Symbol metadata 顯示層 cache（Sprint 6）。in-memory（本 store）+ Firestore `symbols/{symbolId}`
@@ -53,7 +53,7 @@ async function triggerEnrich(t: SymbolTarget): Promise<void> {
     const url =
       `${functionsBaseUrl}/fetchSymbolMeta?market=${t.market}` +
       `&symbol=${encodeURIComponent(t.symbol)}&assetType=${t.assetType}&currency=${t.currency}`;
-    await fetch(url);
+    await functionsFetch(url);
   } catch {
     // fail-soft：enrich 失敗則維持 raw ticker 顯示
   }

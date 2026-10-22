@@ -10,7 +10,7 @@ import {
   type Market,
   type QuoteErrorCode,
 } from '@assetanchor/shared';
-import { db, functionsBaseUrl } from '../firebase';
+import { db, functionsBaseUrl, functionsFetch } from '../firebase';
 import { buildFetchQuotesUrl, parseFetchQuotesResponse, resolveBatchTargets } from './quotesBatch';
 import { logQuoteError } from './quotesLog';
 
@@ -71,7 +71,7 @@ async function triggerFetchQuotes(
 ): Promise<{ entries: Record<string, QuoteEntry>; errors: Record<string, QuoteErrorCode> }> {
   if (targets.length === 0) return { entries: {}, errors: {} };
   try {
-    const res = await fetch(buildFetchQuotesUrl(functionsBaseUrl, targets));
+    const res = await functionsFetch(buildFetchQuotesUrl(functionsBaseUrl, targets));
     const parsed = parseFetchQuotesResponse(await res.json(), Date.now());
     const entries: Record<string, QuoteEntry> = {};
     for (const t of targets) {

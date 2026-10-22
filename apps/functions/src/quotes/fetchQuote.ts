@@ -1,4 +1,3 @@
-import { onRequest } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -12,7 +11,7 @@ import {
   type Market,
 } from '@assetanchor/shared';
 import { yahooProvider, type QuoteProvider } from './yahooProvider';
-import { USER_HTTP_OPTIONS } from '../runtimeOptions';
+import { userHttpFunction } from '../appCheck/userHttpFunction';
 
 function ensureApp(): void {
   if (getApps().length === 0) initializeApp();
@@ -124,7 +123,7 @@ export async function getOrFetchQuote(
  * 觸發，後端抓取並寫入共用 quotes cache。採 onRequest（非 onCall）以免 mobile 需 RNFirebase
  * functions 原生模組——對齊既有 seedUsdRate 模式。僅寫公開 `quotes`（rules：登入可讀、後端可寫）。
  */
-export const fetchQuote = onRequest(USER_HTTP_OPTIONS, async (req, res) => {
+export const fetchQuote = userHttpFunction('fetchQuote', async (req, res) => {
   const parsed = parseInput(req.query as Record<string, unknown>);
   if (!parsed.ok) {
     res.status(400).json({ ok: false, error: parsed.msg });

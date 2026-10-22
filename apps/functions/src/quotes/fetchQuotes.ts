@@ -1,10 +1,9 @@
-import { onRequest } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import { getOrFetchQuote } from './fetchQuote';
 import { parseBatchInput } from './parseBatchInput';
 import { quoteErrorPayload } from './quoteErrors';
 import { yahooProvider } from './yahooProvider';
-import { USER_HTTP_OPTIONS } from '../runtimeOptions';
+import { userHttpFunction } from '../appCheck/userHttpFunction';
 
 /**
  * HTTP `fetchQuotes`（GET ?items=market:symbol:currency,market:symbol:currency,...）：
@@ -12,7 +11,7 @@ import { USER_HTTP_OPTIONS } from '../runtimeOptions';
  * 重用 `getOrFetchQuote`（server 端 15min 新鮮度 + sanitize + 寫 quotes/）；逐筆錯誤隔離
  * （單檔失敗回該筆 error，不拖垮整批）。onRequest（非 onCall，對齊 fetchQuote）、cors。
  */
-export const fetchQuotes = onRequest(USER_HTTP_OPTIONS, async (req, res) => {
+export const fetchQuotes = userHttpFunction('fetchQuotes', async (req, res) => {
   const parsed = parseBatchInput(req.query as Record<string, unknown>);
   if (!parsed.ok) {
     res.status(400).json({ ok: false, error: parsed.msg });
