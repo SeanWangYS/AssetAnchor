@@ -19,6 +19,6 @@
 ## 4. DoD 與交付
 
 - [x] 4.1 typecheck、lint、prettier、shared coverage、functions 單元與整合、rules、mobile 全綠
-- [ ] 4.2 開 PR（stacked on #89；破壞性操作與部署，owner merge）
-- [ ] 4.3 （owner）部署後在 claude.ai 驗收修改與刪除
-- [ ] 4.4 `/opsx:archive`
+- [x] 4.2 開 PR（stacked on #89；破壞性操作與部署，owner merge）
+- [ ] 4.3 （owner，PR #90）部署後在 claude.ai 驗收修改與刪除
+- [x] 4.4 `/opsx:archive`
