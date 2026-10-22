@@ -11,7 +11,7 @@
 
 ### Requirement: 從交易事件流動態推導持倉
 
-`packages/shared` SHALL 提供純函式 `deriveHoldings(transactions)`，從 `TransactionDocument[]` 動態推導持倉，**不**讀寫任何 holdings collection（ADR-0004）。聚合粒度 SHALL 為 `(market, symbol, currency)`（跨帳戶合併；**同標的不同交易幣別為獨立 lot / 獨立 position**——混幣別記帳不得使推導擲錯，Money 運算永不跨幣別；單幣別資料行為與 `(market, symbol)` 聚合完全一致）。本函式 SHALL 處理 `BUY` 與 `SELL`，並依 `transaction_date` **時序**處理（非陣列順序）：
+`packages/shared` SHALL 提供純函式 `deriveHoldings(transactions)`，從 `TransactionDocument[]` 動態推導持倉，**不**讀寫任何 holdings collection（ADR-0004）。聚合粒度 SHALL 為 `(market, symbol, currency)`（跨帳戶合併；**同標的不同交易幣別為獨立 lot / 獨立 position**——混幣別記帳不得使推導擲錯，Money 運算永不跨幣別；單幣別資料行為與 `(market, symbol)` 聚合完全一致）。本函式 SHALL 處理 `BUY` 與 `SELL`，並依 `transaction_date` **時序**處理（非陣列順序）；同一 `transaction_date` 的交易 SHALL 先處理 BUY、再處理 SELL，同類型維持輸入順序（當沖不因 Firestore 回傳順序而被誤判超賣）：
 
 - BUY：股數累加、`totalCost` 累加（`total+fee+tax`）。
 - SELL：股數遞減、**平均成本不變**（加權平均特性）、`totalCost` 依 `avgCost × soldQty` 等比遞減；SELL SHALL 只沖銷**同幣別** lot。
@@ -57,6 +57,11 @@
 
 - **WHEN** `transactions` 為空陣列
 - **THEN** 回傳空陣列（非 null、非錯誤）
+
+#### Scenario: 同日先買後賣（當沖）
+
+- **WHEN** 同一天有 `2330 SELL 1000` 與 `2330 BUY 1000`，且輸入陣列中 SELL 在前、無其他持倉
+- **THEN** `deriveHoldings` SHALL 先處理 BUY 再處理 SELL，不擲超賣錯誤，該 lot 持有量為 0
 
 ### Requirement: 加權平均成本計算（§4 公式）
 

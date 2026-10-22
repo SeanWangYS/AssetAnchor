@@ -482,6 +482,8 @@ const ACCOUNT_TYPES = [
   lot_id: null,                      // FIFO / 指定批次用
 
   notes: "",
+  source: "mcp",                     // 選填：透過 MCP connector 匯入才有（ADR-0011）；缺欄位＝App 手動輸入
+  import_batch_id: "imp_xxx",        // 選填：同一次 MCP 匯入共用的批次 ID
   created_at: timestamp,
   updated_at: timestamp
 }

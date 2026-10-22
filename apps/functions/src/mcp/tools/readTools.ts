@@ -82,6 +82,7 @@ export interface ListTransactionsInput {
   date_to?: string | undefined;
   limit?: number | undefined;
   cursor?: string | undefined;
+  import_batch_id?: string | undefined;
 }
 
 const defined = <T extends object>(o: T) =>
@@ -186,6 +187,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
         date_to: z.string().optional().describe('結束日期 YYYY-MM-DD（含）'),
         limit: z.number().int().min(1).max(MAX_PAGE_SIZE).optional().describe('每頁筆數，預設 50'),
         cursor: z.string().optional().describe('上一頁回傳的 next_cursor'),
+        import_batch_id: z.string().optional().describe('只看某次 create_transactions 匯入的交易'),
       }),
       annotations: READ_ONLY,
     },

@@ -7,9 +7,7 @@ import {
   REFRESH_ABSOLUTE_TTL,
   refreshTokenTtl,
 } from './oauthPolicy';
-
-/** The only resource scope in change 1; write scopes arrive with changes 2 and 3. */
-export const READ_SCOPE = 'transactions.read';
+import { ALL_SCOPES } from './scopes';
 
 export interface ProviderDeps {
   config: McpConfig;
@@ -51,7 +49,7 @@ export function createProvider({ config, adapter, cookieKeys, jwks }: ProviderDe
         getResourceServerInfo: (_ctx, resourceIndicator) => {
           if (resourceIndicator !== config.resourceUrl) throw new errors.InvalidTarget();
           return {
-            scope: READ_SCOPE,
+            scope: ALL_SCOPES.join(' '),
             audience: config.resourceUrl,
             accessTokenFormat: 'opaque',
             accessTokenTTL: ACCESS_TOKEN_TTL,
