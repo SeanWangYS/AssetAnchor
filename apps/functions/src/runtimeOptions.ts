@@ -11,6 +11,13 @@ export const REGION = 'asia-east1';
 /** User-facing HTTP endpoints called by the mobile app. */
 export const USER_HTTP_OPTIONS = { region: REGION, cors: true, maxInstances: 3 } as const;
 
+/**
+ * The MCP endpoint and OAuth authorization server (add-mcp-auth-readonly). Called by Claude's
+ * servers, which cannot attest as the app, so it is protected by OAuth bearer tokens instead of
+ * App Check. No blanket CORS: the function sets per-route CORS for the Hosting login page.
+ */
+export const MCP_HTTP_OPTIONS = { region: REGION, maxInstances: 3 } as const;
+
 /** Low-volume background work: scheduler, Firestore trigger, manual seed endpoint. */
 export const BACKGROUND_OPTIONS = { region: REGION, maxInstances: 1 } as const;
 

@@ -19,6 +19,8 @@ const USER_HTTP = [
   'ensureHistory',
 ];
 const BACKGROUND = ['scheduledUsdRate', 'seedUsdRate', 'onSymbolCreatedFetchQuote'];
+// Called by Claude's servers, not the app: protected by OAuth instead of App Check.
+const MCP_HTTP = ['mcp'];
 
 const endpoints = Object.entries(deployed).map(
   ([name, fn]) => [name, (fn as { __endpoint?: Endpoint }).__endpoint] as const,
@@ -43,10 +45,13 @@ describe('runtime limits', () => {
 
   it('caps user-facing HTTP functions at 3 and background functions at 1', () => {
     const byName = Object.fromEntries(endpoints);
-    for (const name of USER_HTTP) expect([name, byName[name]?.maxInstances]).toEqual([name, 3]);
+    for (const name of [...USER_HTTP, ...MCP_HTTP])
+      expect([name, byName[name]?.maxInstances]).toEqual([name, 3]);
     for (const name of BACKGROUND) expect([name, byName[name]?.maxInstances]).toEqual([name, 1]);
     // Every deployed function is classified, so the split above stays exhaustive.
-    expect(endpoints.map(([n]) => n).sort()).toEqual([...USER_HTTP, ...BACKGROUND].sort());
+    expect(endpoints.map(([n]) => n).sort()).toEqual(
+      [...USER_HTTP, ...BACKGROUND, ...MCP_HTTP].sort(),
+    );
   });
 
   it('keeps ensureHistory within its 120 s time budget', () => {
@@ -61,6 +66,15 @@ describe('runtime limits', () => {
         name
       ]?.__endpoint;
       expect([name, ep?.labels?.['app-check']]).toEqual([name, 'gated']);
+    }
+  });
+
+  it('leaves only the mcp function outside the App Check gate', () => {
+    for (const name of MCP_HTTP) {
+      const ep = (deployed as Record<string, { __endpoint?: { labels?: Record<string, string> } }>)[
+        name
+      ]?.__endpoint;
+      expect([name, ep !== undefined, ep?.labels?.['app-check']]).toEqual([name, true, undefined]);
     }
   });
 });
