@@ -1,6 +1,7 @@
 # Runbook：App Check 分階段啟用（iOS App Attest）
 
 > 對應 OpenSpec change `add-app-check`（design D4）。花錢／部署／真機／console 設定屬人類介入 gate（planning §2.5）——每一步由 owner 執行或逐字授權。
+> **狀態（2026-10-22）**：已完成兩階段——functions `APP_CHECK_MODE = 'enforce'`（PR #86）、Cloud Firestore 已在 console Enforce；首個帶 App Check 的 build＝0.2.0 (14)。
 > 機制：iOS App 以 App Attest 向 Apple 證明自己是正版 App → Firebase 發 App Check token（預設 1 小時）→ Firestore 由 SDK 自動附帶、Cloud Functions 由 `functionsFetch` 加 `X-Firebase-AppCheck` header → 後端驗證。
 
 ## 現況與開關
@@ -22,7 +23,7 @@
 
 ## 階段 1：monitor（PR merge 後）
 
-1. owner：`firebase deploy --only functions --project assetanchor-832df --non-interactive`
+1. owner：`npx -y firebase-tools@15.34.1 deploy --only functions --project assetanchor-832df --non-interactive`（全域 CLI 14.x 會因 Runtime Config API 下線而失敗，見 testflight-release.md）
 2. owner：依 `testflight-release.md` 發新 build（含 App Attest entitlement；EAS build 會自動在 Apple Developer 開 App Attest capability）。
 3. owner：手機安裝新 build，開 App 停留在持倉總覽、點一檔個股看走勢、（可選）新增一筆新代號的交易以觸發 `fetchSymbolMeta`。
 4. 驗證（Claude 可代做）：

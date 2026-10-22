@@ -19,6 +19,6 @@
 
 ## 4. Owner-gated rollout (monitor)
 
-- [ ] 4.1 Owner: register iOS app with App Attest in Firebase console
-- [ ] 4.2 Owner: merge PR, deploy functions, EAS build + submit TestFlight
-- [ ] 4.3 Owner installs and uses the build; confirm `verified` in function logs and Firestore App Check metrics
+- [x] 4.1 Owner: register iOS app with App Attest in Firebase console
+- [x] 4.2 Owner: merge PR, deploy functions, EAS build + submit TestFlight
+- [x] 4.3 Owner installs and uses the build; confirm `verified` in function logs and Firestore App Check metrics

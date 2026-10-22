@@ -41,6 +41,8 @@ tag 版本字串必須等於 `apps/mobile/package.json` 的 `version`（版號�
 ```bash
 # 0. 確認 main 是要發的版本，且 production functions 與 app 相容
 # 1. 🛑 owner 授權後：部署後端（functions + rules + indexes）
+# ⚠️ firebase-tools 需 ≥ 15：14.x 部署 functions 時會呼叫已下線的 Cloud Runtime Config API
+#    而失敗（2026-10-22 實測）；全域未升級前用 npx -y firebase-tools@15.34.1 代替 firebase。
 firebase deploy --project assetanchor-832df --non-interactive
 
 # 2. 煙霧測試（報價層是上線命脈）
@@ -74,6 +76,16 @@ eas submit -p ios --latest --non-interactive
 4. **台銀匯率源已死 → 已換 Yahoo（2026-07-07 修復，PR #38 `aeb7fa4`）**：`rate.bot.com.tw`
    全站（含 CSV 端點）自 ~2026-06-30 起對非瀏覽器 client 回 anti-bot JS challenge，
    `scheduledUsdRate` 每日 08:30 UTC 必失敗。已改用 Yahoo `TWD=X` 並 deploy 驗證。留此記錄供日後 provider 抉擇參考。
+
+## 0.2.0（build #14，2026-10-22）新增的坑
+
+1. **新增 capability 的那一版要本機互動 build**：0.2.0 首次帶 App Attest entitlement（App Check）。
+   EAS 需登入 Apple 帳號才能在 Developer portal 開 capability 並重產 provisioning profile，
+   tag 觸發的 CI（非互動）做不到。該版改由 owner 在自己的終端機跑
+   `eas build -p ios --profile production --auto-submit`；profile 更新後，之後的版本可恢復流程 A。
+2. **Runtime Config API 下線**：見流程 B 步驟 1 的 firebase-tools ≥ 15 註記。
+3. **EAS submit 排隊**：免費方案 submit 常排隊 15–30 分鐘（build 本身約 10 分鐘），終端機看似停住屬正常；
+   關掉終端機不會中斷（submit 在 EAS 伺服器端執行）。
 
 ## TestFlight 內部測試：加測試員
 
