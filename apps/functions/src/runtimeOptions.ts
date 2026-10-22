@@ -15,7 +15,8 @@ export const USER_HTTP_OPTIONS = { region: REGION, cors: true, maxInstances: 3 }
 export const BACKGROUND_OPTIONS = { region: REGION, maxInstances: 1 } as const;
 
 /**
- * App Check mode for user-facing HTTP functions (add-app-check D3/D4). Ship 'monitor'
- * first; flip to 'enforce' only after the new build shows verified traffic in the logs.
+ * App Check mode for user-facing HTTP functions (add-app-check D3/D4). Enforced since
+ * 2026-10-22 after build 0.2.0 (14) showed only verified traffic; roll back to 'monitor'
+ * and redeploy if the app starts failing attestation (see docs/runbook/app-check-rollout.md).
  */
-export const APP_CHECK_MODE: 'monitor' | 'enforce' = 'monitor';
+export const APP_CHECK_MODE: 'monitor' | 'enforce' = 'enforce';
