@@ -28,6 +28,6 @@
 ## 4. DoD 與交付
 
 - [x] 4.1 typecheck、lint、prettier、shared coverage、functions 單元與整合測試、rules、mobile 測試全綠
-- [ ] 4.2 開 PR（stacked on #88；聖牛 schema + 部署，owner merge）
-- [ ] 4.3 （owner）部署後在 claude.ai 以真實截圖匯入一批交易並在 App 確認
-- [ ] 4.4 `/opsx:archive`，更新 planning §6 Collection 3 欄位
+- [x] 4.2 開 PR（stacked on #88；聖牛 schema + 部署，owner merge）
+- [ ] 4.3 （owner，PR #89）部署後在 claude.ai 以真實截圖匯入一批交易並在 App 確認
+- [x] 4.4 `/opsx:archive`，更新 planning §6 Collection 3 欄位
