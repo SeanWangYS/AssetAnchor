@@ -60,14 +60,14 @@ interface BatchInput {
   transactions: ImportRowInput[];
 }
 
-function ok(summary: string, data: Record<string, unknown>): CallToolResult {
+export function ok(summary: string, data: Record<string, unknown>): CallToolResult {
   return {
     content: [{ type: 'text', text: `${summary}\n${JSON.stringify(data)}` }],
     structuredContent: data,
   };
 }
 
-async function loadAccount(ctx: ToolContext, accountId: string) {
+export async function loadAccount(ctx: ToolContext, accountId: string) {
   const snap = await ctx.db
     .collection('users')
     .doc(ctx.uid)
@@ -77,7 +77,7 @@ async function loadAccount(ctx: ToolContext, accountId: string) {
   return snap.exists ? (snap.data() as AccountDocument) : null;
 }
 
-async function loadTransactions(ctx: ToolContext): Promise<TransactionDocument[]> {
+export async function loadTransactions(ctx: ToolContext): Promise<TransactionDocument[]> {
   const snap = await ctx.db.collection('users').doc(ctx.uid).collection('transactions').get();
   return snap.docs.map((d) => d.data() as TransactionDocument);
 }
@@ -86,7 +86,7 @@ async function loadTransactions(ctx: ToolContext): Promise<TransactionDocument[]
  * Symbols already in AssetAnchor exist; others are confirmed with the quote source (TW/US).
  * CRYPTO and OTHER accept new symbols as the app does.
  */
-async function resolveSymbols(ctx: ImportContext, rows: NormalizeResult[]) {
+export async function resolveSymbols(ctx: ImportContext, rows: NormalizeResult[]) {
   const status = new Map<string, SymbolStatus>();
   const targets = new Map<string, { market: string; symbol: string }>();
   for (const r of rows) {
