@@ -131,7 +131,7 @@ planning §6 的「整體結構」列出 `users/**`、`exchange_rates`、`quotes
 ## Migration Plan
 
 1. 本機：emulator（Auth、Firestore、Functions、Hosting）完整跑通；Claude Code 與 MCP Inspector 連 `http://localhost:5000/mcp` 驗證三個工具。
-2. owner gate：審核 schema（`oauth_store`）、ADR-0011、rules；建立 secrets（`firebase functions:secrets:set`）、設定 `oauth_store.expires_at` 的 TTL policy、在 Firebase Auth 授權網域確認 Hosting 網域。
+2. owner gate：審核 schema（`oauth_store`）、ADR-0011、rules；建立 secrets（`firebase functions:secrets:set`）、部署 `firestore:indexes`（`fieldOverrides` 內含 `oauth_store.expires_at` 的 TTL policy）、在 Firebase Auth 授權網域確認 Hosting 網域。
 3. owner 部署：`firebase deploy --only hosting,functions:mcp,firestore:rules`。
 4. owner 在 claude.ai 新增 custom connector（`https://assetanchor-832df.web.app/mcp`），以自己的帳號完成授權與三個工具的驗收。
 5. **回滾**：刪除 `mcp` 函式（`firebase functions:delete mcp`）即關閉入口；Hosting 回到前一版；`oauth_store` 可保留（無用戶端存取）或整批刪除。既有 App 功能完全不受影響。

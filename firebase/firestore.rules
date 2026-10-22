@@ -32,5 +32,11 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+
+    // MCP OAuth state (add-mcp-auth-readonly): tokens, codes, clients, interactions.
+    // Backend-only — the Admin SDK in the mcp function is the sole reader and writer.
+    match /oauth_store/{docId} {
+      allow read, write: if false;
+    }
   }
 }

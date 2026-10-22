@@ -7,10 +7,10 @@
 
 ## 2. ADR、schema 與 rules（owner gate）
 
-- [ ] 2.1 撰寫 `docs/adr/0011-mcp-server-and-oauth.md`（Context／Decision／Consequences／Alternatives：OAuth 取代 App Check、`oidc-provider` 選型、網域配置、權杖存放、安全護欄、4 個 change 分期）
-- [ ] 2.2 先寫 rules 測試：已登入使用者讀寫 `oauth_store/*` 皆被拒、未登入亦被拒
-- [ ] 2.3 在 `firebase/firestore.rules` 新增 `oauth_store` 全拒規則，`pnpm --filter @assetanchor/firebase test:rules` 綠
-- [ ] 2.4 `firestore.indexes.json` 為 `oauth_store` 的 `account_id`、`grant_id`、`interaction_uid` 查詢加入所需索引設定（單欄位若預設即可則記錄不需新增）
+- [x] 2.1 撰寫 `docs/adr/0011-mcp-server-and-oauth.md`（Context／Decision／Consequences／Alternatives：OAuth 取代 App Check、`oidc-provider` 選型、網域配置、權杖存放、安全護欄、4 個 change 分期）
+- [x] 2.2 先寫 rules 測試：已登入使用者讀寫 `oauth_store/*` 皆被拒、未登入亦被拒
+- [x] 2.3 在 `firebase/firestore.rules` 新增 `oauth_store` 全拒規則，`pnpm --filter @assetanchor/firebase test:rules` 綠
+- [x] 2.4 `firestore.indexes.json` 為 `oauth_store` 的 `account_id`、`grant_id`、`interaction_uid` 查詢加入所需索引設定（單欄位若預設即可則記錄不需新增）——結論：單欄位等值查詢用預設索引；以 `fieldOverrides` 設定 `expires_at` TTL 並讓 `payload` 不建索引
 
 ## 3. Runtime limits（TDD）
 
