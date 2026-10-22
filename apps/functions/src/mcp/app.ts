@@ -17,6 +17,7 @@ import { createRateLimiter } from './oauthPolicy';
 import { ALL_SCOPES, READ_SCOPE } from './scopes';
 import { registerReadTools } from './tools/readTools';
 import { registerImportTools } from './import/importTools';
+import { registerEditTools } from './edit/editTools';
 import type { SymbolMetaProvider } from '../symbols/symbolMetaProvider';
 
 export const MCP_SERVER_VERSION = '1.0.0';
@@ -149,13 +150,15 @@ export function buildMcpApp({
         if (typeof uid !== 'string' || !uid) throw new Error('missing uid on verified token');
         const server = new McpServer({ name: 'assetanchor', version: MCP_SERVER_VERSION });
         registerReadTools(server, { db, uid });
-        registerImportTools(server, {
+        const writeCtx = {
           db,
           uid,
           scopes: ctx.authInfo?.scopes ?? [],
           confirmationKey,
           symbolProvider,
-        });
+        };
+        registerImportTools(server, writeCtx);
+        registerEditTools(server, writeCtx);
         return server;
       },
       { responseMode: 'json' },
