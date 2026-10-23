@@ -48,14 +48,22 @@ interface ScanResult {
   events: RealizedEvent[];
 }
 
-/** 依 `transaction_date`（YYYY-MM-DD，字典序＝時序）穩定排序；同日保留輸入順序。 */
-function chronological(transactions: TransactionDocument[]): TransactionDocument[] {
+/**
+ * Chronological order shared by holdings derivation and import checks: by `transaction_date`
+ * (YYYY-MM-DD sorts lexically), BUY before SELL on the same day so a day trade never reads as
+ * an oversell, otherwise input order (add-mcp-transaction-import D4).
+ */
+export function sortTransactionsChronologically<
+  T extends Pick<TransactionDocument, 'transaction_date' | 'transaction_type'>,
+>(transactions: readonly T[]): T[] {
+  const sellLast = (t: T) => (t.transaction_type === 'SELL' ? 1 : 0);
   return transactions
     .map((tx, i) => [tx, i] as const)
-    .sort((a, b) =>
-      a[0].transaction_date === b[0].transaction_date
-        ? a[1] - b[1]
-        : a[0].transaction_date.localeCompare(b[0].transaction_date),
+    .sort(
+      (a, b) =>
+        a[0].transaction_date.localeCompare(b[0].transaction_date) ||
+        sellLast(a[0]) - sellLast(b[0]) ||
+        a[1] - b[1],
     )
     .map(([tx]) => tx);
 }
@@ -71,7 +79,7 @@ function scan(transactions: TransactionDocument[]): ScanResult {
   const lots = new Map<string, Lot>();
   const events: RealizedEvent[] = [];
 
-  for (const tx of chronological(transactions)) {
+  for (const tx of sortTransactionsChronologically(transactions)) {
     if (tx.transaction_type !== 'BUY' && tx.transaction_type !== 'SELL') continue;
 
     const currency = tx.currency;

@@ -14,8 +14,11 @@ import { requireBearerAuth } from '@modelcontextprotocol/express';
 import { isAllowedRedirectUri, type McpConfig } from './config';
 import { interactionRouter } from './interactions';
 import { createRateLimiter } from './oauthPolicy';
-import { READ_SCOPE } from './provider';
+import { ALL_SCOPES, READ_SCOPE } from './scopes';
 import { registerReadTools } from './tools/readTools';
+import { registerImportTools } from './import/importTools';
+import { registerEditTools } from './edit/editTools';
+import type { SymbolMetaProvider } from '../symbols/symbolMetaProvider';
 
 export const MCP_SERVER_VERSION = '1.0.0';
 
@@ -25,6 +28,10 @@ export interface McpAppDeps {
   adapter: new (model: string) => Adapter;
   db: Firestore;
   verifyIdToken: (idToken: string) => Promise<string>;
+  /** HMAC key binding validated import batches to their confirmation (import design D1). */
+  confirmationKey: Buffer;
+  /** Confirms new symbols exist (Yahoo in production, a fixed fake in integration tests). */
+  symbolProvider: SymbolMetaProvider;
 }
 
 const PRM_PATH = '/.well-known/oauth-protected-resource';
@@ -53,7 +60,15 @@ export function tokenVerifier(provider: Provider, config: McpConfig) {
  * The `mcp` function's Express app (design D2): OAuth authorization server at the root,
  * login interaction routes, protected-resource metadata and the MCP endpoint.
  */
-export function buildMcpApp({ config, provider, adapter, db, verifyIdToken }: McpAppDeps): Express {
+export function buildMcpApp({
+  config,
+  provider,
+  adapter,
+  db,
+  verifyIdToken,
+  confirmationKey,
+  symbolProvider,
+}: McpAppDeps): Express {
   const app = express();
   app.disable('x-powered-by');
 
@@ -72,7 +87,7 @@ export function buildMcpApp({ config, provider, adapter, db, verifyIdToken }: Mc
   const protectedResource = {
     resource: config.resourceUrl,
     authorization_servers: [config.issuer],
-    scopes_supported: [READ_SCOPE],
+    scopes_supported: [...ALL_SCOPES],
     bearer_methods_supported: ['header'],
     resource_name: 'AssetAnchor',
   };
@@ -90,6 +105,18 @@ export function buildMcpApp({ config, provider, adapter, db, verifyIdToken }: Mc
   });
 
   app.use(interactionRouter({ provider, config, adapter, verifyIdToken }));
+
+  // A client that omits `scope` would get a token with no resource scopes and hit 403 on every
+  // tool; default it to everything the connector needs.
+  app.get('/auth', (req: Request, _res: Response, next: NextFunction) => {
+    if (req.query.scope === undefined) {
+      const url = new URL(req.url, 'http://local');
+      url.searchParams.set('scope', [...ALL_SCOPES, 'offline_access'].join(' '));
+      req.url = `${url.pathname}${url.search}`;
+      req.originalUrl = `${config.pathPrefix}${req.url}`;
+    }
+    next();
+  });
 
   // Open registration is unauthenticated: throttle it and pin redirect URIs (spec DCR).
   const allowRegistration = createRateLimiter({
@@ -123,6 +150,15 @@ export function buildMcpApp({ config, provider, adapter, db, verifyIdToken }: Mc
         if (typeof uid !== 'string' || !uid) throw new Error('missing uid on verified token');
         const server = new McpServer({ name: 'assetanchor', version: MCP_SERVER_VERSION });
         registerReadTools(server, { db, uid });
+        const writeCtx = {
+          db,
+          uid,
+          scopes: ctx.authInfo?.scopes ?? [],
+          confirmationKey,
+          symbolProvider,
+        };
+        registerImportTools(server, writeCtx);
+        registerEditTools(server, writeCtx);
         return server;
       },
       { responseMode: 'json' },

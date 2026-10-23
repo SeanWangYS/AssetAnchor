@@ -16,7 +16,7 @@ export type TxRow = Pick<
   | 'fee'
   | 'tax'
   | 'notes'
->;
+> & { import_batch_id: string | null };
 
 export interface TxFilter {
   account_id?: string;
@@ -26,6 +26,7 @@ export interface TxFilter {
   date_to?: string;
   limit?: number;
   cursor?: string;
+  import_batch_id?: string;
 }
 
 export const DEFAULT_PAGE_SIZE = 50;
@@ -89,6 +90,7 @@ export function toTxRow(t: TransactionDocument): TxRow {
     fee: t.fee,
     tax: t.tax,
     notes: t.notes,
+    import_batch_id: t.import_batch_id ?? null,
   };
 }
 
@@ -105,6 +107,7 @@ export function queryTransactions(
     .filter(
       (r) =>
         (!f.account_id || r.account_id === f.account_id) &&
+        (!f.import_batch_id || r.import_batch_id === f.import_batch_id) &&
         (!symbol || r.symbol.toUpperCase() === symbol) &&
         (!f.market || r.market === f.market) &&
         (!f.date_from || r.transaction_date >= f.date_from) &&

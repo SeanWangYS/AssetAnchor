@@ -20,15 +20,27 @@ let appPromise: Promise<Express> | undefined;
  */
 async function getApp(): Promise<Express> {
   appPromise ??= (async () => {
-    const [{ getFirestore }, { getAuth }, cfgMod, adapterMod, providerMod, appMod] =
-      await Promise.all([
-        import('firebase-admin/firestore'),
-        import('firebase-admin/auth'),
-        import('./config'),
-        import('./firestoreAdapter'),
-        import('./provider'),
-        import('./app'),
-      ]);
+    const [
+      { getFirestore },
+      { getAuth },
+      cfgMod,
+      adapterMod,
+      providerMod,
+      appMod,
+      confirmMod,
+      yahooMod,
+      fakeMod,
+    ] = await Promise.all([
+      import('firebase-admin/firestore'),
+      import('firebase-admin/auth'),
+      import('./config'),
+      import('./firestoreAdapter'),
+      import('./provider'),
+      import('./app'),
+      import('./import/confirmation'),
+      import('../symbols/symbolMetaProvider'),
+      import('./import/fakeSymbolProvider'),
+    ]);
     const config = cfgMod.resolveMcpConfig({ ...process.env, MCP_ISSUER_URL: issuerParam.value() });
     const db = getFirestore();
     const adapter = adapterMod.createFirestoreAdapter(db);
@@ -43,6 +55,11 @@ async function getApp(): Promise<Express> {
       adapter,
       db,
       verifyIdToken: async (idToken) => (await getAuth().verifyIdToken(idToken, true)).uid,
+      confirmationKey: confirmMod.deriveConfirmationKey(cookieKeys[0] ?? ''),
+      symbolProvider:
+        config.isEmulator && process.env.MCP_FAKE_SYMBOL_PROVIDER === 'true'
+          ? fakeMod.fakeSymbolMetaProvider
+          : yahooMod.yahooSymbolMetaProvider,
     });
   })();
   try {

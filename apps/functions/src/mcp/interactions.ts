@@ -3,7 +3,7 @@ import * as logger from 'firebase-functions/logger';
 import type Provider from 'oidc-provider';
 import type { Adapter } from 'oidc-provider';
 import type { McpConfig } from './config';
-import { READ_SCOPE } from './provider';
+import { ALL_SCOPES } from './scopes';
 
 /** How long a verified Firebase login waits for the user to press 允許 (design D4). */
 const LOGIN_TTL = 300;
@@ -104,7 +104,7 @@ export function interactionRouter({
 
       const clientId = String(details.params.client_id);
       const grant = new provider.Grant({ accountId, clientId });
-      grant.addResourceScope(config.resourceUrl, READ_SCOPE);
+      grant.addResourceScope(config.resourceUrl, ALL_SCOPES.join(' '));
       const requested = String(details.params.scope ?? '').split(' ');
       if (requested.includes('offline_access')) grant.addOIDCScope('offline_access');
       const grantId = await grant.save();

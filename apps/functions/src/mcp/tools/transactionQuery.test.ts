@@ -22,6 +22,7 @@ const tx = (id: string, date: string, over: Partial<TxRow> = {}): TxRow => ({
   fee: '0.0000000000',
   tax: '0.0000000000',
   notes: '',
+  import_batch_id: null,
   ...over,
 });
 
@@ -81,6 +82,13 @@ describe('queryTransactions', () => {
     expect(
       queryTransactions(rows, { account_id: 'A2' }).items.map((x) => x.transaction_id),
     ).toEqual(['e']);
+  });
+
+  it('filters by import batch', () => {
+    const batch = [tx('x', '2025-01-01', { import_batch_id: 'imp_1' }), tx('y', '2025-01-01')];
+    expect(
+      queryTransactions(batch, { import_batch_id: 'imp_1' }).items.map((r) => r.transaction_id),
+    ).toEqual(['x']);
   });
 
   it('includes both ends of the date range', () => {

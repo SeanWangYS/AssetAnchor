@@ -11,6 +11,9 @@ import type { FirestoreTimestamp } from './user.js';
  * 多幣別 amounts map。跨幣別換算為顯示層職責，於檢視時用最新 `exchange_rates`
  * 即時計算（見 currency-display capability）。金額/數量一律 `Money` 10 位小數 string。
  */
+/** Where a transaction came from; absent means entered by hand in the app (ADR-0011). */
+export type TransactionSource = 'mcp';
+
 export interface TransactionDocument {
   transaction_id: string;
   account_id: string;
@@ -32,6 +35,10 @@ export interface TransactionDocument {
   related_transaction_id: string | null;
   lot_id: string | null;
   notes: string;
+  /** Set only for transactions imported through the MCP connector. */
+  source?: TransactionSource;
+  /** Shared by every transaction written in one `create_transactions` call. */
+  import_batch_id?: string;
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
 }
