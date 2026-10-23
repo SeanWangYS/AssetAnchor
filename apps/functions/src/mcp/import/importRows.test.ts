@@ -70,6 +70,20 @@ describe('normalizeImportRow', () => {
     });
   });
 
+  it('takes the master asset type when the row omits one', () => {
+    const r = normalizeImportRow(input({ symbol: 'SGOV', market: 'US' }), 'acc-a', {
+      defaultAssetType: 'ETF',
+    });
+    expect(r.ok && r.row.asset_type).toBe('ETF');
+  });
+
+  it('keeps an explicit asset type over the master one', () => {
+    const r = normalizeImportRow(input({ asset_type: 'STOCK' }), 'acc-a', {
+      defaultAssetType: 'ETF',
+    });
+    expect(r.ok && r.row.asset_type).toBe('STOCK');
+  });
+
   it('rejects unsupported transaction types', () => {
     const r = normalizeImportRow(input({ transaction_type: 'DIVIDEND_CASH' }), 'acc-a');
     expect(r).toEqual({ ok: false, error: '目前只支援買入（BUY）與賣出（SELL）' });

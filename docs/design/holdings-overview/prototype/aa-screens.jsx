@@ -112,7 +112,7 @@ function Home({ onRow, onAdd, onTab, tab }) {
 
         {/* 2x2 摘要 bento */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
-          <StatCell label="總報酬率" accentGlow>
+          <StatCell label="未實現報酬率" accentGlow>
             <Pnl pct={SUM.totalPct} size={21} weight={800} />
           </StatCell>
           <StatCell label="總未實現損益">
