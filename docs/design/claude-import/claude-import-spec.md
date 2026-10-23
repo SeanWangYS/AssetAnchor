@@ -1,6 +1,6 @@
 # 用 Claude 匯入交易（設定子頁）設計規格
 
-> 狀態：草案（2026-10-23，AI 依需求定案起草；待 owner 視覺對圖確認）。
+> 狀態：已確認（2026-10-23 起草；同日 owner 於 iOS Simulator 視覺對圖確認，不加 Claude Code 說明）。
 > 依據：MCP 截圖匯入系列需求 Q9（App 設定頁加說明頁）、ADR-0011。
 > 視覺系統沿用 `docs/design/README.md` 與既有設定子頁（`AboutScreen`、`ProfileScreen`）：dark-first、accent `#7C6CF0`、Noto Sans TC + Nunito、8px 網格。
 
