@@ -149,7 +149,10 @@ export async function searchSymbol(ctx: ToolContext, query: string, market?: str
   );
   const matches = rankSymbolCandidates(query, candidates, market);
   if (matches.length === 0) {
-    return ok('AssetAnchor 尚無此代號', { symbols: [], hint: 'AssetAnchor 尚無此代號' });
+    return ok('AssetAnchor 尚無此代號', {
+      symbols: [],
+      hint: 'AssetAnchor 尚無此代號。若查的是中文名稱，請先轉成代號再查；新代號可直接交給 validate_transactions 確認',
+    });
   }
   return ok(`找到 ${matches.length} 個候選代號`, { symbols: matches });
 }
@@ -202,7 +205,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
     {
       title: '查詢代號',
       description:
-        '把截圖上的股票名稱或代號對應到 AssetAnchor 的 symbol 與市場（例如「元大台灣50」→ TW 0050）。最多回傳 10 個候選。',
+        '用代號確認 AssetAnchor 的 symbol 與市場，最多回傳 10 個候選。名稱比對只涵蓋使用者交易過的股票；截圖只有中文名稱時（例如「元大台灣50」），先依自身知識轉成代號（0050）再查，並在確認清單寫出代號與名稱讓使用者核對。',
       inputSchema: z.object({
         query: z.string().min(1).max(50).describe('代號或名稱'),
         market: z.enum(MARKETS).optional(),

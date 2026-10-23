@@ -6,6 +6,7 @@ import {
   buildTransactionDoc,
   findDuplicates,
   findNewOversells,
+  sortTransactionsChronologically,
   type NewOversell,
   type TransactionDocument,
 } from '@assetanchor/shared';
@@ -281,7 +282,8 @@ async function planDelete(
   const issues = findNewOversells(all.map(toStoredRow), after).map((o) =>
     describeOversell(o, after, '刪除'),
   );
-  return { rows: targets.map(toStoredRow), issues };
+  // Oldest first so the user can check the list against the screenshot; tokens digest by ID.
+  return { rows: sortTransactionsChronologically(targets).map(toStoredRow), issues };
 }
 
 const deleteToken = (ctx: ImportContext, plan: DeletePlan, now: number) => ({

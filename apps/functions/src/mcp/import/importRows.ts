@@ -49,8 +49,15 @@ export type NormalizeResult =
 
 export const symbolIdOf = (market: string, symbol: string) => `${market}_${symbol}`;
 
-/** Builds the app's TransactionInput from a row and validates it with the app form schema. */
-export function normalizeImportRow(raw: ImportRowInput, accountId: string): NormalizeResult {
+/**
+ * Builds the app's TransactionInput from a row and validates it with the app form schema. A row
+ * without asset_type takes `defaultAssetType` (the symbol master's), else STOCK.
+ */
+export function normalizeImportRow(
+  raw: ImportRowInput,
+  accountId: string,
+  opts: { defaultAssetType?: string | undefined } = {},
+): NormalizeResult {
   if (raw.transaction_type !== 'BUY' && raw.transaction_type !== 'SELL') {
     return { ok: false, error: '目前只支援買入（BUY）與賣出（SELL）' };
   }
@@ -58,7 +65,7 @@ export function normalizeImportRow(raw: ImportRowInput, accountId: string): Norm
     account_id: accountId,
     symbol: raw.symbol,
     market: raw.market,
-    asset_type: raw.asset_type ?? 'STOCK',
+    asset_type: raw.asset_type ?? opts.defaultAssetType ?? 'STOCK',
     transaction_type: raw.transaction_type,
     transaction_date: raw.transaction_date.trim(),
     currency: raw.currency ?? defaultCurrencyForMarket(raw.market as Market) ?? '',

@@ -63,6 +63,8 @@ beforeAll(async () => {
   await tx('b1', '2025-01-02', '2330', 'BUY', '1000');
   await tx('s1', '2025-03-01', '2330', 'SELL', '500');
   await tx('b2', '2025-02-01', '2317', 'BUY', '100');
+  // Doc-ID order (a1 < b2) is the reverse of date order, so previews must sort explicitly.
+  await tx('a1', '2025-04-01', '2317', 'BUY', '10');
   token = (await connect(dave.idToken)).accessToken;
 });
 
@@ -171,6 +173,14 @@ describe('delete_transactions', () => {
   it('names ids that do not exist', async () => {
     const r = await callTool(token, 'preview_delete_transactions', { transaction_ids: ['nope'] });
     expect(r.text).toBe('找不到交易：nope');
+  });
+
+  it('lists the preview oldest first', async () => {
+    const r = await callTool(token, 'preview_delete_transactions', {
+      transaction_ids: ['a1', 's1', 'b2'],
+    });
+    const rows = r.data.transactions as { transaction_id: string }[];
+    expect(rows.map((t) => t.transaction_id)).toEqual(['b2', 's1', 'a1']);
   });
 
   it('deletes a confirmed single transaction', async () => {

@@ -1,4 +1,4 @@
-import { rankSymbolCandidates, type SymbolRow } from './symbolMatch';
+import { isResolvedSymbol, rankSymbolCandidates, type SymbolRow } from './symbolMatch';
 
 const sym = (market: SymbolRow['market'], symbol: string, name = '', name_zh = ''): SymbolRow => ({
   symbol_id: `${market}_${symbol}`,
@@ -47,11 +47,31 @@ describe('rankSymbolCandidates', () => {
   });
 
   it('drops duplicates and caps at 10', () => {
-    const many = Array.from({ length: 15 }, (_, i) => sym('US', `AB${i}`));
+    const many = Array.from({ length: 15 }, (_, i) => sym('US', `AB${i}`, `Company ${i}`));
     expect(rankSymbolCandidates('AB', [...many, ...many])).toHaveLength(10);
   });
 
   it('returns nothing for an empty query', () => {
     expect(rankSymbolCandidates('  ', candidates)).toEqual([]);
+  });
+});
+
+describe('isResolvedSymbol', () => {
+  it('treats a symbol with any name as resolved', () => {
+    expect(isResolvedSymbol({ name: 'Apple', name_zh: '' })).toBe(true);
+    expect(isResolvedSymbol({ name: '', name_zh: '台積電' })).toBe(true);
+  });
+
+  it('treats empty or missing names as an unresolved shell', () => {
+    expect(isResolvedSymbol({ name: '', name_zh: '' })).toBe(false);
+    expect(isResolvedSymbol({ name: '  ', name_zh: undefined })).toBe(false);
+    expect(isResolvedSymbol({})).toBe(false);
+  });
+});
+
+describe('rankSymbolCandidates with shells', () => {
+  it('drops symbols the quote source never resolved', () => {
+    const rows = [sym('TW', '0050', 'Yuanta Taiwan 50'), sym('US', '0050')];
+    expect(rankSymbolCandidates('0050', rows).map((c) => c.symbol_id)).toEqual(['TW_0050']);
   });
 });
