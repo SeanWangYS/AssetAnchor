@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { ALL_SCOPES } from '../scopes';
 
 /**
  * Minimal OAuth + MCP client for integration tests against the emulators
@@ -40,7 +41,14 @@ export async function signUp(email: string): Promise<{ uid: string; idToken: str
   return { uid: body.localId, idToken: body.idToken };
 }
 
-export async function register(redirectUris: string[] = [REDIRECT_URI]) {
+/**
+ * Registers like Claude does: the client copies `scopes_supported` from the protected-resource
+ * metadata into its registration `scope`.
+ */
+export async function register(
+  redirectUris: string[] = [REDIRECT_URI],
+  scope: string | undefined = ALL_SCOPES.join(' '),
+) {
   const res = await fetch(`${FN}/reg`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -50,6 +58,7 @@ export async function register(redirectUris: string[] = [REDIRECT_URI]) {
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
       client_name: 'Claude',
+      ...(scope === undefined ? {} : { scope }),
     }),
   });
   return { status: res.status, body: (await res.json()) as Record<string, string> };

@@ -4,6 +4,7 @@ import {
   ACCESS_TOKEN_TTL,
   AUTHORIZATION_CODE_TTL,
   INTERACTION_TTL,
+  PROVIDER_SCOPES,
   REFRESH_ABSOLUTE_TTL,
   refreshTokenTtl,
 } from './oauthPolicy';
@@ -34,7 +35,7 @@ export function createProvider({ config, adapter, cookieKeys, jwks }: ProviderDe
     },
     // Resource scopes live in getResourceServerInfo only; listing them here would make the
     // provider treat them as OIDC scopes and re-prompt for consent (spike finding).
-    scopes: ['offline_access'],
+    scopes: [...PROVIDER_SCOPES],
     claims: { openid: ['sub'] },
     findAccount: (_ctx, sub) => ({ accountId: sub, claims: () => ({ sub }) }),
     pkce: { required: () => true },

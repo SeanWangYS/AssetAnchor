@@ -158,6 +158,13 @@ describe('mcp-authorization', () => {
     expect((await register(['claude://cb'])).status).toBe(400);
   });
 
+  it('accepts registrations that omit scope or carry the connector scopes', async () => {
+    expect((await register(undefined, undefined)).status).toBe(201);
+    const withScopes = await register(undefined, 'transactions.read transactions.write');
+    expect(withScopes.status).toBe(201);
+    expect(withScopes.body.client_id).toEqual(expect.any(String));
+  });
+
   it('rejects an authorization request without PKCE', async () => {
     const { body } = await register();
     const back = await authorize({ clientId: body.client_id ?? '', idToken: alice.idToken });

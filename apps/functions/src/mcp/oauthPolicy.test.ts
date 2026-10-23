@@ -3,6 +3,7 @@ import {
   REFRESH_ABSOLUTE_TTL,
   refreshTokenTtl,
   createRateLimiter,
+  registrationScope,
 } from './oauthPolicy';
 
 describe('token lifetimes', () => {
@@ -47,5 +48,21 @@ describe('createRateLimiter', () => {
     allow('b', 0);
     allow('c', 0);
     expect(allow('a', 10)).toBe(true);
+  });
+});
+
+describe('registrationScope', () => {
+  it('drops resource scopes that clients copy from the protected-resource metadata', () => {
+    expect(registrationScope('transactions.read transactions.write')).toBeUndefined();
+  });
+
+  it('keeps scopes the provider itself knows', () => {
+    expect(registrationScope('transactions.read offline_access')).toBe('offline_access');
+  });
+
+  it('ignores missing or non-string scope values', () => {
+    expect(registrationScope(undefined)).toBeUndefined();
+    expect(registrationScope(['offline_access'])).toBeUndefined();
+    expect(registrationScope('  ')).toBeUndefined();
   });
 });
