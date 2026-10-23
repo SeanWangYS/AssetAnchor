@@ -300,7 +300,7 @@ export default function HoldingsOverviewScreen({
         {/* 2×2 摘要 Bento */}
         <View style={styles.bento}>
           <Card glow padding={spacing.cardInner} style={styles.bentoCell}>
-            <Text style={styles.bentoLabel}>總報酬率</Text>
+            <Text style={styles.bentoLabel}>未實現報酬率</Text>
             <View style={styles.bentoVal}>
               {hero ? (
                 <Pnl
