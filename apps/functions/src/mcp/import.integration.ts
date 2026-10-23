@@ -69,6 +69,20 @@ beforeAll(async () => {
     name: 'Taiwan Semiconductor',
     name_zh: '台積電',
   });
+  const shell = { asset_type: 'STOCK', currency: 'USD', name: '', name_zh: '' };
+  await db
+    .collection('symbols')
+    .doc('US_APPL')
+    .set({ symbol_id: 'US_APPL', symbol: 'APPL', market: 'US', ...shell });
+  await db.collection('symbols').doc('US_SGOV').set({
+    symbol_id: 'US_SGOV',
+    symbol: 'SGOV',
+    market: 'US',
+    asset_type: 'ETF',
+    currency: 'USD',
+    name: 'iShares 0-3 Month Treasury Bond ETF',
+    name_zh: '',
+  });
   token = (await connect(carol.idToken)).accessToken;
 });
 
@@ -121,6 +135,29 @@ describe('validate_transactions', () => {
       status: 'invalid',
       message: '找不到此代號，請確認代號與市場（若確定正確，請稍後再試）',
     });
+  });
+
+  it('does not accept a nameless shell symbol as existing', async () => {
+    const r = await callTool(token, 'validate_transactions', {
+      account_id: 'acc-i',
+      transactions: [row({ symbol: 'APPL', market: 'US', price: '190' })],
+    });
+    expect((r.data.rows as Report[])[0]).toMatchObject({
+      status: 'invalid',
+      message: '找不到此代號，請確認代號與市場（若確定正確，請稍後再試）',
+    });
+  });
+
+  it('takes the asset type from the symbol master when omitted', async () => {
+    const r = await callTool(token, 'validate_transactions', {
+      account_id: 'acc-i',
+      transactions: [
+        row({ symbol: 'SGOV', market: 'US', price: '100.41', quantity: '10' }),
+        row({ symbol: 'SGOV', market: 'US', price: '100.5', quantity: '1', asset_type: 'STOCK' }),
+      ],
+    });
+    const rows = r.data.rows as Report[];
+    expect(rows.map((x) => x.row?.asset_type)).toEqual(['ETF', 'STOCK']);
   });
 
   it('caps a batch at 50 rows', async () => {

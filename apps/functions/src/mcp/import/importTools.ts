@@ -6,11 +6,13 @@ import * as z from 'zod';
 import {
   buildTransactionDoc,
   type AccountDocument,
+  type SymbolDocument,
   type TransactionDocument,
 } from '@assetanchor/shared';
 import { upsertSymbolMeta } from '../../symbols/fetchSymbolMeta';
 import type { SymbolMetaProvider } from '../../symbols/symbolMetaProvider';
 import { guard, toolError, type ToolContext } from '../tools/readTools';
+import { isResolvedSymbol } from '../tools/symbolMatch';
 import { WRITE_SCOPE } from '../scopes';
 import { signConfirmation, verifyConfirmation } from './confirmation';
 import {
@@ -34,12 +36,17 @@ export interface ImportContext extends ToolContext {
 
 const rowSchema = z.object({
   transaction_date: z.string().describe('交易日 YYYY-MM-DD（截圖看不清楚時先問使用者，不可猜）'),
-  symbol: z.string().describe('代號，例如 2330、AAPL；名稱不確定時先用 search_symbol'),
+  symbol: z
+    .string()
+    .describe('代號，例如 2330、AAPL；截圖只有中文名稱時先自行轉成代號，再用 search_symbol 確認'),
   market: z.string().describe('TW、US、CRYPTO 或 OTHER'),
   transaction_type: z.string().describe('BUY 或 SELL'),
   quantity: z.string().describe('股數，字串，例如 "1000"'),
   price: z.string().describe('成交單價，字串'),
-  asset_type: z.string().optional().describe('STOCK（預設）、ETF 等'),
+  asset_type: z
+    .string()
+    .optional()
+    .describe('STOCK、ETF 等；省略時沿用 AssetAnchor 主檔的類型，主檔沒有此代號時為 STOCK'),
   currency: z.string().optional().describe('預設依市場：TW→TWD、US→USD'),
   fee: z.string().optional().describe('手續費，截圖沒有就省略（視為 0）'),
   tax: z.string().optional().describe('交易稅，截圖沒有就省略（視為 0）'),
@@ -84,10 +91,13 @@ export async function loadTransactions(ctx: ToolContext): Promise<TransactionDoc
 
 /**
  * Symbols already in AssetAnchor exist; others are confirmed with the quote source (TW/US).
- * CRYPTO and OTHER accept new symbols as the app does.
+ * A TW/US doc without any name is a shell left by an app typo and is re-checked like a new
+ * symbol. CRYPTO and OTHER accept new symbols as the app does. Also returns each existing
+ * symbol's master asset type.
  */
-export async function resolveSymbols(ctx: ImportContext, rows: NormalizeResult[]) {
+export async function resolveSymbolInfo(ctx: ImportContext, rows: NormalizeResult[]) {
   const status = new Map<string, SymbolStatus>();
+  const assetTypes = new Map<string, string>();
   const targets = new Map<string, { market: string; symbol: string }>();
   for (const r of rows) {
     if (r.ok) targets.set(symbolIdOf(r.row.market, r.row.symbol), r.row);
@@ -100,15 +110,22 @@ export async function resolveSymbols(ctx: ImportContext, rows: NormalizeResult[]
     ids.map(async (id, i) => {
       const target = targets.get(id);
       if (!target) return;
-      if (docs[i]?.exists) status.set(id, 'exists');
-      else if (target.market !== 'TW' && target.market !== 'US') status.set(id, 'new');
+      const doc = docs[i]?.exists ? (docs[i]?.data() as Partial<SymbolDocument>) : undefined;
+      if (doc?.asset_type) assetTypes.set(id, doc.asset_type);
+      const quotable = target.market === 'TW' || target.market === 'US';
+      if (doc && (!quotable || isResolvedSymbol(doc))) status.set(id, 'exists');
+      else if (!quotable) status.set(id, 'new');
       else {
         const meta = await ctx.symbolProvider.fetch(target.market, target.symbol);
         status.set(id, meta ? 'new' : 'missing');
       }
     }),
   );
-  return status;
+  return { status, assetTypes };
+}
+
+export async function resolveSymbols(ctx: ImportContext, rows: NormalizeResult[]) {
+  return (await resolveSymbolInfo(ctx, rows)).status;
 }
 
 interface Assessment {
@@ -126,11 +143,19 @@ async function assess(ctx: ImportContext, input: BatchInput): Promise<Assessment
   if (!account.is_active)
     return toolError('此帳戶已停用，請先在 AssetAnchor App 啟用或選擇其他帳戶');
 
-  const normalized = input.transactions.map((t) => normalizeImportRow(t, input.account_id));
-  const [existing, symbols] = await Promise.all([
+  const first = input.transactions.map((t) => normalizeImportRow(t, input.account_id));
+  const [existing, { status: symbols, assetTypes }] = await Promise.all([
     loadTransactions(ctx),
-    resolveSymbols(ctx, normalized),
+    resolveSymbolInfo(ctx, first),
   ]);
+  // Rows without asset_type take the symbol master's type (validate and create both land here,
+  // so the rows bound into the confirmation token stay identical).
+  const normalized = first.map((r, i) => {
+    const raw = input.transactions[i];
+    const masterType = r.ok ? assetTypes.get(symbolIdOf(r.row.market, r.row.symbol)) : undefined;
+    if (!raw || raw.asset_type !== undefined || !masterType) return r;
+    return normalizeImportRow(raw, input.account_id, { defaultAssetType: masterType });
+  });
   const reports = assessImport({
     rows: normalized,
     existing,
@@ -278,7 +303,7 @@ export function registerImportTools(server: McpServer, ctx: ImportContext): void
     {
       title: '驗證待匯入交易',
       description:
-        '匯入前必用：檢查從截圖整理出的交易（格式、代號、重複、超賣），回傳正規化後的清單與 confirmation_token。不會寫入任何資料。只支援 BUY／SELL；股利等其他類型請告知使用者已略過。日期、代號、買賣、股數、單價看不清楚時要先問使用者，不可猜測。',
+        '匯入前必用：檢查從截圖整理出的交易（格式、代號、重複、超賣），回傳正規化後的清單與 confirmation_token。不會寫入任何資料。只支援 BUY／SELL；股利等其他類型請告知使用者已略過。日期、代號、買賣、股數、單價看不清楚時要先問使用者，不可猜測。列給使用者確認時，每筆同時寫出代號與名稱，方便核對中文名稱轉代號是否正確。',
       inputSchema: z.object(batchShape),
       annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     },

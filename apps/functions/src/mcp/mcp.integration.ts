@@ -111,6 +111,16 @@ async function seed(uid: string) {
     name: 'Yuanta Taiwan 50',
     name_zh: '元大台灣50',
   });
+  // Shell left by an app typo: the quote source never resolved it, so it has no name.
+  await symbols.doc('US_0050').set({
+    symbol_id: 'US_0050',
+    symbol: '0050',
+    market: 'US',
+    asset_type: 'STOCK',
+    currency: 'USD',
+    name: '',
+    name_zh: '',
+  });
 }
 
 beforeAll(async () => {
@@ -372,9 +382,19 @@ describe('mcp-server', () => {
     );
   });
 
+  it('leaves out shell symbols that have no name', async () => {
+    const r = await callTool(aliceToken, 'search_symbol', { query: '0050' });
+    expect((r.data.symbols as { symbol_id: string }[]).map((s) => s.symbol_id)).toEqual([
+      'TW_0050',
+    ]);
+  });
+
   it('reports unknown symbols without creating them', async () => {
     const r = await callTool(aliceToken, 'search_symbol', { query: 'ZZZZ' });
-    expect(r.data).toEqual({ symbols: [], hint: 'AssetAnchor 尚無此代號' });
+    expect(r.data).toEqual({
+      symbols: [],
+      hint: 'AssetAnchor 尚無此代號。若查的是中文名稱，請先轉成代號再查；新代號可直接交給 validate_transactions 確認',
+    });
     for (const m of ['TW', 'US', 'CRYPTO', 'OTHER']) {
       expect((await db.collection('symbols').doc(`${m}_ZZZZ`).get()).exists).toBe(false);
     }
