@@ -352,7 +352,11 @@ firestore/
 │
 ├── quotes/{symbolId}                       # 全域：報價快取（Cloud Function 寫，App 讀，TTL 15min）
 │
-└── symbols/{symbolId}                      # 全域：股票/資產代號清單
+├── symbols/{symbolId}                      # 全域：股票/資產代號清單
+│
+├── price_history/{symbolId}_{year}         # 全域：歷史日線（ADR-0010）
+│
+└── oauth_store/{model}_{id}                # 後端專用：MCP connector 的 OAuth 狀態（ADR-0011，TTL 清除）
 ```
 
 ### Collection 1：`users/{userId}`
@@ -478,6 +482,8 @@ const ACCOUNT_TYPES = [
   lot_id: null,                      // FIFO / 指定批次用
 
   notes: "",
+  source: "mcp",                     // 選填：透過 MCP connector 匯入才有（ADR-0011）；缺欄位＝App 手動輸入
+  import_batch_id: "imp_xxx",        // 選填：同一次 MCP 匯入共用的批次 ID
   created_at: timestamp,
   updated_at: timestamp
 }
@@ -669,6 +675,17 @@ service cloud.firestore {
     match /quotes/{symbolId} {
       allow read: if request.auth != null;
       allow write: if false;
+    }
+
+    // 歷史日線（ADR-0010）：登入使用者皆可讀，只有後端可寫
+    match /price_history/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // MCP OAuth 狀態（ADR-0011）：用戶端一律不可讀寫，只有 mcp 函式的 Admin SDK 存取
+    match /oauth_store/{docId} {
+      allow read, write: if false;
     }
   }
 }

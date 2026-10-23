@@ -6,7 +6,8 @@
     "test:rules": "firebase --config ../firebase.json emulators:exec --only firestore \"jest\"",
     "emulators": "firebase --config ../firebase.json emulators:start --only auth,firestore --project assetanchor-832df --import=../.emulator-data --export-on-exit=../.emulator-data",
     "emulators:fn": "firebase --config ../firebase.json emulators:start --only auth,firestore,functions --project assetanchor-832df --import=../.emulator-data --export-on-exit=../.emulator-data",
-    "seed:emulator": "FIRESTORE_EMULATOR_HOST=localhost:8080 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 node scripts/seed-emulator.mjs"
+    "seed:emulator": "FIRESTORE_EMULATOR_HOST=localhost:8080 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 node scripts/seed-emulator.mjs",
+    "emulators:mcp": "pnpm --filter @assetanchor/functions build && pnpm --filter @assetanchor/web build:emulator && firebase --config ../firebase.json emulators:start --only auth,firestore,functions,hosting --project assetanchor-832df --import=../.emulator-data --export-on-exit=../.emulator-data"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",

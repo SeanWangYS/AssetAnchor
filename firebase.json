@@ -7,10 +7,23 @@
     "source": "apps/functions",
     "predeploy": ["pnpm --filter @assetanchor/functions build"]
   },
+  "hosting": {
+    "public": "apps/web/dist",
+    "cleanUrls": true,
+    "predeploy": ["pnpm --filter @assetanchor/web build"],
+    "rewrites": [
+      { "source": "/mcp", "function": { "functionId": "mcp", "region": "asia-east1" } },
+      {
+        "source": "/.well-known/oauth-protected-resource{,/**}",
+        "function": { "functionId": "mcp", "region": "asia-east1" }
+      }
+    ]
+  },
   "emulators": {
     "auth": { "port": 9099 },
     "firestore": { "port": 8080 },
     "functions": { "port": 5001 },
+    "hosting": { "port": 5002 },
     "ui": { "enabled": true, "port": 4000 },
     "singleProjectMode": true
   }

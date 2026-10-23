@@ -2,7 +2,7 @@
 
 > **本圖為導覽，權威仍是 code。** 目的是讓 LLM 與人類工程師一眼掌握元件、資料流與信任邊界，好評估新功能落在哪一層。細節以 `apps/`、`packages/shared/src/`、`apps/functions/src/`、`firebase/firestore.rules` 為準；衝突時以 code 為準並回頭修本圖。
 >
-> 相關權威文件：`docs/portfolio_tracker_planning.md`（§6 schema 聖牛）、ADR-0004（event-sourcing schema）、ADR-0005（單幣別事件＋顯示換算）、ADR-0006（報價雙層 cache）、ADR-0010（走勢圖歷史架構）、CLAUDE.md（憲法 + DoD）。
+> 相關權威文件：`docs/portfolio_tracker_planning.md`（§6 schema 聖牛）、ADR-0004（event-sourcing schema）、ADR-0005（單幣別事件＋顯示換算）、ADR-0006（報價雙層 cache）、ADR-0010（走勢圖歷史架構）、ADR-0011（MCP server 與 OAuth）、CLAUDE.md（憲法 + DoD）。
 
 ## 圖一：元件拓樸（前後端 / DB / cache / auth / external / dev）
 
@@ -33,6 +33,14 @@ flowchart TB
         FnFx["exchangeRates<br/>scheduledUsdRate · seedUsdRate"]
         FnSym["symbols<br/>fetchSymbolMeta"]
         FnHist["history<br/>ensureHistory · fetchIntraday"]
+        FnMcp["mcp（不掛 App Check）<br/>OAuth 授權伺服器 oidc-provider<br/>MCP 端點 · 只讀工具"]
+    end
+
+    Claude["🤖 Claude connector<br/>（Claude 的伺服器）"]
+    subgraph Hosting["🌍 Firebase Hosting（assetanchor-832df.web.app）"]
+        direction LR
+        WebConnect["/connect 登入與同意頁<br/>apps/web"]
+        WebMcp["/mcp · /.well-known/oauth-protected-resource<br/>rewrite → mcp"]
     end
 
     subgraph Data["🔥 Firestore (assetanchor-832df)"]
@@ -42,6 +50,7 @@ flowchart TB
         QuotesC[("quotes/{symbolId}")]
         RatesC[("exchange_rates/{date}")]
         HistC[("price_history/{docId}")]
+        OAuthC[("oauth_store/{model}_{id}<br/>後端專用 · TTL")]
     end
 
     Auth["🔐 Firebase Auth<br/>Email/Password · Google(規劃中)"]
@@ -79,6 +88,16 @@ flowchart TB
     FnSym --> Yahoo
     FnHist --> Yahoo
 
+    Claude -->|"Bearer token · JSON-RPC"| WebMcp
+    WebMcp --> FnMcp
+    Claude -->|"註冊 · /auth · /token（函式網址）"| FnMcp
+    WebConnect -->|"Firebase Web SDK 登入"| Auth
+    WebConnect -->|"ID token"| FnMcp
+    FnMcp -->|"verifyIdToken"| Auth
+    FnMcp -->|"Admin SDK 讀寫"| OAuthC
+    FnMcp -->|"Admin SDK 只讀（權杖 uid）"| UsersC
+    FnMcp -->|"只讀"| SymbolsC
+
     Client -. dev 時連 .-> Dev
 ```
 
@@ -91,6 +110,9 @@ flowchart TB
 | `quotes/{symbolId}`     | 登入者    | ❌                                    | **後端 Admin SDK only** |
 | `exchange_rates/{date}` | 登入者    | ❌                                    | **後端 Admin SDK only** |
 | `price_history/{docId}` | 登入者    | ❌                                    | **後端 Admin SDK only** |
+| `oauth_store/{docId}`   | ❌        | ❌                                    | **後端 Admin SDK only** |
+
+**MCP 入口（ADR-0011）**：`mcp` 是唯一不經 App Check 的使用者端函式，改以 OAuth bearer token 保護；所有工具只存取權杖所屬 uid 的資料。授權流程見圖三。
 
 **分層與依賴方向**：`features/* → core | services | packages/shared`；feature 之間不互 import。金額/數量/匯率/成本一律走 `shared` 的 `Money`（decimal.js），Firestore 存 10 位小數 string（ADR-0005）。
 
@@ -138,3 +160,32 @@ sequenceDiagram
 ```
 
 **降級與可觀測性**：報價鏈任一環失敗都不應讓持股頁整頁卡在「報價載入中」；應退回最後已知值並標 stale。client 端錯誤能見度有限，後端問題主要靠 `firebase functions:log` 與 Sentry（見 memory：prod 台股 ETF market=US → Yahoo 404 案例）。
+
+## 圖三：Claude connector 授權與工具呼叫（ADR-0011）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Claude
+    participant H as Hosting (web.app)
+    participant F as mcp 函式（Cloud Run 網址）
+    participant A as Firebase Auth
+    participant D as Firestore
+
+    C->>H: POST /mcp（無權杖）
+    H->>F: rewrite
+    F-->>C: 401 + resource_metadata
+    C->>F: metadata · 動態註冊 · /auth（PKCE）
+    F-->>C: 導向 /interaction → H/connect
+    C->>H: 使用者在瀏覽器登入（Email / Google）
+    H->>A: signIn
+    H->>F: POST /interaction/:uid/firebase（ID token）
+    F->>A: verifyIdToken → uid
+    H->>F: GET /interaction/:uid/confirm（允許）
+    F->>D: Grant · 授權碼 → oauth_store
+    F-->>C: 授權碼 → /token 換存取權杖（1h）＋ refresh（≤30 天）
+    C->>H: POST /mcp（Bearer）
+    H->>F: rewrite
+    F->>D: 查 oauth_store 得 uid → 讀 users/{uid}/**
+    F-->>C: 工具結果（decimal string 原樣）
+```

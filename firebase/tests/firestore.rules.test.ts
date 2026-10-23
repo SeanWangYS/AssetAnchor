@@ -157,3 +157,18 @@ describe('transactions subcollection 隔離（Sprint 3）', () => {
     await assertFails(setDoc(doc(anon, 'users/alice/transactions/t1'), { transaction_id: 't1' }));
   });
 });
+
+describe('oauth_store 後端專用（add-mcp-auth-readonly）', () => {
+  it('已登入使用者不能讀寫 oauth_store', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(getDoc(doc(alice, 'oauth_store/AccessToken_x')));
+    await assertFails(setDoc(doc(alice, 'oauth_store/AccessToken_x'), { model: 'AccessToken' }));
+    await assertFails(deleteDoc(doc(alice, 'oauth_store/AccessToken_x')));
+  });
+
+  it('未登入不能讀寫 oauth_store', async () => {
+    const anon = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(anon, 'oauth_store/Client_x')));
+    await assertFails(setDoc(doc(anon, 'oauth_store/Client_x'), { model: 'Client' }));
+  });
+});

@@ -76,9 +76,43 @@ pnpm --filter @assetanchor/mobile test:coverage
 # Firestore rules：自動起 emulator 再跑 jest（需 Firebase CLI + Java）
 pnpm --filter @assetanchor/firebase test:rules
 
+# MCP / OAuth 整合測試：自動 build、起另一組 port 的 emulator（firebase.integration.json，
+# 專案 demo-assetanchor），以 HTTP 跑完整 connector 流程（不影響開發用 emulator）
+pnpm --filter @assetanchor/functions test:integration
+
 # 全工作區檢查（= CI 內容）
 pnpm -r typecheck && pnpm -r lint && pnpm exec prettier --check .
 ```
+
+---
+
+## C. MCP connector 本機驗證（Claude Code / MCP Inspector）
+
+> 架構見 ADR-0011 與 `docs/architecture.md` 圖三。connector 網址 = Hosting emulator 的 `/mcp`。
+
+1. 準備 emulator 用的 secrets 佔位檔（只需一次；已被 gitignore，emulator 不會使用其值，只是避免去讀正式 Secret Manager）：
+
+   ```bash
+   printf 'MCP_COOKIE_KEYS=emulator-only\nMCP_OIDC_JWKS={"keys":[]}\n' > apps/functions/.secret.local
+   ```
+
+2. 起含 functions 與 hosting 的 emulator（會先 build functions 與 emulator 版登入頁）：
+
+   ```bash
+   pnpm --filter @assetanchor/firebase emulators:mcp
+   ```
+
+   | 服務                  | 位址                                                     |
+   | --------------------- | -------------------------------------------------------- |
+   | connector（MCP 端點） | `http://127.0.0.1:5002/mcp`                              |
+   | 登入頁                | `http://127.0.0.1:5002/connect`                          |
+   | 授權伺服器 issuer     | `http://127.0.0.1:5001/assetanchor-832df/asia-east1/mcp` |
+
+3. 擇一連線：
+   - **MCP Inspector**：`npx @modelcontextprotocol/inspector`，Transport 選 Streamable HTTP、URL 填 `http://127.0.0.1:5002/mcp`，按 Connect 走 OAuth。
+   - **Claude Code**：`claude mcp add --transport http assetanchor-local http://127.0.0.1:5002/mcp`，在 Claude Code 中執行 `/mcp` 選 `assetanchor-local` 完成授權。
+4. 瀏覽器會開登入頁：用種子帳號 `test@assetanchor.dev` / `test1234` 登入 → 按「允許」。
+5. 呼叫 `list_accounts`、`list_transactions`、`search_symbol`，應看到種子帳號的資料（金額為 10 位小數字串）。
 
 ---
 
@@ -90,4 +124,5 @@ pnpm -r typecheck && pnpm -r lint && pnpm exec prettier --check .
 | `firebase emulators:start` 失敗        | 確認已裝 Java（Firestore emulator 需要 JVM）、`firebase-tools` 已全域安裝。                                                         |
 | 交易分頁 FAB 點了寫不進去 / 沒帳戶可選 | 先到「設定 → 帳戶管理」建立一個啟用帳戶（交易必須掛在帳戶下）。                                                                     |
 | 改了 native 相關設定後行為怪異         | 重跑 `pnpm --filter @assetanchor/mobile ios` 重新 build。                                                                           |
+| MCP 授權頁顯示「授權連線已逾時」       | 互動有 10 分鐘期限；回到 Claude Code / Inspector 重新連線。                                                                         |
 | 真機測試連到哪？                       | emulator flag 僅 dev；真機 / EAS build 連**正式** Firebase（`assetanchor-832df`），不連 emulator。                                  |
