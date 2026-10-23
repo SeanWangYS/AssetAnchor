@@ -13,7 +13,7 @@ import { toNodeHandler } from '@modelcontextprotocol/node';
 import { requireBearerAuth } from '@modelcontextprotocol/express';
 import { isAllowedRedirectUri, type McpConfig } from './config';
 import { interactionRouter } from './interactions';
-import { createRateLimiter } from './oauthPolicy';
+import { createRateLimiter, registrationScope } from './oauthPolicy';
 import { ALL_SCOPES, READ_SCOPE } from './scopes';
 import { registerReadTools } from './tools/readTools';
 import { registerImportTools } from './import/importTools';
@@ -140,6 +140,10 @@ export function buildMcpApp({
       });
       return;
     }
+    const body = req.body as { scope?: unknown };
+    const scope = registrationScope(body.scope);
+    if (scope === undefined) delete body.scope;
+    else body.scope = scope;
     next();
   });
 

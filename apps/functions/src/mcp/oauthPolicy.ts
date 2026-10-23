@@ -12,6 +12,21 @@ export function refreshTokenTtl(iiat: number, nowEpoch: number): number {
   return Math.max(1, REFRESH_ABSOLUTE_TTL - (nowEpoch - iiat));
 }
 
+/** Scopes oidc-provider itself knows; resource scopes stay out (see provider.ts). */
+export const PROVIDER_SCOPES = ['offline_access'] as const;
+
+/**
+ * Clients such as Claude copy `scopes_supported` from the protected-resource metadata into
+ * their registration `scope`. oidc-provider rejects scopes it does not know, so keep only
+ * provider scopes; resource scopes are still granted per authorization request.
+ */
+export function registrationScope(scope: unknown): string | undefined {
+  if (typeof scope !== 'string') return undefined;
+  const known: readonly string[] = PROVIDER_SCOPES;
+  const kept = scope.split(/\s+/).filter((s) => known.includes(s));
+  return kept.length > 0 ? kept.join(' ') : undefined;
+}
+
 interface RateLimiterOptions {
   limit: number;
   windowMs: number;
