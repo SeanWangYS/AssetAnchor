@@ -15,6 +15,17 @@ describe('accountInputSchema', () => {
     expect(accountInputSchema.safeParse(valid).success).toBe(true);
   });
 
+  it('caps account_name and notes at the lengths firestore.rules allow', () => {
+    expect(accountInputSchema.safeParse({ ...valid, account_name: 'x'.repeat(100) }).success).toBe(
+      true,
+    );
+    expect(accountInputSchema.safeParse({ ...valid, account_name: 'x'.repeat(101) }).success).toBe(
+      false,
+    );
+    expect(accountInputSchema.safeParse({ ...valid, notes: 'n'.repeat(1000) }).success).toBe(true);
+    expect(accountInputSchema.safeParse({ ...valid, notes: 'n'.repeat(1001) }).success).toBe(false);
+  });
+
   it('rejects empty account_name', () => {
     expect(accountInputSchema.safeParse({ ...valid, account_name: '' }).success).toBe(false);
   });

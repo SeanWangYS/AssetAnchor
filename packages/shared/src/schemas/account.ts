@@ -6,6 +6,10 @@ import { MARKETS } from '../enums/markets.js';
 /** MVP 幣別範圍：schema 預留多幣別，但帳戶建立/編輯只收 USD / TWD（planning doc §2 / §5）。 */
 const MVP_CURRENCIES = ['USD', 'TWD'] as const;
 
+/** Length caps mirrored in firebase/firestore.rules (validate-firestore-writes). */
+export const ACCOUNT_NAME_MAX_LENGTH = 100;
+export const NOTES_MAX_LENGTH = 1000;
+
 /** #RRGGBB 十六進位色碼。 */
 const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
 
@@ -14,14 +18,18 @@ const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
  * runtime 驗證，型別由 z.infer 推導；對應 AccountDocument 的使用者可編輯子集。
  */
 export const accountInputSchema = z.object({
-  account_name: z.string().trim().min(1, '帳戶名稱必填'),
+  account_name: z
+    .string()
+    .trim()
+    .min(1, '帳戶名稱必填')
+    .max(ACCOUNT_NAME_MAX_LENGTH, `帳戶名稱最多 ${ACCOUNT_NAME_MAX_LENGTH} 字`),
   // enum 欄位一律帶繁中訊息——zod 內建英文訊息會裸露 enum 內部值於 UI（visual-audit P0-1）
   broker: z.enum(BROKERS, '請選擇券商'),
   account_type: z.enum(ACCOUNT_TYPES, '請選擇帳戶類型'),
   base_currency: z.enum(MVP_CURRENCIES, '請選擇基礎幣別'),
   market: z.enum(MARKETS, '請選擇主要市場'),
   color: z.string().regex(HEX_COLOR, '需為 #RRGGBB 色碼'),
-  notes: z.string().default(''),
+  notes: z.string().max(NOTES_MAX_LENGTH, `備註最多 ${NOTES_MAX_LENGTH} 字`).default(''),
 });
 
 export type AccountInput = z.infer<typeof accountInputSchema>;

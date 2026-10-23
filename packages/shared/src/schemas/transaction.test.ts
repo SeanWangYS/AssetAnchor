@@ -20,6 +20,14 @@ describe('transactionInputSchema', () => {
     expect(transactionInputSchema.safeParse(valid).success).toBe(true);
   });
 
+  it('caps symbol and notes at the lengths firestore.rules allow', () => {
+    const ok = (patch: object) => transactionInputSchema.safeParse({ ...valid, ...patch }).success;
+    expect(ok({ symbol: 'X'.repeat(32) })).toBe(true);
+    expect(ok({ symbol: 'X'.repeat(33) })).toBe(false);
+    expect(ok({ notes: 'n'.repeat(1000) })).toBe(true);
+    expect(ok({ notes: 'n'.repeat(1001) })).toBe(false);
+  });
+
   it('rejects missing symbol', () => {
     expect(transactionInputSchema.safeParse({ ...valid, symbol: undefined }).success).toBe(false);
   });

@@ -61,7 +61,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `apps/functions` (`@assetanchor/functions`) | Firebase Cloud Functions（quotes / exchangeRates / symbols / history），tsup bundle 到 `lib/`。                                           |
 | `firebase` (`@assetanchor/firebase`)        | `firestore.rules` + `firestore.indexes.json` + rules 測試。                                                                               |
 
-**依賴方向（單向）**：`features/* → core/* | services/* | packages/shared`；feature 之間不互 import。**Firestore 集合與寫入權限**（rules 是聖牛安全模型）：`users/{uid}/**` 僅本人讀寫；`symbols/{symbolId}` 登入者可讀 + 可 create（不可 update/delete）；`quotes/{symbolId}`、`exchange_rates/{date}`、`price_history/{docId}` 登入者可讀、**只後端 Admin SDK 可寫**。
+**依賴方向（單向）**：`features/* → core/* | services/* | packages/shared`；feature 之間不互 import。**Firestore 集合與寫入權限**（rules 是聖牛安全模型）：`users/{uid}/**` 僅本人讀寫、且寫入逐欄驗證（只可寫 user doc / accounts / transactions）；`symbols/{symbolId}` 登入者可讀、**只後端 Admin SDK 可寫**；`quotes/{symbolId}`、`exchange_rates/{date}`、`price_history/{docId}` 登入者可讀、**只後端 Admin SDK 可寫**。
 
 **Mobile 結構與導航**：Feature-based：`src/features/<feature>/`（screens + `*Service.ts` Firestore CRUD + `*Store.ts` Zustand + 純函式）、`src/core/`（`navigation/` `theme/` `ui/`）、`src/services/`。React Navigation v7：Root Stack 包 4 個 Bottom Tab（**持倉 / 交易 / 分析 / 設定**，權威導航 ADR-0008）+ SplashGate + Modal group；**帳戶管理是「設定」子頁、非 tab**；新增交易入口＝持倉頁 header ＋、交易頁 FAB-only；auth 狀態決定 `RootNavigator` 顯示 AuthStack 或 MainTabs。表單用受控 input + `shared` zod `safeParse`。UI 字串純繁中（MVP 不做 i18n）。
 

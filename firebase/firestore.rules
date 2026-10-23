@@ -2,10 +2,228 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 使用者只能讀寫自己的所有資料
+    // ---- Shared validators (validate-firestore-writes) ----
+    // Enum lists mirror packages/shared/src/enums; firestore.rules.test.ts checks every
+    // value is accepted so a new enum value cannot silently be rejected here.
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Money.toDecimalString(): fixed 10 decimal places, never exponent notation.
+    function isDecimal(v) {
+      return v is string && v.matches('^-?[0-9]{1,20}[.][0-9]{10}$');
+    }
+
+    function isNonNegativeDecimal(v) {
+      return v is string && v.matches('^[0-9]{1,20}[.][0-9]{10}$');
+    }
+
+    function isBoundedString(v, maxLen) {
+      return v is string && v.size() <= maxLen;
+    }
+
+    function isNonEmptyString(v, maxLen) {
+      return v is string && v.size() >= 1 && v.size() <= maxLen;
+    }
+
+    function isMarket(v) {
+      return v in ['TW', 'US', 'CRYPTO', 'OTHER'];
+    }
+
+    function isAssetType(v) {
+      return v in ['STOCK', 'ETF', 'CRYPTO', 'BOND', 'MUTUAL_FUND', 'OTHER'];
+    }
+
+    function isBroker(v) {
+      return v in [
+        'FIRSTRADE', 'INTERACTIVE_BROKERS', 'MOOMOO', 'SCHWAB', 'FIDELITY', 'ROBINHOOD',
+        'TD_AMERITRADE', 'CAPITAL_SECURITIES', 'SINOPAC', 'FUBON', 'YUANTA', 'CATHAY', 'CTBC',
+        'MASTERLINK', 'KGI', 'MEGA', 'BINANCE', 'COINBASE', 'KRAKEN', 'MAX', 'BITOPRO', 'OTHER'
+      ];
+    }
+
+    function isAccountType(v) {
+      return v in ['BROKERAGE', 'IRA', 'MARGIN', 'CASH', 'CRYPTO_EXCHANGE', 'CRYPTO_WALLET', 'OTHER'];
+    }
+
+    function isStampedNow(v) {
+      return v == request.time;
+    }
+
+    // Fields the client is allowed to change on update.
+    function changesOnly(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    // ---- users/{uid} root doc ----
+
+    function validUserSettings(s) {
+      return s is map
+        && s.keys().hasOnly(['theme', 'default_account_id'])
+        && s.theme in ['light', 'dark', 'auto']
+        && (s.default_account_id == null || isNonEmptyString(s.default_account_id, 128));
+    }
+
+    function validNewUser(userId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['uid', 'email', 'display_name', 'preferred_display_currency',
+                               'preferred_locale', 'settings', 'created_at', 'updated_at'])
+        && d.keys().hasAll(['uid', 'email', 'display_name', 'preferred_display_currency',
+                            'preferred_locale', 'settings', 'created_at', 'updated_at'])
+        && d.uid == userId
+        && isBoundedString(d.email, 320)
+        // Email sign-up has no display name yet, so '' is allowed on create.
+        && isBoundedString(d.display_name, 50)
+        && d.preferred_display_currency in ['TWD', 'USD']
+        && d.preferred_locale == 'zh-TW'
+        && validUserSettings(d.settings)
+        && isStampedNow(d.created_at)
+        && isStampedNow(d.updated_at);
+    }
+
+    function validUserUpdate() {
+      let d = request.resource.data;
+      let changed = d.diff(resource.data).affectedKeys();
+      return changesOnly(['display_name', 'preferred_display_currency', 'settings', 'updated_at'])
+        // Only a profile edit must set a name: email sign-ups start with '' and still need
+        // to update settings when they create their first account.
+        && (!('display_name' in changed) || isNonEmptyString(d.display_name, 50))
+        && d.preferred_display_currency in ['TWD', 'USD']
+        && validUserSettings(d.settings)
+        && isStampedNow(d.updated_at);
+    }
+
+    // ---- users/{uid}/accounts/{accountId} ----
+
+    function validCashBalances(m) {
+      return m is map
+        && m.keys().hasOnly(['USD', 'TWD'])
+        && (!('USD' in m) || isDecimal(m.USD))
+        && (!('TWD' in m) || isDecimal(m.TWD));
+    }
+
+    // User-editable account fields (shared accountInputSchema).
+    function validAccountFields(d) {
+      return isNonEmptyString(d.account_name, 100)
+        && isBroker(d.broker)
+        && isAccountType(d.account_type)
+        && d.base_currency in ['USD', 'TWD']
+        && isMarket(d.market)
+        && d.color is string && d.color.matches('^#[0-9A-Fa-f]{6}$')
+        && isBoundedString(d.notes, 1000);
+    }
+
+    function validNewAccount(accountId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['account_id', 'account_name', 'broker', 'account_type',
+                               'base_currency', 'market', 'cash_balances',
+                               'cash_balances_updated_at', 'is_active', 'display_order', 'color',
+                               'notes', 'created_at', 'updated_at'])
+        && d.keys().hasAll(['account_id', 'account_name', 'broker', 'account_type',
+                            'base_currency', 'market', 'cash_balances',
+                            'cash_balances_updated_at', 'is_active', 'display_order', 'color',
+                            'notes', 'created_at', 'updated_at'])
+        && d.account_id == accountId
+        && validAccountFields(d)
+        && validCashBalances(d.cash_balances)
+        && isStampedNow(d.cash_balances_updated_at)
+        && d.is_active is bool
+        && d.display_order is int && d.display_order >= 0
+        && isStampedNow(d.created_at)
+        && isStampedNow(d.updated_at);
+    }
+
+    function validAccountUpdate() {
+      let d = request.resource.data;
+      let changed = d.diff(resource.data).affectedKeys();
+      return changesOnly(['account_name', 'broker', 'account_type', 'base_currency', 'market',
+                          'color', 'notes', 'cash_balances', 'cash_balances_updated_at',
+                          'is_active', 'updated_at'])
+        && validAccountFields(d)
+        && validCashBalances(d.cash_balances)
+        && (!('cash_balances_updated_at' in changed) || isStampedNow(d.cash_balances_updated_at))
+        && d.is_active is bool
+        && isStampedNow(d.updated_at);
+    }
+
+    // ---- users/{uid}/transactions/{transactionId} ----
+
+    // Fields written by shared buildTransactionDoc (create and merge-edit alike).
+    function validTransactionFields(d) {
+      return isNonEmptyString(d.account_id, 128)
+        && isAssetType(d.asset_type)
+        && isNonEmptyString(d.symbol, 32)
+        && isMarket(d.market)
+        && d.transaction_type in ['BUY', 'SELL']
+        && d.transaction_date is string
+        && d.transaction_date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.ex_date == null
+        && isNonNegativeDecimal(d.quantity)
+        && d.currency in ['USD', 'TWD', 'USDT']
+        && isNonNegativeDecimal(d.price)
+        && isNonNegativeDecimal(d.total)
+        && isNonNegativeDecimal(d.fee)
+        && isNonNegativeDecimal(d.tax)
+        && d.related_transaction_id == null
+        && d.lot_id == null
+        && isBoundedString(d.notes, 1000);
+    }
+
+    function validNewTransaction(transactionId) {
+      let d = request.resource.data;
+      // `source` / `import_batch_id` are written only by the MCP import (Admin SDK).
+      return d.keys().hasOnly(['transaction_id', 'account_id', 'asset_type', 'symbol', 'market',
+                               'transaction_type', 'transaction_date', 'ex_date', 'quantity',
+                               'currency', 'price', 'total', 'fee', 'tax',
+                               'related_transaction_id', 'lot_id', 'notes', 'created_at',
+                               'updated_at'])
+        && d.keys().hasAll(['transaction_id', 'account_id', 'asset_type', 'symbol', 'market',
+                            'transaction_type', 'transaction_date', 'ex_date', 'quantity',
+                            'currency', 'price', 'total', 'fee', 'tax',
+                            'related_transaction_id', 'lot_id', 'notes', 'created_at',
+                            'updated_at'])
+        && d.transaction_id == transactionId
+        && validTransactionFields(d)
+        && isStampedNow(d.created_at)
+        && isStampedNow(d.updated_at);
+    }
+
+    function validTransactionUpdate() {
+      // Edits are merge writes of every builder field, so untouched keys (created_at,
+      // transaction_id, MCP source / import_batch_id) must stay as they are.
+      return changesOnly(['account_id', 'asset_type', 'symbol', 'market', 'transaction_type',
+                          'transaction_date', 'ex_date', 'quantity', 'currency', 'price', 'total',
+                          'fee', 'tax', 'related_transaction_id', 'lot_id', 'notes',
+                          'updated_at'])
+        && validTransactionFields(request.resource.data)
+        && isStampedNow(request.resource.data.updated_at);
+    }
+
+    // ---- Paths ----
+
+    // Users read everything of their own; writes are limited to the known documents below.
     match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId) && validNewUser(userId);
+      allow update: if isOwner(userId) && validUserUpdate();
+      allow delete: if false;
+    }
+
+    match /users/{userId}/accounts/{accountId} {
+      allow create: if isOwner(userId) && validNewAccount(accountId);
+      allow update: if isOwner(userId) && validAccountUpdate();
+      // Accounts are soft-deleted through is_active.
+      allow delete: if false;
+    }
+
+    match /users/{userId}/transactions/{transactionId} {
+      allow create: if isOwner(userId) && validNewTransaction(transactionId);
+      allow update: if isOwner(userId) && validTransactionUpdate();
+      allow delete: if isOwner(userId);
     }
 
     // 匯率：登入使用者皆可讀，只有後端 (Admin SDK) 可寫
@@ -14,11 +232,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 股票代號：登入使用者皆可讀，可建立（MVP 動態新增），不可改不可刪
+    // Symbols: readable when signed in. Only the backend (fetchSymbolMeta / MCP tools via
+    // the Admin SDK) creates them; the app never writes here.
     match /symbols/{symbolId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if false;
+      allow write: if false;
     }
 
     // 報價快取：登入使用者皆可讀，只有後端 (Cloud Function) 可寫

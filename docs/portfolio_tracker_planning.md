@@ -647,51 +647,21 @@ const ASSET_TYPES = [
 
 ## 7. Security Rules
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+> 權威來源是 `firebase/firestore.rules`（測試：`firebase/tests/firestore.rules.test.ts`）。此節只記模型；2026-10-23 起加上欄位驗證（OpenSpec `validate-firestore-writes`）。
 
-    // 使用者只能讀寫自己的所有資料
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
-    }
+| 路徑 | 讀 | client 寫 |
+| --- | --- | --- |
+| `users/{uid}` | 本人 | create／update，逐欄驗證（只可改暱稱、顯示幣別、settings），不可刪 |
+| `users/{uid}/accounts/{id}` | 本人 | create／update，逐欄驗證（enum、色碼、10 位小數現金餘額、長度上限），不可刪（軟刪除 `is_active`） |
+| `users/{uid}/transactions/{id}` | 本人 | create／update／delete；create 驗完整欄位集、update 只可改 builder 欄位（保留 `created_at`、MCP 的 `source`／`import_batch_id`） |
+| `users/{uid}` 下其他 subcollection | 本人 | 不可寫 |
+| `symbols/{id}` | 登入者 | 不可寫（只有後端 `fetchSymbolMeta`／MCP 工具以 Admin SDK 建立） |
+| `exchange_rates`、`quotes`、`price_history` | 登入者 | 不可寫（只有後端） |
+| `oauth_store` | 不可讀 | 不可寫（只有 `mcp` 函式） |
 
-    // 匯率：登入使用者皆可讀，只有後端 (Admin SDK) 可寫
-    match /exchange_rates/{date} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
+金額欄位一律須為 `Money.toDecimalString()` 格式（`^-?[0-9]+\.[0-9]{10}$`，交易金額不可為負）；`created_at`／`updated_at` 須為 `serverTimestamp()`。Rules 無法驗算 `total = price × quantity`，由 shared `buildTransactionDoc` 保證。
 
-    // 股票代號：登入使用者皆可讀，可建立（MVP 動態新增），不可改不可刪
-    match /symbols/{symbolId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if false;
-    }
-
-    // 報價快取：登入使用者皆可讀，只有後端 (Cloud Function) 可寫
-    match /quotes/{symbolId} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
-
-    // 歷史日線（ADR-0010）：登入使用者皆可讀，只有後端可寫
-    match /price_history/{docId} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
-
-    // MCP OAuth 狀態（ADR-0011）：用戶端一律不可讀寫，只有 mcp 函式的 Admin SDK 存取
-    match /oauth_store/{docId} {
-      allow read, write: if false;
-    }
-  }
-}
-```
-
-Subcollection 模式的最大好處：security rules 簡潔到只有四條。
+Subcollection 模式的最大好處：權限模型（本人才能讀寫自己的資料）只靠路徑就能表達，欄位驗證再逐 collection 疊上去。
 
 ---
 
