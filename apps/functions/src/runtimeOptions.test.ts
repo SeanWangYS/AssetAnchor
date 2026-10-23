@@ -69,12 +69,26 @@ describe('runtime limits', () => {
     }
   });
 
-  it('leaves only the mcp function outside the App Check gate', () => {
+  it('puts the ID token gate in front of every user-facing HTTP function', () => {
+    for (const name of USER_HTTP) {
+      const ep = (deployed as Record<string, { __endpoint?: { labels?: Record<string, string> } }>)[
+        name
+      ]?.__endpoint;
+      expect([name, ep?.labels?.['auth']]).toEqual([name, 'id-token']);
+    }
+  });
+
+  it('leaves only the mcp function outside the App Check and ID token gates', () => {
     for (const name of MCP_HTTP) {
       const ep = (deployed as Record<string, { __endpoint?: { labels?: Record<string, string> } }>)[
         name
       ]?.__endpoint;
-      expect([name, ep !== undefined, ep?.labels?.['app-check']]).toEqual([name, true, undefined]);
+      expect([name, ep !== undefined, ep?.labels?.['app-check'], ep?.labels?.['auth']]).toEqual([
+        name,
+        true,
+        undefined,
+        undefined,
+      ]);
     }
   });
 });
@@ -83,5 +97,12 @@ describe('App Check mode', () => {
   it('rejects unverified requests in production', async () => {
     const { APP_CHECK_MODE } = await import('./runtimeOptions');
     expect(APP_CHECK_MODE).toBe('enforce');
+  });
+});
+
+describe('Auth mode', () => {
+  it('stays in monitor until a build that sends ID tokens is installed', async () => {
+    const { AUTH_MODE } = await import('./runtimeOptions');
+    expect(AUTH_MODE).toBe('monitor');
   });
 });

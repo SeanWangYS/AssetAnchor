@@ -27,3 +27,11 @@ export const BACKGROUND_OPTIONS = { region: REGION, maxInstances: 1 } as const;
  * and redeploy if the app starts failing attestation (see docs/runbook/app-check-rollout.md).
  */
 export const APP_CHECK_MODE: 'monitor' | 'enforce' = 'enforce';
+
+/**
+ * Firebase Auth ID token mode for user-facing HTTP functions (require-auth-for-functions D5).
+ * Starts in 'monitor': builds up to 0.2.0 (15) send no ID token. Flip to 'enforce' only after
+ * a build that sends it is installed and logs show only verified traffic
+ * (see docs/runbook/function-auth-rollout.md).
+ */
+export const AUTH_MODE: 'monitor' | 'enforce' = 'monitor';

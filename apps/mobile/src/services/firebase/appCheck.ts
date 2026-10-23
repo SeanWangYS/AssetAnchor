@@ -1,7 +1,6 @@
 import { getApp } from '@react-native-firebase/app';
 import { getToken, initializeAppCheck, type AppCheck } from '@react-native-firebase/app-check';
 import { reportHandledError } from '../monitoring';
-import { appCheckHeaders } from './appCheckHeaders';
 
 const USE_EMULATOR = process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATOR === 'true';
 
@@ -32,7 +31,7 @@ export function initAppCheck(): Promise<AppCheck | null> {
 }
 
 /** Current App Check token, or null when App Check is off or the token is unavailable. */
-async function appCheckToken(): Promise<string | null> {
+export async function appCheckToken(): Promise<string | null> {
   const appCheck = await initAppCheck();
   if (!appCheck) return null;
   try {
@@ -45,9 +44,4 @@ async function appCheckToken(): Promise<string | null> {
     }
     return null;
   }
-}
-
-/** `fetch` for Cloud Functions with the App Check header attached when available (D2). */
-export async function functionsFetch(url: string): Promise<Response> {
-  return fetch(url, { headers: appCheckHeaders(await appCheckToken()) });
 }
