@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import Decimal from 'decimal.js';
 import { MARKETS } from '../enums/markets.js';
+import { NOTES_MAX_LENGTH } from './account.js';
 import { ASSET_TYPES } from '../enums/asset-types.js';
 import {
   CRYPTO_TRANSACTION_CURRENCIES,
@@ -59,6 +60,9 @@ const nonNegativeDecimal = (label: string) =>
  * runtime 驗證，型別由 z.infer 推導。金額/數量在此只驗形（正負、數字性），
  * 實際精度轉換交由 Money 在組文件階段處理（見 ADR-0007 純轉換 seam）。
  */
+/** Mirrored in firebase/firestore.rules (validate-firestore-writes). */
+export const SYMBOL_MAX_LENGTH = 32;
+
 export const transactionInputSchema = z
   .object({
     account_id: z.string().trim().min(1, '帳戶必填'),
@@ -66,6 +70,7 @@ export const transactionInputSchema = z
       .string()
       .trim()
       .min(1, '代號必填')
+      .max(SYMBOL_MAX_LENGTH, `代號最多 ${SYMBOL_MAX_LENGTH} 字`)
       .transform((s) => s.toUpperCase()),
     // enum 欄位一律帶繁中訊息——zod 內建英文訊息會裸露 enum 內部值於 UI（visual-audit P0-1）
     market: z.enum(MARKETS, '請選擇市場'),
@@ -78,7 +83,7 @@ export const transactionInputSchema = z
     price: positiveDecimal('單價'),
     fee: nonNegativeDecimal('手續費').default('0'),
     tax: nonNegativeDecimal('交易稅').default('0'),
-    notes: z.string().default(''),
+    notes: z.string().max(NOTES_MAX_LENGTH, `備註最多 ${NOTES_MAX_LENGTH} 字`).default(''),
   })
   // 市場×幣別一致性（guard-transaction-market-consistency）：TW↔TWD、US↔USD 硬擋；
   // CRYPTO 限允許集 USD/USDT/TWD（enable-crypto-quotes）；OTHER 不約束。
