@@ -2,7 +2,8 @@ import { getApp } from '@react-native-firebase/app';
 import { getAuth, connectAuthEmulator } from '@react-native-firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from '@react-native-firebase/firestore';
 
-export { functionsFetch, initAppCheck } from './appCheck';
+export { initAppCheck } from './appCheck';
+export { functionsFetch } from './functionsFetch';
 
 export const auth = getAuth(getApp());
 export const db = getFirestore(getApp());

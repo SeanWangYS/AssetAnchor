@@ -21,6 +21,7 @@ const config: Config = {
     'src/**/holdingsSort.ts',
     'src/**/holdingsTable.ts',
     'src/**/appCheckHeaders.ts',
+    'src/**/authHeaders.ts',
   ],
   coverageThreshold: {
     global: { branches: 90, functions: 90, lines: 90, statements: 90 },
