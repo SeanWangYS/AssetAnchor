@@ -1,30 +1,22 @@
 import {
-  Money,
   amountDisplayDecimals,
   currencyPrefix as sharedCurrencyPrefix,
   formatQuantity,
   type Currency,
   type Market,
-  type Position,
 } from '@assetanchor/shared';
 
-// toDisplay / DEMO_USD_TWD 已上移 services/valuation（change account-detail-market-value）；
-// 此處 re-export 維持既有 `import { toDisplay } from './holdingsDemo'` 相容。
-export { toDisplay, DEMO_USD_TWD } from '../../services/valuation';
+// toDisplay lives in services/valuation (change account-detail-market-value);
+// re-exported here to keep the existing `import { toDisplay } from '../holdingsDemo'` working.
+export { toDisplay } from '../../services/valuation';
 
 /**
- * 持倉總覽 / 詳情的「報價層」demo 資料（align-to-design-package WP-A）。
+ * Small display helpers shared by the holdings screens.
  *
- * ⚠️ 真實報價（市值、今日漲跌）為 Sprint 5（Non-goal of this change）。本檔提供
- * deterministic 的 mock 報價乘數與走勢序列，讓 B 儀表板在無 quotes collection 時
- * 仍可完整 demo（對齊 prototype 全 mock 的視覺定稿）。
- *
- * 真實資料（股數 / 加權均價 / 總成本 / 幣別）一律來自 `useHoldings()`（deriveHoldings），
- * 本檔只補「需要報價才能算」的欄位，並由畫面以「資料延遲」字樣標示為示意。
+ * The former demo/mock quote layer (mock returns, mock market value, avatar
+ * colours, DEMO_SUMMARY) has been removed: all values now come from real
+ * holdings, quotes and symbol metadata.
  */
-
-// 「帳戶分布」曾用 symbol→帳戶名硬編 demo 表（DEMO_ACCOUNT/accountOf）；已於 fix-holdings-account-grouping
-// 移除，改由 shared `deriveHoldingsByAccount` 依真實 account_id 分群（持倉「帳戶」模式 + AssetDetail 帳戶分布）。
 
 export function marketLabel(market: Market): string {
   if (market === 'TW') return '台股';
@@ -33,96 +25,21 @@ export function marketLabel(market: Market): string {
   return '其他';
 }
 
-/** 標的固定圓標底色（prototype `av`；未知標的回退 accent，由呼叫端帶預設）。 */
-const AVATAR_COLOR: Record<string, string> = {
-  '2330': '#1F8A5B',
-  '2317': '#16785C',
-  '0050': '#B23B3B',
-  '00878': '#C08A2E',
-  AAPL: '#222831',
-  VTI: '#2E62D6',
-  QQQ: '#5B43C0',
-};
-
-export function avatarColor(symbol: string, fallback: string): string {
-  return AVATAR_COLOR[symbol] ?? fallback;
-}
-
 /**
- * deterministic mock 報酬率（%）—— 由代號字元碼產生穩定值（−6%~+24%），
- * 純為了讓無報價時的市值 / 漲跌% 看起來可信。實作報價後整段移除。
- */
-function seed(symbol: string): number {
-  let s = 0;
-  for (let i = 0; i < symbol.length; i++) s = (s * 31 + symbol.charCodeAt(i)) % 1000;
-  return s;
-}
-
-/** 總報酬率%（mock）。 */
-export function mockReturnPct(symbol: string): number {
-  return Math.round((((seed(symbol) % 300) - 60) / 10) * 100) / 100;
-}
-
-/** 今日漲跌%（mock，−2%~+3.5%）。 */
-export function mockTodayPct(symbol: string): number {
-  return Math.round(((((seed(symbol) * 7) % 550) - 200) / 100) * 100) / 100;
-}
-
-/**
- * mock 市值（原幣別）：總成本 × (1 + mockReturnPct/100)。
- * 真實報價接上後改為 quantity × latestQuote。
- */
-export function mockMarketValue(position: Position): Money {
-  const cost = Money.fromDecimalString(position.totalCost, position.currency);
-  const factor = 1 + mockReturnPct(position.symbol) / 100;
-  return cost.multiply(factor.toFixed(6));
-}
-
-/** mock 未實現損益（原幣別）= 市值 − 成本。 */
-export function mockUnrealized(position: Position): Money {
-  return mockMarketValue(position).subtract(
-    Money.fromDecimalString(position.totalCost, position.currency),
-  );
-}
-
-/** mock 現價（原幣別）= 市值 / 股數。 */
-export function mockPrice(position: Position): Money {
-  const qty = Money.fromDecimalString(position.quantity, position.currency);
-  if (qty.isZero()) return Money.zero(position.currency);
-  return mockMarketValue(position).divide(position.quantity);
-}
-
-/**
- * ⚠️ adapter only——格式規則的唯一實作點在 `packages/shared` format 模組
- * （fix-display-formatting 規則表）；以下委派**禁止任何格式規則**。
- * @deprecated 畫面改直接 import shared（backlog：刪 shim）。
+ * Adapter only: the single source of formatting rules is the `packages/shared`
+ * format module; these delegates must not contain any formatting rules.
+ * @deprecated Screens should import from shared directly (backlog: delete shim).
  */
 export function currencyPrefix(currency: Currency): string {
   return sharedCurrencyPrefix(currency);
 }
 
-/** @deprecated 同上。 */
+/** @deprecated Same as above. */
 export function displayDecimals(currency: Currency): number {
   return amountDisplayDecimals(currency);
 }
 
-/** 股數顯示（≤4 位去尾零 + 千分位；currency 僅為簽名相容、內部丟棄）。 */
+/** Share quantity display (trims trailing zeros to <=4 dp, adds thousands separators; currency is ignored, kept for signature compatibility). */
 export function fmtShares(quantity: string, _currency: Currency): string {
   return formatQuantity(quantity);
 }
-
-/** 持倉總覽 hero / bento 的整體 mock 摘要（TWD；prototype SUM）。需報價，故為示意。 */
-export const DEMO_SUMMARY = {
-  /** 持股市值 TWD。 */
-  totalAssets: 1238540,
-  /** 總報酬率 %。 */
-  totalReturnPct: 7.66,
-  /** 總未實現損益 TWD。 */
-  unrealized: 88200,
-  /** 今日損益 TWD。 */
-  today: 3420,
-  /** 今日損益 %。 */
-  todayPct: 0.28,
-  /** 本月已實現損益 TWD。 */
-  realizedThisMonth: 12400,
-} as const;

@@ -28,3 +28,6 @@ export { fetchSymbolMeta } from './symbols/fetchSymbolMeta';
 // 歷史日線 lazy 增量落地 price_history + 盤中粒度即抓即回。
 export { ensureHistory } from './history/ensureHistory';
 export { fetchIntraday } from './history/fetchIntraday';
+
+// MCP endpoint + OAuth authorization server for Claude connectors (ADR-0011, add-mcp-auth-readonly).
+export { mcp } from './mcp';

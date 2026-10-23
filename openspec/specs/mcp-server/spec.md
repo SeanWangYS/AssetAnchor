@@ -1,0 +1,207 @@
+# mcp-server Specification
+
+## Purpose
+
+The remote MCP endpoint that Claude connectors call: bearer-token protected, stateless Streamable HTTP, scoped to the token owner's data, and the contracts of its tools (ADR-0011).
+
+## Requirements
+
+### Requirement: MCP 端點以 Streamable HTTP 無狀態運作並要求 bearer token
+
+系統 SHALL 在 `mcp` Cloud Function 提供遠端 MCP 端點，傳輸方式為 Streamable HTTP、無狀態（不保留 session）。每個請求 SHALL 帶有效的 bearer 存取權杖（見 `mcp-authorization`）且 scope 含 `transactions.read`；缺少或無效時 SHALL 回 HTTP 401 `invalid_token`，scope 不足時 SHALL 回 HTTP 403 `insufficient_scope`。伺服器 SHALL 宣告名稱 `assetanchor` 與版本。只讀工具 SHALL 標示 `readOnlyHint: true`；寫入工具 SHALL 標示 `readOnlyHint: false`（修改與刪除另標示 `destructiveHint: true`），且權杖缺少 `transactions.write` 時 SHALL 以工具錯誤回覆「請在 Claude 重新連線 AssetAnchor 以授權寫入」，不寫入任何資料。
+
+#### Scenario: 帶有效權杖列出工具
+
+- **WHEN** Claude 以有效權杖送出 `tools/list`
+- **THEN** 回傳只讀的 `list_accounts`、`list_transactions`、`search_symbol`、`validate_transactions`、`preview_update_transaction`、`preview_delete_transactions`，寫入的 `create_transactions`，以及破壞性的 `update_transaction`、`delete_transactions`
+
+#### Scenario: 權杖被作廢後呼叫
+
+- **WHEN** 已被管理者作廢的權杖呼叫任何工具
+- **THEN** 回 HTTP 401 `invalid_token`
+
+#### Scenario: 只有讀取權限的舊權杖呼叫寫入工具
+
+- **WHEN** 只含 `transactions.read` 的權杖呼叫 `create_transactions`
+- **THEN** 回傳工具錯誤「請在 Claude 重新連線 AssetAnchor 以授權寫入」，交易集合不變
+
+### Requirement: 資料存取一律綁定權杖的 uid
+
+所有工具 SHALL 只讀取權杖所屬使用者的 `users/{uid}/**` 資料與全域 `symbols` 集合。工具輸入 SHALL NOT 含任何使用者識別欄位；即使請求夾帶其他 uid、帳戶 ID 或交易 ID 指向他人資料，SHALL 只在權杖使用者的範圍內查詢，查不到時視為不存在。
+
+#### Scenario: 指定他人的帳戶 ID
+
+- **WHEN** 使用者 A 的權杖以使用者 B 的 `account_id` 呼叫 `list_transactions`
+- **THEN** 回傳空結果與「找不到帳戶」錯誤，不洩漏 B 的任何資料
+
+### Requirement: list_accounts 列出使用者的帳戶
+
+`list_accounts` SHALL 回傳使用者的帳戶，每筆含 `account_id`、`account_name`、`broker`、`account_type`、`base_currency`、`market`、`is_active`，依 App 的 `display_order` 排序。預設 SHALL 只回傳 `is_active: true` 的帳戶；參數 `include_inactive: true` 時一併回傳停用帳戶。
+
+#### Scenario: 使用者有兩個啟用帳戶與一個停用帳戶
+
+- **WHEN** 呼叫 `list_accounts` 不帶參數
+- **THEN** 回傳兩個啟用帳戶，順序與 App 帳戶頁一致
+
+#### Scenario: 沒有帳戶
+
+- **WHEN** 使用者尚未建立任何帳戶
+- **THEN** 回傳空清單，並附繁中提示「請先在 AssetAnchor App 建立帳戶」
+
+### Requirement: list_transactions 依條件查詢交易
+
+`list_transactions` SHALL 支援選填篩選：`account_id`、`symbol`（搭配選填 `market`）、`date_from`、`date_to`（`YYYY-MM-DD`，含端點）、`import_batch_id`，結果依 `transaction_date` 由新到舊排序。每筆 SHALL 含 `transaction_id`、`account_id`、`transaction_date`、`symbol`、`market`、`asset_type`、`transaction_type`、`currency`、`quantity`、`price`、`fee`、`tax`、`notes`、`import_batch_id`（App 手動輸入者為 `null`）。金額與數量 SHALL 以 Firestore 儲存的 decimal string 原樣回傳，SHALL NOT 轉成浮點數。每頁 SHALL 最多 100 筆（預設 50），超過時 SHALL 回傳 `next_cursor` 供下一頁使用。日期格式不合法或 `date_from` 晚於 `date_to` 時 SHALL 回傳繁中錯誤，不執行查詢。
+
+#### Scenario: 依代號與日期查詢
+
+- **WHEN** 呼叫 `list_transactions`，`symbol` 為 `2330`、`market` 為 `TW`、`date_from` 為 `2025-01-01`
+- **THEN** 只回傳該使用者 2025-01-01 起的台積電交易，金額為 decimal string（例如 `"580.0000000000"`）
+
+#### Scenario: 結果超過一頁
+
+- **WHEN** 符合條件的交易有 130 筆、未指定每頁筆數
+- **THEN** 回傳最新 50 筆與 `next_cursor`；以該 cursor 再查回傳下一批
+
+#### Scenario: 日期範圍顛倒
+
+- **WHEN** `date_from` 為 `2025-12-31`、`date_to` 為 `2025-01-01`
+- **THEN** 回傳錯誤「起始日期不可晚於結束日期」
+
+#### Scenario: 查詢某批匯入
+
+- **WHEN** 以 `create_transactions` 回傳的 `import_batch_id` 查詢
+- **THEN** 只回傳該批匯入的交易
+
+### Requirement: search_symbol 對應名稱或代號到 App 的 symbol
+
+`search_symbol` SHALL 接受 `query`（代號或名稱）與選填 `market`，回傳最多 10 筆候選，每筆含 `symbol_id`、`symbol`、`market`、`asset_type`、`currency`、`name`、`name_zh`。比對 SHALL 依序涵蓋：代號完全相符（不分大小寫）、代號前綴、使用者自己交易過的 symbol 的中英文名稱包含查詢字串。`name` 與 `name_zh` 皆為空的 symbol（報價來源從未解析成功的空殼）SHALL NOT 出現在候選中。工具說明 SHALL 指示 Claude：截圖只有中文名稱時，先依自身知識轉成代號再以代號查詢，並在確認清單同時列出代號與名稱供使用者核對。查無結果時 SHALL 回傳空清單與提示「AssetAnchor 尚無此代號」，SHALL NOT 建立新 symbol。
+
+#### Scenario: 以代號查詢台股 ETF
+
+- **WHEN** `query` 為 `0050`
+- **THEN** 候選第一筆為 `symbol_id` `TW_0050`、`market` `TW`、`currency` `TWD`
+
+#### Scenario: 以中文名稱查詢已交易過的股票
+
+- **WHEN** 使用者曾交易台積電且其 symbol 有中文名稱，`query` 為 `台積電`
+- **THEN** 候選含 `TW_2330`
+
+#### Scenario: 空殼 symbol 不列入候選
+
+- **WHEN** `symbols` 同時有 `TW_0050`（有名稱）與 `US_0050`（`name`、`name_zh` 皆空），`query` 為 `0050`
+- **THEN** 候選只有 `TW_0050`
+
+#### Scenario: 查無代號
+
+- **WHEN** `query` 為 `ZZZZ`
+- **THEN** 回傳空清單與提示「AssetAnchor 尚無此代號」，`symbols` 集合沒有新增文件
+
+### Requirement: 工具錯誤以繁中訊息回傳且不洩漏內部細節
+
+工具執行失敗時 SHALL 以 MCP 工具錯誤（`isError: true`）回傳繁中訊息，SHALL NOT 包含堆疊、Firestore 路徑或其他使用者資料；內部錯誤細節 SHALL 寫入 functions log 並附 uid 與工具名稱。
+
+#### Scenario: Firestore 暫時無法使用
+
+- **WHEN** `list_transactions` 執行時 Firestore 回傳錯誤
+- **THEN** Claude 收到「暫時無法讀取交易，請稍後再試」，functions log 記錄原始錯誤、uid 與 `list_transactions`
+
+### Requirement: validate_transactions 檢查待匯入清單且不寫入
+
+`validate_transactions` SHALL 接受 `account_id` 與 1～50 筆待匯入列（`transaction_date`、`symbol`、`market`、`transaction_type`（`BUY`／`SELL`）、`quantity`、`price`，選填 `asset_type`、`currency`（預設依市場：TW→TWD、US→USD）、`fee`、`tax`（預設 0）、`notes`、`keep_duplicate`）。未填 `asset_type` 時 SHALL 採用 AssetAnchor symbol 主檔的 `asset_type`，主檔沒有此代號時預設 `STOCK`。帳戶 SHALL 屬於權杖使用者，否則回傳「找不到帳戶」。每列 SHALL 回報 `status`：`ok`、`duplicate`（疑似重複且未標記保留）、`invalid`（附繁中原因，沿用 App 交易表單的驗證規則與訊息）、`oversell`（附可賣數量），以及 `new_symbol`（AssetAnchor 尚無此代號、匯入時會建立）。代號不在 AssetAnchor、或主檔中只有名稱皆空的空殼時，TW／US 市場 SHALL 向報價來源確認確實存在此代號，查無時該列 SHALL 為 `invalid`「找不到此代號，請確認代號與市場」。工具 SHALL 回傳正規化後的清單（金額為 10 位小數 string）與確認碼；全部列皆為 `ok` 時才回傳確認碼。工具 SHALL NOT 寫入任何資料。
+
+#### Scenario: 全部正確
+
+- **WHEN** 驗證 2 筆合法的台股買入
+- **THEN** 兩列 `status` 皆為 `ok`，回傳確認碼與正規化金額（例如 `"580.0000000000"`）
+
+#### Scenario: 混雜問題列
+
+- **WHEN** 清單含一筆與既有交易重複的列、一筆台股卻填 USD 的列、一筆超賣的賣出
+- **THEN** 三列分別為 `duplicate`、`invalid`（「台股交易幣別須為 TWD」）、`oversell`，且不回傳確認碼
+
+#### Scenario: 代號市場錯誤
+
+- **WHEN** 待匯入列為 `market: US`、`symbol: 0050`，且 AssetAnchor 與報價來源皆查無此美股代號
+- **THEN** 該列為 `invalid`「找不到此代號，請確認代號與市場」
+
+#### Scenario: 空殼 symbol 不算已存在
+
+- **WHEN** 主檔有名稱皆空的 `US_APPL`，待匯入列為 `market: US`、`symbol: APPL`，報價來源查無此代號
+- **THEN** 該列為 `invalid`「找不到此代號，請確認代號與市場」
+
+#### Scenario: 類型沿用主檔
+
+- **WHEN** 主檔 `US_SGOV` 的 `asset_type` 為 `ETF`，待匯入列未填 `asset_type`
+- **THEN** 正規化後該列 `asset_type` 為 `ETF`
+
+### Requirement: create_transactions 只寫入使用者確認過的清單
+
+`create_transactions` SHALL 要求 `transactions.write` scope，接受與 `validate_transactions` 相同的輸入加上 `confirmation_token`。確認碼 SHALL 綁定權杖使用者、帳戶與正規化後的完整清單，且 30 分鐘內有效；清單任何欄位與驗證時不同、或確認碼過期時 SHALL 拒絕並要求重新驗證。寫入前 SHALL 重新執行完整驗證，任一列不是 `ok` 時 SHALL 整批拒絕。通過時 SHALL 以單一 batch 原子寫入所有列（`source: 'mcp'`、同一 `import_batch_id`、`created_at`／`updated_at` 為伺服器時間，文件內容與 App 新增交易相同），並為 `new_symbol` 的代號建立 `symbols` 文件。回傳 SHALL 含 `import_batch_id` 與新交易的 `transaction_id`。
+
+#### Scenario: 確認後匯入
+
+- **WHEN** 以 `validate_transactions` 回傳的確認碼與相同清單呼叫
+- **THEN** 寫入全部列，回傳 `import_batch_id` 與 `transaction_id` 清單，App 交易列表即時出現
+
+#### Scenario: 清單被改過
+
+- **WHEN** 使用確認碼時把其中一列的數量從 1000 改成 100
+- **THEN** 拒絕寫入並回覆「清單與確認時不同，請重新驗證後再匯入」
+
+#### Scenario: 驗證後資料已變動
+
+- **WHEN** 驗證後、匯入前，使用者在 App 刪掉了該股的買入，使待匯入的賣出變成超賣
+- **THEN** 整批拒絕並回報超賣的列，不寫入任何一筆
+
+#### Scenario: 新代號一併建立
+
+- **WHEN** 匯入的代號在 AssetAnchor 尚不存在
+- **THEN** 交易寫入的同時建立 `symbols/{market}_{symbol}`，App 之後能顯示名稱與報價
+
+### Requirement: 修改交易需先預覽並以確認碼執行
+
+`preview_update_transaction` SHALL 接受 `transaction_id` 與要修改的欄位（與匯入列相同的欄位，另可改 `account_id`），以該交易現值合併修改後，套用與匯入相同的驗證（格式、代號存在、重複、帳戶），並以 `findNewOversells` 檢查修改後是否造成任何超賣。回傳 SHALL 含修改前後的完整內容（decimal string）、`status`（`ok`／`invalid`／`duplicate`／`oversell`）與說明；只有 `ok` 時才回傳確認碼。確認碼 SHALL 綁定使用者、交易 ID、修改前內容與修改後內容，30 分鐘有效。`update_transaction` SHALL 要求 `transactions.write`、接受相同輸入加確認碼；交易在預覽後被改動、修改內容不同、或確認碼過期時 SHALL 拒絕。通過時 SHALL 以 App 相同的文件格式覆寫該交易（保留 `created_at`、`source`、`import_batch_id`，更新 `updated_at`）。交易不存在或不屬於權杖使用者時 SHALL 回傳「找不到交易」。
+
+#### Scenario: 修改數量
+
+- **WHEN** 預覽把一筆 BUY 的 `quantity` 由 1000 改為 100，無後續賣出
+- **THEN** 回傳修改前 `"1000.0000000000"`、修改後 `"100.0000000000"`、`status: ok` 與確認碼；以確認碼執行後該交易數量為 100
+
+#### Scenario: 修改造成超賣
+
+- **WHEN** 預覽把較早的 BUY 數量改小，使之後的 SELL 超賣
+- **THEN** `status: oversell`，說明指出哪一天的賣出會超賣，不回傳確認碼
+
+#### Scenario: 預覽後交易被改動
+
+- **WHEN** 預覽後使用者在 App 改了該筆交易，再以舊確認碼執行
+- **THEN** 拒絕並回覆「交易在確認後已被修改，請重新預覽」
+
+### Requirement: 刪除交易需先預覽並以確認碼執行
+
+`preview_delete_transactions` SHALL 接受 `transaction_ids`（1～20 筆）或 `import_batch_id`（擇一）。指定的交易 SHALL 全部屬於權杖使用者，否則回傳「找不到交易」並列出不存在的 ID。預覽 SHALL 依交易日期由舊到新（同日買入在賣出之前）逐筆列出完整內容，並以 `findNewOversells` 檢查刪除後是否造成超賣；有超賣時 SHALL 說明並不回傳確認碼。確認碼 SHALL 綁定使用者與這組交易的 ID 與內容，30 分鐘有效。`delete_transactions` SHALL 要求 `transactions.write`、接受相同指定方式加確認碼；任何一筆在預覽後被修改或已不存在、指定的組合不同、或確認碼過期時 SHALL 拒絕。通過時 SHALL 以單一 batch 硬刪除全部指定交易，回傳刪除筆數。SHALL NOT 提供依條件刪除。
+
+#### Scenario: 刪除單筆
+
+- **WHEN** 預覽刪除一筆沒有後續賣出的 BUY，再以確認碼執行
+- **THEN** 該交易被刪除，回傳刪除 1 筆
+
+#### Scenario: 刪除整批匯入
+
+- **WHEN** 以某次匯入的 `import_batch_id` 預覽並執行刪除
+- **THEN** 該批全部交易被刪除，其他交易不受影響
+
+#### Scenario: 預覽依日期排序
+
+- **WHEN** 預覽刪除一批日期交錯的交易
+- **THEN** `transactions` 依 `transaction_date` 由舊到新排列
+
+#### Scenario: 超過 20 筆
+
+- **WHEN** `transaction_ids` 有 21 筆
+- **THEN** 回傳錯誤「一次最多刪除 20 筆；要刪整批匯入請改用 import_batch_id」
+
+#### Scenario: 刪除造成超賣
+
+- **WHEN** 預覽刪除一筆之後仍有賣出依賴它的 BUY
+- **THEN** 說明哪一天的賣出會超賣，不回傳確認碼；執行時同樣拒絕

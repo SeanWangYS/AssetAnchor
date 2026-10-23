@@ -22,6 +22,8 @@ e2e-*.png
 
 # Secrets (Firebase plist, OAuth keys, etc.)
 .secrets/
+# Emulator-only secret values (MCP_COOKIE_KEYS, MCP_OIDC_JWKS); never commit.
+.secret.local
 GoogleService-Info.plist
 google-services.json
 *.env.sprint1-reference
@@ -30,6 +32,12 @@ google-services.json
 .env
 .env.*
 !.env.example
+# Non-secret emulator settings for the MCP login page and integration tests.
+!apps/web/.env.emulator
+!apps/web/.env.integration
+!apps/functions/.env.demo-assetanchor
+# Public MCP issuer URL for production (docs/runbook/mcp-operations.md); not a secret.
+!apps/functions/.env.assetanchor-832df
 
 # OS
 .DS_Store

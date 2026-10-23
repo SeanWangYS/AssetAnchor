@@ -41,5 +41,8 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    { "collectionGroup": "oauth_store", "fieldPath": "expires_at", "ttl": true, "indexes": [] },
+    { "collectionGroup": "oauth_store", "fieldPath": "payload", "indexes": [] }
+  ]
 }
