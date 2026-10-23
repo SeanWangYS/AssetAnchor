@@ -15,7 +15,9 @@
 
    產生的值不要存檔、不要貼到任何地方。
 
-## 首次部署（兩階段：先取得 Cloud Run 網址當 issuer）
+## 部署
+
+`mcp` 的 Cloud Run 網址是固定格式 `https://mcp-<專案編號>.asia-east1.run.app`，部署前就能確定，所以 issuer 已寫在 `apps/functions/.env.assetanchor-832df`（只含公開網址，已 commit），一次部署即可。
 
 1. 部署 rules、索引（含 `oauth_store.expires_at` TTL）、函式與 Hosting：
 
@@ -23,27 +25,19 @@
    firebase deploy --only firestore:rules,firestore:indexes,functions:mcp,hosting --project assetanchor-832df
    ```
 
-   部署時 CLI 若詢問 `MCP_ISSUER_URL`，先直接 Enter（空值）。此時 `mcp` 會回 500（尚未設定 issuer），屬預期。
+   之後只改函式時用 `--only functions:mcp`；只改登入頁時用 `--only hosting`。
 
-2. 從部署輸出（或 `firebase functions:list`）取得 `mcp` 的 Cloud Run 網址，形如 `https://mcp-xxxxxxxxxx-de.a.run.app`。
-3. 寫入參數檔並重新部署函式：
-
-   ```bash
-   echo 'MCP_ISSUER_URL=https://mcp-xxxxxxxxxx-de.a.run.app' > apps/functions/.env.assetanchor-832df
-   firebase deploy --only functions:mcp --project assetanchor-832df
-   ```
-
-   `.env.assetanchor-832df` 只含公開網址、不含機密，可以 commit。
-
-4. 冒煙測試：
+2. 冒煙測試：
 
    ```bash
    curl -s https://assetanchor-832df.web.app/.well-known/oauth-protected-resource/mcp
-   curl -s https://mcp-xxxxxxxxxx-de.a.run.app/.well-known/oauth-authorization-server | head -c 300
+   curl -s https://mcp-269986802776.asia-east1.run.app/.well-known/oauth-authorization-server | head -c 300
    curl -si -X POST https://assetanchor-832df.web.app/mcp | grep -i www-authenticate
+   curl -s -X POST https://mcp-269986802776.asia-east1.run.app/reg -H 'Content-Type: application/json' \
+     -d '{"redirect_uris":["http://localhost:1/cb"],"token_endpoint_auth_method":"none","scope":"transactions.read transactions.write"}' | head -c 120
    ```
 
-   預期：第一個回 `authorization_servers` = Cloud Run 網址；第二個回含 `authorization_endpoint` 的 JSON；第三個回 401 且帶 `resource_metadata`。
+   預期：第一個回 `authorization_servers` = Cloud Run 網址；第二個回含 `authorization_endpoint` 的 JSON；第三個回 401 且帶 `resource_metadata`；第四個回含 `client_id` 的 JSON（Claude 註冊時會帶 scope，不能被拒）。
 
 ## Claude 驗收
 
