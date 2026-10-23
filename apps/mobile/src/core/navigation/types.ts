@@ -81,6 +81,8 @@ export type SettingsStackParamList = {
   /** 帳戶管理子頁 —— 掛載整個 AccountsStack（巢狀 navigator 作為一個 screen）。 */
   Accounts: undefined;
   Profile: undefined;
+  /** 用 Claude 匯入交易說明（claude-import-spec）。 */
+  ClaudeImport: undefined;
   About: undefined;
 };
 /* eslint-enable @typescript-eslint/consistent-type-definitions */

@@ -3,6 +3,7 @@ import type { SettingsStackParamList } from '../../core/navigation/types';
 import SettingsScreen from './SettingsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import AboutScreen from './screens/AboutScreen';
+import ClaudeImportScreen from './screens/ClaudeImportScreen';
 import AccountsStack from '../accounts/AccountsStack';
 import { colors } from '../../core/theme';
 
@@ -38,6 +39,11 @@ export default function SettingsStack() {
         options={{ headerShown: false, title: '帳戶管理' }}
       />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: '個人資料' }} />
+      <Stack.Screen
+        name="ClaudeImport"
+        component={ClaudeImportScreen}
+        options={{ title: '用 Claude 匯入交易' }}
+      />
       <Stack.Screen name="About" component={AboutScreen} options={{ title: '關於' }} />
     </Stack.Navigator>
   );
