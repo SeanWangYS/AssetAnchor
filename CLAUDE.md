@@ -67,6 +67,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 本地開發環境（port 速查）
 
+> **換新 Mac / 首次 clone** 先走 **[`docs/runbook/new-machine-setup.md`](docs/runbook/new-machine-setup.md)**（工具鏈、gitignored secrets、帳號登入、Claude Code 本機設定）。
 > 完整步驟（種子資料、冒煙測試、疑難排解）見 **[`docs/runbook/local-testing.md`](docs/runbook/local-testing.md)**。**先起 emulator 再起 app**；種子帳號 `test@assetanchor.dev` / `test1234`。最少 **2 個 terminal**（emulator process + app）。
 
 | Service                 | 指令                                                               | Port     | 何時需要                                                          |
@@ -119,6 +120,34 @@ CI（`.github/workflows/ci.yml`）三個 job：`lint`（prettier --check + `pnpm
 4. **自主開發**：用 Claude 原生 `/goal`（條件驅動）跑完整個 sprint/佇列為主驅動——完成條件範本、harness 兩層框架、軟/硬 gate 與 BLOCKED 訊號見 **[`docs/runbook/goal-dev-cycle.md`](docs/runbook/goal-dev-cycle.md)**（繼承取代舊 `autonomous-dev-loop.md`）。
 
 **文件層級**：`docs/architecture.md`（top-view 架構）、`docs/adr/`（跨 change 重大決策，Context→Decision→Consequences→Alternatives）、`docs/tech_note/`（技術教學）、`docs/runbook/`（含 `goal-dev-cycle.md`、`local-testing.md`）、`docs/retros/`、`docs/superpowers/plans/`。
+
+## 協作偏好（owner 習慣，跨 session 適用）
+
+- **討論用選擇題**：需求釐清、設計取捨用 AskUserQuestion（推薦選項放第一），每個選項寫清楚**優點與風險/成本**，不要丟開放式問題清單。一次推進一個議題。
+- **owner 背景**：數據工程師、熟 AWS，但 iOS / RN / Expo / Firebase 經驗薄——解釋這些概念時多用後端/數據工程類比；技術選型要列 trade-off。
+- **tech note 門檻**：可複習的通用技術教學才寫進 `docs/tech_note/`（自包含、TL;DR、類比、cheat-sheet、標版本）；專案特定一次性的坑留在 commit/runbook。不確定值不值得 → 先問再寫。
+- **`/loop`、`/goal` ＝整批自走**：一口氣做完所有可自走的 change（可平行 sub-agent，檔案不重疊者並行），只在人類介入 gate 停；帶 UI 的視覺對圖 owner 可累積數個 change 一次驗收。每個 change 各自分支 + PR。
+- **改 CLAUDE.md 本身＝owner-gated**：雖屬 docs，仍開 PR 不自 merge。
+
+## Git 操作安全習慣（踩過坑的規則）
+
+- **commit 身分只用 GitHub noreply 別名**（`45586375+SeanWangYS@users.noreply.github.com`）；絕不出現工作 email，也**不要**把 owner 加成 `Co-authored-by`（只加 Claude 那行）。
+- **只 stage 自己改的檔**：commit 前 `git status --short`、`git add <paths>`；**禁 `git add -A` / `git add .`**——工作樹常有 owner 或其他 session 未追蹤的檔案（如 `openspec/changes/*`），不認得的不要動、告知 owner。
+- **工作樹可能被其他 Claude session 共用並切分支**：每次 commit 前 `git branch --show-current` 確認；push 用明確 refspec `git push origin HEAD:refs/heads/<branch>`；長時間平行工作優先開獨立 worktree。
+- **merge 後保留分支**，不刪、不提議刪、不開 auto-delete。
+- **stacked PR 陷阱**：因保留分支，base merge 後 GitHub **不會**自動把子 PR 轉向 `main`——merge 前先把下一個 PR 的 base 改成 `main`，部署前用 `git log origin/main` 確認內容真的進了 main。
+- **`firebase deploy` 從工作樹打包**：部署前確認 `git status` 乾淨且在最新 `main`。
+
+## 本機開發陷阱（速查）
+
+- **持倉卡「報價載入中…」**：①預設 `emulators` 不含 functions → 改 `emulators:fn`；②app keychain 快取的是**真實 Google 帳號**，種子資料屬 `test@assetanchor.dev`（不同 uid → 空帳號）→ 設定頁登出改用種子帳號登入（`expo run:ios` 重裝不會清 keychain）；③種子 quotes 15 分鐘 TTL 過期 → 重跑 `seed:emulator` 或 PATCH `fetched_at`。
+- **`connectAuthEmulator` 是原生黏性狀態**：切 emulator ↔ production 要殺 app 程序重開，JS reload 不夠；`apps/mobile/.env` 會蓋過命令列 env。
+- **emulator 資料重置後** app 舊 session 會 `auth/id-token-revoked` → 重新登入。
+- **REST 寫 emulator 後** App `onSnapshot` 不一定即時反映 → `xcrun simctl terminate/launch booted com.seanwangys.assetanchor`。
+- **Fabric TextInput**：容器 focus 時切 shadow/border/opacity/transform 必加 `collapsable={false}`（RN #45798，ADR-0009）。
+- **E2E / 模擬器操作**：AXe 命令一律帶 `--udid`；`--label` 對畫面外元素座標會錯 → 用 `describe-ui` 取 frame 中心再 tap；中文輸入用 Maestro `inputText` 或 `simctl pbcopy` + Cmd+V；穩定 gate＝`maestro test .e2e/ --exclude-tags=devbuild-flaky`。細節見 `docs/runbook/e2e-maestro.md`。
+- **Yahoo 抓取**：維持平實 UA `Mozilla/5.0 (AssetAnchor)`（假冒 Chrome UA 反被 429）、沿用 `yahooHistoryProvider` 的 host 輪替與 range bucket fallback。
+- **查 prod**：client 錯誤能見度低，後端以 `firebase functions:log --project assetanchor-832df` 為主；機器未裝 gcloud 時可用 firebase-tools configstore 的 access token 打 GCP REST API。
 
 ## 環境關鍵事實
 
