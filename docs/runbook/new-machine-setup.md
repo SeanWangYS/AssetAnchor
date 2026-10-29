@@ -55,6 +55,20 @@ pnpm install
 
 ## 3. Secrets
 
+### 沒從舊機轉移時怎麼重建
+
+舊機壞了或忘了複製也不會卡住：production 機密（MCP 金鑰、Sentry、`EXPO_TOKEN`、EAS 憑證）都在雲端，本機檔案都能重拿或重產。
+
+| 項目                                | 不轉移的話                          | 怎麼重建                                                                                                                                        |
+| ----------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.secrets/GoogleService-Info.plist` | ✅ 隨時可重拿                       | Firebase console 重新下載（§3.1）；會打包進 app，非真正機密                                                                                     |
+| `.secrets/AuthKey_*.p8`             | ⚠️ 原檔拿不回（Apple 只給下載一次） | 流程 A（tag 發版）不需要它，EAS 雲端已存；手動 `eas submit` 才需要時到 ASC → Integrations 產新 key、撤銷舊的                                    |
+| `apps/mobile/.env`                  | ✅ 可重建                           | `cp .env.example .env` 即可（唯一生效值是 `EXPO_PUBLIC_USE_FIREBASE_EMULATOR`）；其餘參考值可從 Firebase console / GCP OAuth 頁面抄             |
+| `apps/functions/.env.local`         | ✅ 可重建                           | 只有 `MCP_ISSUER_URL`，公開網址非秘密；production 值已 commit 在 `apps/functions/.env.assetanchor-832df`                                        |
+| `apps/functions/.secret.local`      | ✅ 重產即可                         | emulator 專用值：`node apps/functions/scripts/generate-mcp-secrets.mjs cookie` / `... jwks` 產新值寫入；production 值在 Secret Manager 不受影響 |
+| `~/.claude/CLAUDE.md`               | ⚠️ 無雲端備份                       | 純文字，丟了需重寫；建議放進私人 dotfiles repo 管理                                                                                             |
+| `~/.claude/settings.json`           | ✅ 可重建                           | Claude Code 內 `/plugin` 重裝 plugins，statusline / model 重設                                                                                  |
+
 ### 3.1 `GoogleService-Info.plist`
 
 從舊機複製；或 Firebase console → 專案 `assetanchor-832df` → 專案設定 → iOS app `com.seanwangys.assetanchor` → 下載。放到 `apps/mobile/.secrets/GoogleService-Info.plist`（`app.config.ts` 預設讀這裡）。
